@@ -1,3 +1,6 @@
+import Data.Map as Map
+import Control.Monad.State
+
 class SLSymantics repr where
       int :: Int -> repr Int
       bool :: Bool -> repr Bool
@@ -21,4 +24,11 @@ class SLSymantics repr where
       leqf:: repr Float -> repr Float -> repr Float
       if_ :: repr Bool -> repr a -> repr a -> repr a
 
-      
+newtype Function = Function { name :: String } deriving (Eq, Ord, Show)
+
+define f expr = modify $ insert
+
+quadform = Function "quadform"
+quadroots = sl $ do
+          define quadform $
+                 
