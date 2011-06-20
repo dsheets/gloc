@@ -1,64 +1,52 @@
-class type ga = object
-    method 
+(*class type ga = object
+    method grade : int
 end
+*)
+
+module JS = Jssl
 
 module type SLSymantics = sig
-    type 'a repr
+  type ('c,'sv,'dv) repr
+    
+  val bool : bool -> ('c,bool,bool) repr
+  val float : float -> ('c,float,float) repr
+  (*val ga : ga -> ga repr*)
+    
+  val lam : (('c,'sa,'da) repr -> ('c,'sb,'db) repr as 'x)
+    -> ('c,'x,'da -> 'db) repr
+  val app : ('c,'x,'da -> 'db) repr
+    -> (('c,'sa,'da) repr -> ('c,'sb,'db) repr as 'x)
 
-    val int : int -> int repr
-    val bool : bool -> bool repr
-    val ga : ga -> ga repr
+  val (&&) : ('c,bool,bool) repr -> ('c,bool,bool) repr -> ('c,bool,bool) repr
+  val (||) : ('c,bool,bool) repr -> ('c,bool,bool) repr -> ('c,bool,bool) repr
 
-    val lam : ('a repr -> 'b repr) -> repr ('a -> 'b)
-    val app : ('a -> 'b) repr -> 'a repr -> 'b repr
+  val (+:) : ('c,float,float) repr -> ('c,float,float) repr
+    -> ('c,float,float) repr
+  val (-:) : ('c,float,float) repr -> ('c,float,float) repr
+    -> ('c,float,float) repr
+  val ( *:) : ('c,float,float) repr -> ('c,float,float) repr
+    -> ('c,float,float) repr
+  val (/:) : ('c,float,float) repr -> ('c,float,float) repr
+    -> ('c,float,float) repr
 
-    val bind : string -> 'a repr
-    val call : string -> 'a repr -> 'b repr
+  val sqrt : ('c,float,float) repr -> ('c,float,float) repr
 
-    val (&&) : bool repr -> bool repr -> bool repr
-    val (||) : bool repr -> bool repr -> bool repr
+  val leqf : ('c,float,float) repr -> ('c,float,float) repr
+    -> ('c,bool,bool) repr
 
-    val (+:) : int repr -> int repr -> int repr
-    val (-:) : int repr -> int repr -> int repr
-    val ( *:) : int repr -> int repr -> int repr
-    val (/:) : int repr -> int repr -> int repr
-
-    val (mod) : int repr -> int repr -> int repr
-
-    val leq : int repr -> int repr -> bool repr
-
-    val run : 'a repr -> string
-end
-
-module JSSL : SLSymantics = struct
-    type t = Float of float | Addf of t * t
-    type 'a repr = t
-    let float f = Float f
-    let (+.) x y = Addf (x,y)
-
-    let rec run = function
-      | Float f -> string_of_float f
-      | Addf (x,y) -> (run x)^"+"^(run y)
-end
-
-module Eval : SLSymantics = struct
-    type 'a repr = float
-
-    let float f = f
-    let (+.) = (+.)
-
-    let run = string_of_float
+  val bind : string -> ('c,'s,'d) repr -> ('c,'s,'d) repr
+  val run : ('c,'s,'d) repr -> string
 end
 
 let eval m =
   let module M = (val m : SLSymantics) in
   let open M in
-      let csqrt a = (float 3.) +. a in
+      let csqrt a = (float 3.) +: a in
       run (csqrt (float 4.))
 
 ;;
-print_endline (eval (module JSSL : SLSymantics))
+print_endline (eval (module JS : SLSymantics))
 ;;
-print_endline (eval (module GLSL : SLSymantics))
+(*print_endline (eval (module GLSL : SLSymantics))
 ;;
-print_endline (eval (module Eval : SLSymantics))
+print_endline (eval (module Eval : SLSymantics))*)
