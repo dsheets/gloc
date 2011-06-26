@@ -1,14 +1,15 @@
 %{
 open Glsl_type
 
-type 't tok = { loc: int * int; v: 't }
+type 't tok = { loc: int * int * int; v: 't }
+module SymMap = Map.Make(struct type t = symbol let compare = compare end)
 %}
 
 %token EOF
 
-%token <string tok> COMMENT
-%token <(Glsl_type.env * string) tok> IDENTIFIER FIELD_SELECTION
-$token <string tok> TYPE_NAME
+%token <string list tok> COMMENT
+%token <(Glsl_type.env * string) tok> IDENTIFIER
+%token <string tok> TYPE_NAME FIELD_SELECTION
 
 %token <float tok> FLOATCONSTANT
 %token <int tok> INTCONSTANT
@@ -34,7 +35,7 @@ $token <string tok> TYPE_NAME
 
 variable_identifier
 : IDENTIFIER { 
-  try match envfind (fst $1) (snd $1) with
+  try match SymMap.find (fst $1) (snd $1) with
     | Var v ->
     | _ -> raise (VariableExpected
   with Not_found -> raise (UndeclaredIdentifier (snd $1))
