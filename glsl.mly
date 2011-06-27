@@ -1,8 +1,40 @@
 %{
 open Glsl_type
 
+type qual = Const
+
 type 't tok = { loc: int * int * int; v: 't }
-module SymMap = Map.Make(struct type t = symbol let compare = compare end)
+module SymMap = Map.Make(struct type t = string let compare = compare end)
+
+type 'a scalar = 'a
+type 'a vec2   = 'a * 'a
+type 'a vec3   = 'a * 'a * 'a
+type 'a vec4   = 'a * 'a * 'a * 'a
+
+type 'a prim =
+    Void
+  | Float of 'a cell
+  | Int of 'a cell
+  | Bool of 'a cell
+
+type symtype =
+    Bool of bool prim
+  | Int of int prim
+  | Float of float prim
+  | Fun of arrow
+  | Struct of agg
+  | Field of agg * string
+  | Array of int * symtype
+and arrow = symtype * symtype array
+and agg = symtype SymMap.t
+
+type 'a symbol = {symTok:'a tok; symType:symtype; symQual:qual list}
+
+type 'a expr = Variable of 'a var_expr | Constant of 'a const_expr
+
+type global = Function of | Global | Directive
+
+type translation_unit = {prog:global list; env:env}
 %}
 
 %token EOF
@@ -15,7 +47,8 @@ module SymMap = Map.Make(struct type t = symbol let compare = compare end)
 %token <int tok> INTCONSTANT
 %token <bool tok> BOOLCONSTANT
 
-%token <unit tok> INVARIANT HIGH_PRECISION MEDIUM_PRECISION LOW_PRECISION PRECISION
+%token <unit tok> HIGH_PRECISION MEDIUM_PRECISION LOW_PRECISION
+%token <unit tok> PRECISION INVARIANT
 %token ATTRIBUTE CONST BOOL FLOAT INT BREAK CONTINUE DO ELSE FOR IF DISCARD
 %token RETURN BVEC2 BVEC3 BVEC4 IVEC2 IVEC3 IVEC4 VEC2 VEC3 VEC4 MAT2 MAT3
 %token MAT4 IN OUT INOUT UNIFORM VARYING STRUCT VOID WHILE SAMPLER2D
@@ -35,10 +68,24 @@ module SymMap = Map.Make(struct type t = symbol let compare = compare end)
 
 variable_identifier
 : IDENTIFIER { 
-  try match SymMap.find (fst $1) (snd $1) with
-    | Var v ->
-    | _ -> raise (VariableExpected
-  with Not_found -> raise (UndeclaredIdentifier (snd $1))
-
-
+  try match SymMap.find (fst $1.v) (snd $1.v) with
+    | {symType=Var; symQual} as symbol ->
+      if List.mem Const symQual then Constant {symbol}
+      else Variable {symbol}
+    | symbol -> (error (UnexpectedNamespace ($1,Var));
+		 Variable {symbol})
+  with Not_found -> (error (UndeclaredIdentifier $1);
+		     Variable {symbol={symType=Var; symQual=[]}})
+}
+;
+primary_expression
+  : variable_identifier { $1 }
+  | INTCONSTANT {
+    (if abs $1.v >= (1 lsl 16) (* TODO: VS only, FS is 10-bit *)
+     then error (IntegerOverflow ($1,1 lsl 16)));
+    Constant {symbol={symType=Int; symQual=[Const]}}
+  }
+  | FLOATCONSTANT {
+    Constant {symbol={symType=Float; symQual=[Const]}}
+  }
 %%

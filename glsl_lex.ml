@@ -2,8 +2,6 @@ module Lex = Ulexing
 
 open Glsl
 
-type symtype = Var | Fun | Struct
-type symbol = {symType:symtype}
 module String = struct
     include String
     let after s k = sub s k ((length s)-k)
@@ -30,9 +28,11 @@ let tok lexbuf v =
 	     (Lex.lexeme_start lexbuf) - !colo,
 	     (Lex.lexeme_end lexbuf) - !colo) in
   {loc; v}
-let lookup name = match !env with
+let rec lookup env name = match env with
   | [] -> raise Not_found
-  | top::rest -> SymMap.find top name
+  | top::rest ->
+    (* TODO: don't use exceptions? -- expensive in js *)
+    try SymMap.find top name with Not_found -> lookup rest name
 
 let regexp digit = ['0'-'9']
 let regexp letter= ['a'-'z''A'-'Z''_']
@@ -113,12 +113,12 @@ let rec lex = lexer
     begin if !field_sel
       then (field_sel := false; FIELD_SELECTION (tok lexbuf symbol))
       else
-	try let {symType} = lookup symbol in
+	try let {symType} = lookup !env symbol in
 	    if !type_decl then IDENTIFIER (tok lexbuf (!env,symbol))
 	    else match symType with
 	      | Struct -> type_decl:= true; TYPE_NAME (tok lexbuf symbol)
 	      | _ -> IDENTIFIER (tok lexbuf (!env,symbol))
-	with Failure "hd" | Not_found ->
+	with Not_found ->
 	  IDENTIFIER (tok lexbuf (!env,symbol))
     end
   | "0"['x''X']hex+ ->
