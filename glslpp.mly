@@ -10,6 +10,33 @@
 		   v: 't }
  and comments = string list pptok list
 
+ type cond_expr =
+     Group of cond_expr
+   | Constant of int pptok
+   | Defined of string pptok
+   | Positive of cond_expr
+   | Negative of cond_expr
+   | Tilde of cond_expr
+   | Bang of cond_expr
+   | Mult of cond_expr * cond_expr
+   | Div of cond_expr * cond_expr
+   | Mod of cond_expr * cond_expr
+   | Add of cond_expr * cond_expr
+   | Sub of cond_expr * cond_expr
+   | ShiftLeft of cond_expr * cond_expr
+   | ShiftRight of cond_expr * cond_expr
+   | Lt of cond_expr * cond_expr
+   | Gt of cond_expr * cond_expr
+   | Lte of cond_expr * cond_expr
+   | Gte of cond_expr * cond_expr
+   | Eq of cond_expr * cond_expr
+   | Neq of cond_expr * cond_expr
+   | BitAnd of cond_expr * cond_expr
+   | BitXor of cond_expr * cond_expr
+   | BitOr of cond_expr * cond_expr
+   | And of cond_expr * cond_expr
+   | Or of cond_expr * cond_expr
+
  type pptok_type =
      Int of (base * int) pptok
    | Float of float pptok
@@ -22,7 +49,7 @@
  type span = { first: unit pptok; last: unit pptok }
  type pptok_expr =
    | Chunk of span * chunk
-   | If of span * chunk * pptok_expr * (pptok_expr option)
+   | If of span * cond_expr * pptok_expr * (pptok_expr option)
    | Def of span * string pptok * chunk
    | Fun of span * string pptok * (string pptok list) * chunk
    | Undef of span * string pptok
@@ -117,18 +144,21 @@ source
     | cl -> Comments cl }
 
 cond_expr
-:
-
-cond_body
-:
+: 
 
 behavior
-:
+: b=WORD { match b.v with
+  | "require" -> {b with v=Require}
+  | "enable" -> {b with v=Enable}
+  | "warn" -> {b with v=Warn}
+  | "disable" -> {b with v=Disable}
+  | _ -> error (UnknownBehavior b.v); {b with v=Disable}
+}
 
 directive
-: IF cond_expr ENDPPDIRECTIVE cond_body PPDIRECTIVE ENDIF {}
-| IFDEF WORD ENDPPDIRECTIVE cond_body PPDIRECTIVE ENDIF {}
-| IFNDEF WORD ENDPPDIRECTIVE cond_body PPDIRECTIVE ENDIF {}
+: IF cond_expr ENDPPDIRECTIVE translation_unit PPDIRECTIVE ENDIF {}
+| IFDEF WORD ENDPPDIRECTIVE translation_unit PPDIRECTIVE ENDIF {}
+| IFNDEF WORD ENDPPDIRECTIVE translation_unit PPDIRECTIVE ENDIF {}
 | DEFINE WORD source* {}
 | DEFINE CALL separated_list(COMMA,WORD) RIGHT_PAREN source* {}
 | UNDEF WORD {}
