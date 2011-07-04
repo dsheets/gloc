@@ -1,5 +1,5 @@
 all:
-	ocamlbuild -use-ocamlfind glsl_lex.byte
+	ocamlbuild -use-ocamlfind -use-menhir esslpp_main.byte
 
 clean:
 	ocamlbuild -clean

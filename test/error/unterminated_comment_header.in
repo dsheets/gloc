@@ -1,0 +1,2 @@
+/* This is a comment without termination
+#error This error directive isn't real because it's inside a block comment
