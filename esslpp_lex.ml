@@ -38,7 +38,8 @@ let tok ?(comment=false) lexbuf v =
 	  let () = last_comment_ref := post_comment in
 	  (pre_comments,post_comment)
     ) in
-  let loc = {file = !file; line = !line; col=(Lex.lexeme_start lexbuf) - !colo} in
+  let loc = {file = !file; line = !line;
+	     col=(Lex.lexeme_start lexbuf) - !colo} in
   let scan = Lex.utf8_lexeme lexbuf in
   {loc; scan; comments; v}
 
