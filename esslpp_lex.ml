@@ -43,13 +43,15 @@ let tok ?(comment=false) lexbuf v =
   let scan = Lex.utf8_lexeme lexbuf in
   {loc; scan; comments; v}
 
-let add_post_comment comment = (!last_comment_ref) := comment::!(!last_comment_ref)
+let add_post_comment comment =
+  (!last_comment_ref) := comment::!(!last_comment_ref)
 
 let regexp digit = ['0'-'9']
 let regexp letter= ['a'-'z''A'-'Z''_']
 let regexp hex   = ['a'-'f''A'-'F''0'-'9']
 let regexp expo  = ['E''e']['+''-']?digit+
 let regexp octal = ['0'-'7']
+let regexp not_white = [^'\n''\t'' ''\r']
 
 let rec lex = lexer
   | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex lex lexbuf
@@ -129,11 +131,12 @@ let rec lex = lexer
   | " " | "\t" | "\r" -> lex lexbuf
   | eof -> EOF (tok lexbuf ())
   | _ -> error (UnknownCharacter (tok lexbuf ())); lex lexbuf
-and block_comment lines = lexer
-  | "\n" -> newline lexbuf; block_comment lines lexbuf
+and block_comment start lines = lexer
+  | "\n" -> newline lexbuf; block_comment start lines lexbuf
   | "*/" -> lines
-  | _ -> block_comment ((Lex.utf8_lexeme lexbuf)::lines) lexbuf
-  | eof -> error (UnterminatedComment (tok lexbuf ()));
+  | ([^'*']|('*'+[^'/']))* ->
+    block_comment start ((Lex.utf8_lexeme lexbuf)::lines) lexbuf
+  | eof -> error (UnterminatedComment start);
     Lex.rollback lexbuf; lines
 and comment_lex klex = lexer
   | "//"[^'\n']* ->
@@ -148,10 +151,12 @@ and comment_lex klex = lexer
     else (add_post_comment comment; klex lexbuf)
   | "/*" ->
     let start = !first_tok in
-    let comment = tok ~comment:true lexbuf (block_comment [] lexbuf) in
+    let openc = tok ~comment:true lexbuf () in
+    let lines = block_comment openc [] lexbuf in
+    let comment = {openc with v=lines} in
     if !head then
       if !colo = 0 && start then
-	(add_post_comment comment; BOF {comment with v=()})
+	(add_post_comment comment; BOF openc)
       else (add_post_comment comment; klex lexbuf)
     else if start then (comment_stack := comment::!comment_stack; klex lexbuf)
     else (add_post_comment comment; klex lexbuf)
@@ -174,5 +179,6 @@ and ppdir_lex = lexer
   | "endif" -> ENDIF (tok lexbuf ())
   | "error" -> ERROR (tok lexbuf ())
   | "pragma" -> PRAGMA (tok lexbuf ())
-  | _ -> error (InvalidDirective (tok lexbuf (Lex.utf8_lexeme lexbuf)));
+  | not_white+ ->
+    error (InvalidDirective (tok lexbuf (Lex.utf8_lexeme lexbuf)));
     lex lexbuf

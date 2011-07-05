@@ -1,1 +1,3 @@
-error
+File 0, line 1, col 1:
+invalid directive "bogus"
+
