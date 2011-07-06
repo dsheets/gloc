@@ -4,9 +4,9 @@ INS := $(wildcard *.in)
 OUTS := $(INS:.in=.out)
 
 %.out : %.in %.true
-	@$(PP) < $< > $@
-	@echo $(patsubst %.out,%,$@)
-	@diff $@ $(patsubst %.out,%.true,$@) || true
+	@$(PP) < $*.in > $@
+	@echo $*
+	@diff $@ $*.true || true
 
 .PHONY : all test clean
 all :
@@ -18,4 +18,4 @@ clean :
 %.git : %.in %.out %.true
 	git add $^
 %.new :
-	touch $@.in $@.true
+	touch $*.in $*.true
