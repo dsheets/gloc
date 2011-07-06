@@ -15,3 +15,7 @@ all :
 test : $(OUTS)
 clean :
 	@rm *.out || true
+%.git : %.in %.out %.true
+	git add $^
+%.new :
+	touch $@.in $@.true
