@@ -25,7 +25,7 @@ let newline lexbuf =
   if !first_tok then head := false; (* \n\n ends header *)
   first_tok := true;
   line := {src=(!line).src + 1; input=(!line).input + 1};
-  colo := Lex.lexeme_start lexbuf
+  colo := 1+(Lex.lexeme_start lexbuf) (* col 0 is one after eol *)
 let tok ?(comment=false) lexbuf v =
   let comments = if comment then
       let post_comment = ref [] in
