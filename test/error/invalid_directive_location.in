@@ -1,2 +1,2 @@
 void main() { #error directives must be first semantic token on line
-       #version 100 // so this is fine
+       #error so this is fine

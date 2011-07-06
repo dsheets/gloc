@@ -1,0 +1,3 @@
+#if 9 == 09 // invalid octal is a cardinal sin
+
+#endif
