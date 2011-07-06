@@ -18,4 +18,5 @@ clean :
 %.git : %.in %.out %.true
 	git add $^
 %.new :
-	touch $*.in $*.true
+	touch $*.in
+	echo "error" > $*.true

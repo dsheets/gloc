@@ -56,28 +56,29 @@ let regexp not_white = [^'\n''\t'' ''\r']
 let rec lex = lexer
   | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex lex lexbuf
   | "/*" -> Lex.rollback lexbuf; comment_lex lex lexbuf
-  | "\n" -> newline lexbuf;
-    if !ppdirective then (ppdirective := false; ENDPPDIRECTIVE (tok lexbuf ()))
-    else lex lexbuf
+  | "\n" -> let t = tok lexbuf () in newline lexbuf;
+      if !ppdirective then (ppdirective := false; ENDPPDIRECTIVE t)
+      else lex lexbuf
   | "#" | "%:" -> if !first_tok (* TODO: %:? *)
     then (ppdirective := true; ppdir_lex lexbuf)
     else (error (InvalidDirectiveLocation (tok lexbuf ())); lex lexbuf)
   | letter (letter | digit)* "("? ->
-    let t = tok lexbuf (Lex.utf8_lexeme lexbuf) in
-    begin match String.sub t.v ((String.length t.v)-1) 1 with
-      | "(" -> CALL {t with v=String.sub t.v 0 ((String.length t.v)-1)}
-      | _ -> WORD t
-    end
+      let t = tok lexbuf (Lex.utf8_lexeme lexbuf) in
+	begin match String.sub t.v ((String.length t.v)-1) 1 with
+	  | "(" -> CALL {t with v=String.sub t.v 0 ((String.length t.v)-1)}
+	  | _ -> WORD t
+	end
   | "0"['x''X']hex+ ->
-    INTCONSTANT (tok lexbuf (Hex,int_of_string (Lex.utf8_lexeme lexbuf)))
+      INTCONSTANT (tok lexbuf (Hex,int_of_string (Lex.utf8_lexeme lexbuf)))
   | "0"octal+ ->
-    let tail = String.after (Lex.utf8_lexeme lexbuf) 1 in
-    INTCONSTANT (tok lexbuf (Oct,int_of_string ("0o"^tail)))
-  | "0"digit+ -> error (InvalidOctal (tok lexbuf (Lex.utf8_lexeme lexbuf)));
-    lex lexbuf
+      let tail = String.after (Lex.utf8_lexeme lexbuf) 1 in
+	INTCONSTANT (tok lexbuf (Oct,int_of_string ("0o"^tail)))
+  | "0"digit+ -> let t = tok lexbuf (Lex.utf8_lexeme lexbuf) in
+      error (InvalidOctal t);
+      INTCONSTANT {t with v=(Dec,int_of_string t.v)}
   | digit+ -> INTCONSTANT (tok lexbuf (Dec,int_of_string (Lex.utf8_lexeme lexbuf)))
   | digit+expo | digit+"."digit*expo? | "."digit+expo? ->
-    FLOATCONSTANT (tok lexbuf (float_of_string (Lex.utf8_lexeme lexbuf)))
+      FLOATCONSTANT (tok lexbuf (float_of_string (Lex.utf8_lexeme lexbuf)))
 
   | "+=" -> ADD_ASSIGN (tok lexbuf (Punc.ADD_ASSIGN))
   | "-=" -> SUB_ASSIGN (tok lexbuf (Punc.SUB_ASSIGN))
@@ -129,7 +130,10 @@ let rec lex = lexer
   | "?"  -> QUESTION (tok lexbuf (Punc.QUESTION))
 
   | " " | "\t" | "\r" -> lex lexbuf
-  | eof -> EOF (tok lexbuf ())
+  | eof -> if !ppdirective
+    then let t = tok lexbuf () in
+      (ppdirective := false; Lex.rollback lexbuf; ENDPPDIRECTIVE t)
+    else EOF (tok lexbuf ())
   | _ -> error (UnknownCharacter (tok lexbuf ())); lex lexbuf
 and block_comment start lines = lexer
   | "\n" -> newline lexbuf; block_comment start lines lexbuf

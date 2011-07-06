@@ -54,18 +54,21 @@ source
 | i=INTCONSTANT { Int i }
 | p=punc { Punc p }
 
-cond_unop (* TODO: constants? *)
+cond_unop
 : LEFT_PAREN; e=cond_expr RIGHT_PAREN { Group e }
 | PLUS; e=cond_unop { Pos e }
 | DASH; e=cond_unop { Neg e }
 | TILDE; e=cond_unop { BitNot e }
 | BANG; e=cond_unop { Not e }
-| macro=CALL; args=separated_list(COMMA,WORD); RIGHT_PAREN { Fmacro (macro,args) } (* TODO: other args? *)
-| op=WORD macro=WORD? { match macro with
-    | Some operand -> if op.v="defined" then Defined operand
-      else Omacros [op;operand]
-    | None -> Omacros [op]
-} (* TODO: correct macro strings + precedence *)
+| int=INTCONSTANT { Constant {int with v=snd int.v} }
+| macro=CALL; args=separated_list(COMMA,WORD); RIGHT_PAREN
+    { Fmacro (macro,args) } (* TODO: other args? *)
+| op=WORD macro=WORD? {
+    match macro with
+      | Some operand -> if op.v="defined" then Defined operand
+	else Omacros [op;operand]
+      | None -> Omacros [op]
+  } (* TODO: correct macro strings + precedence *)
 
 cond_expr (* TODO: check prec *)
 : a=cond_expr; STAR; b=cond_expr { Mul (a,b) }
@@ -98,7 +101,7 @@ behavior
 }
 
 cond_continue
-: ENDIF { None }
+: ENDIF ENDPPDIRECTIVE { None }
 | first=ELIF; c=cond_expr; last=ENDPPDIRECTIVE; b=body; f=cond_continue {
   Some (If ({first; last}, c, b, f))
 }
