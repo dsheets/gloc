@@ -3,7 +3,25 @@ open Pp
 open Esslpp_lex
 open Esslpp
 ;;
-
+(*
+let rec pr_ppexpr = function
+  | Comments (_,cl) -> 
+  | Chunk (_,c) ->
+  | If (_,cond,cont,alto) ->
+  | Def (_,macro,c) ->
+  | Fun (_,fmacro,args,c) ->
+  | Undef (_,macro) ->
+  | Err (_,toks) ->
+  | Pragma (_,toks) ->
+  | Version (_,v) ->
+  | Extension (_,ext,b) ->
+  | Line (_,f,l) ->
+  | Concat (_,a,b) ->
+and pr_comment tok = match tok.v with
+  | [] -> ()
+  | l::[] -> printf "//%s\n" l
+  | mlc -> printf "/*"; List.iter (printf "%s") mlc; 
+*)
 let string_of_tokpos ({loc={file={src=file}; line={src=line}; col}}) =
   sprintf "File %d, line %d, col %d" file line col
 
@@ -33,4 +51,5 @@ let ppexpr = try parse (fun () -> lex lexbuf) with
   | err -> printf "Uncaught exception:\n%s\n" (Printexc.to_string err);
     exit 1
 in
-List.iter (fun e -> printf "%s\n" (string_of_error e)) (List.rev !errors)
+  (*pr_ppexpr ppexpr;*)
+  List.iter (fun e -> printf "%s\n" (string_of_error e)) (List.rev !errors)
