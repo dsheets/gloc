@@ -55,40 +55,81 @@ source
 | p=punc { Punc p }
 
 cond_unop
-: LEFT_PAREN; e=cond_expr RIGHT_PAREN { Group e }
-| PLUS; e=cond_unop { Pos e }
-| DASH; e=cond_unop { Neg e }
-| TILDE; e=cond_unop { BitNot e }
-| BANG; e=cond_unop { Not e }
+: l=LEFT_PAREN; e=cond_expr; r=RIGHT_PAREN {
+  Group {(fuse_pptok [proj l;proj e;proj r]) with v=e}
+}
+| o=PLUS; e=cond_unop { Pos {(fuse_pptok [proj o; proj e]) with v=e} }
+| o=DASH; e=cond_unop { Neg {(fuse_pptok [proj o; proj e]) with v=e} }
+| o=TILDE; e=cond_unop { BitNot {(fuse_pptok [proj o; proj e]) with v=e} }
+| o=BANG; e=cond_unop { Not {(fuse_pptok [proj o; proj e]) with v=e} }
 | int=INTCONSTANT { Constant {int with v=snd int.v} }
-| macro=CALL; args=separated_list(COMMA,WORD); RIGHT_PAREN
-    { Fmacro (macro,args) } (* TODO: other args? *)
+| macro=CALL; args=separated_list(COMMA,source*); r=RIGHT_PAREN {
+    let tokl = (proj macro)::(List.append args [r]) in
+      Fmacro {(fuse_pptok tokl) with v=(macro,args)}
+  }
 | op=WORD macro=WORD? {
     match macro with
-      | Some operand -> if op.v="defined" then Defined operand
-	else Omacros [op;operand]
-      | None -> Omacros [op]
+      | Some operand -> if op.v="defined"
+	then Defined {(fuse_pptok [proj op; proj operand]) with v=operand}
+	else Omacros {(fuse_pptok [proj op; proj operand]) with v=[op;operand]}
+      | None -> Omacros {(fuse_pptok [proj op]) with v=[op]}
   } (* TODO: correct macro strings + precedence *)
 
 cond_expr (* TODO: check prec *)
-: a=cond_expr; STAR; b=cond_expr { Mul (a,b) }
-| a=cond_expr; SLASH; b=cond_expr { Div (a,b) }
-| a=cond_expr; PERCENT; b=cond_expr { Mod (a,b) }
-| a=cond_expr; PLUS; b=cond_expr { Add (a,b) }
-| a=cond_expr; DASH; b=cond_expr { Sub (a,b) }
-| a=cond_expr; LEFT_OP; b=cond_expr { BitLeft (a,b) }
-| a=cond_expr; RIGHT_OP; b=cond_expr { BitRight (a,b) }
-| a=cond_expr; LEFT_ANGLE; b=cond_expr { Lt (a,b) }
-| a=cond_expr; RIGHT_ANGLE; b=cond_expr { Gt (a,b) }
-| a=cond_expr; LE_OP; b=cond_expr { Lte (a,b) }
-| a=cond_expr; GE_OP; b=cond_expr { Gte (a,b) }
-| a=cond_expr; EQ_OP; b=cond_expr { Eq (a,b) }
-| a=cond_expr; NE_OP; b=cond_expr { Neq (a,b) }
-| a=cond_expr; AMPERSAND; b=cond_expr { BitAnd (a,b) }
-| a=cond_expr; CARET; b=cond_expr { BitXor (a,b) }
-| a=cond_expr; VERTICAL_BAR; b=cond_expr { BitOr (a,b) }
-| a=cond_expr; AND_OP; b=cond_expr { And (a,b) }
-| a=cond_expr; OR_OP; b=cond_expr { Or (a,b) }
+: a=cond_expr; o=STAR; b=cond_expr {
+  Mul {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+}
+| a=cond_expr; o=SLASH; b=cond_expr {
+    Div {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=PERCENT; b=cond_expr {
+    Mod {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=PLUS; b=cond_expr {
+    Add {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=DASH; b=cond_expr {
+    Sub {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=LEFT_OP; b=cond_expr {
+    BitLeft {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=RIGHT_OP; b=cond_expr {
+    BitRight {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=LEFT_ANGLE; b=cond_expr {
+    Lt {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=RIGHT_ANGLE; b=cond_expr {
+    Gt {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=LE_OP; b=cond_expr {
+    Lte {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=GE_OP; b=cond_expr {
+    Gte {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=EQ_OP; b=cond_expr {
+    Eq {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=NE_OP; b=cond_expr {
+    Neq {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=AMPERSAND; b=cond_expr {
+    BitAnd {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=CARET; b=cond_expr {
+    BitXor {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=VERTICAL_BAR; b=cond_expr {
+    BitOr {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=AND_OP; b=cond_expr {
+    And {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
+| a=cond_expr; o=OR_OP; b=cond_expr {
+    Or {(fuse_pptok [proj a; proj o; proj b]) with v=(a,b)}
+  }
 | u=cond_unop { u }
 
 behavior
@@ -101,53 +142,56 @@ behavior
 }
 
 cond_continue
-: ENDIF ENDPPDIRECTIVE { None }
+: d=ENDIF; ENDPPDIRECTIVE { {d with v=None} }
 | first=ELIF; c=cond_expr; last=ENDPPDIRECTIVE; b=body; f=cond_continue {
-  Some (If ({first; last}, c, b, f))
-}
-| ELSE; ENDPPDIRECTIVE; b=body; ENDIF {
-  Some b
-}
+    {(fuse_pptok [first; proj c; last; proj b; proj f])
+     with v=Some (If (c, b, f.v)) }
+  }
+| d=ELSE; ENDPPDIRECTIVE; b=body; e=ENDIF {
+    {(fuse_pptok [d; proj b; e]) with v=Some b}
+  }
 
 directive
 : first=IF; c=cond_expr; last=ENDPPDIRECTIVE; b=body; f=cond_continue {
-  If ({first; last},c,b,f)
+  If {(fuse_pptok [first; proj c; last; proj b; proj f]) with v=(c,b,f.v)}
 }
 | first=IFDEF; m=WORD; last=ENDPPDIRECTIVE; b=body; f=cond_continue {
-  If ({first; last},Defined m,b,f)
-}
+    If {(fuse_pptok [first; proj m; last; proj b; proj f])
+	with v=(Defined {m with v=m},b,f.v)}
+  }
 | first=IFNDEF; m=WORD; last=ENDPPDIRECTIVE; b=body; f=cond_continue {
-  If ({first; last},Not (Defined m),b,f)
-}
+    If {(fuse_pptok [first; proj m; last; proj b; proj f])
+	with v=(Not {m with v=Defined {m with v=m}},b,f.v)}
+  }
 | first=DEFINE; m=WORD; stream=source* {
-  let last = last_pptok {m with v=()} stream in
-  Def ({first; last}, m, {macros=Macros.empty; stream})
-}
-| first=DEFINE; m=CALL; args=separated_list(COMMA,WORD); last=RIGHT_PAREN; stream=source* {
-  let last = last_pptok (proj last) stream in
-  Fun ({first; last}, m, args, {macros=Macros.empty; stream})
-}
-| first=UNDEF; m=WORD { Undef ({first; last={m with v=()}}, m) }
+    Def {(fuse_pptok (first::(proj m)::stream)) with v=(m, stream)}
+  }
+| d=DEFINE; m=CALL; args=separated_list(COMMA,WORD); r=RIGHT_PAREN; s=source* {
+    let t = fuse_pptok (List.append (d::(proj m)::args) (r::s)) in
+      Fun {t with v=(m, args, s)}
+  }
+| first=UNDEF; m=WORD {
+    Undef {(fuse_pptok [first; proj m]) with v=m}
+  }
 | first=ERROR; stream=source* {
-  let last = last_pptok first stream in
-  Err ({first; last}, stream)
-}
+    Err {(fuse_pptok (first::(List.map proj stream))) with v=stream}
+  }
 | first=PRAGMA; stream=source* {
-  let last = last_pptok first stream in
-  Pragma ({first; last}, stream)
-}
-| first=EXTENSION; ext=WORD; COLON; b=behavior {
-  Extension ({first; last={b with v=()}}, ext, b)
-}
+    Pragma {(fuse_pptok (first::(List.map proj stream))) with v=stream}
+  }
+| first=EXTENSION; ext=WORD; c=COLON; b=behavior {
+    Extension {(fuse_pptok [first; proj ext; c; proj b]) with v=(ext, b)}
+  }
 | first=VERSION; v=INTCONSTANT { (* TODO: Check only decimal base *)
-  Version ({first; last={v with v=()}},snd v.v)
-}
+    Version {(fuse_pptok [first; proj v]) with v={v with v=snd v.v}}
+  }
 | first=LINE; l=INTCONSTANT { (* TODO: Check only decimal base *)
-  Line ({first; last={l with v=()}}, (!file).src, snd l.v)
-}
+    Line {(fuse_pptok [first; proj l]) with v=(None, {l with v=snd l.v})}
+  }
 | first=LINE; l=INTCONSTANT; src=INTCONSTANT { (* TODO: Check only decimal base *)
-  Line ({first; last={src with v=()}}, snd src.v, snd l.v)
-}
+    Line {(fuse_pptok [first; proj l; proj src])
+	  with v=({src with v=snd src.v}, snd l.v)}
+  }
 
 ppdir
 : dir=directive; last=ENDPPDIRECTIVE; rest=body? {

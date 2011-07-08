@@ -1,5 +1,6 @@
 module Lex = Ulexing
 
+open Printf
 open Pp
 open Esslpp
 
@@ -21,6 +22,14 @@ let ppdirective = ref false
 let comment_stack = ref []
 let last_comment_ref = ref (ref [])
 
+let scan_of_string ({a;z}) s = fun start ->
+  let pre =
+    if a.file.src <> start.file.src || (a.line.src - start.line.src) < 0
+    then sprintf "#line %d %d\n" a.line.src a.file.src
+    else String.make (a.line.src - start.line.src) '\n'
+  in (z,sprintf "%s%s%s" pre (String.make a.col ' ') s) (* TODO: start.col *)
+       (* TODO: count actual length *)
+
 let newline lexbuf =
   if !first_tok then head := false; (* \n\n ends header *)
   first_tok := true;
@@ -38,10 +47,12 @@ let tok ?(comment=false) lexbuf v =
 	  let () = last_comment_ref := post_comment in
 	  (pre_comments,post_comment)
     ) in
-  let loc = {file = !file; line = !line;
-	     col=(Lex.lexeme_start lexbuf) - !colo} in
-  let scan = Lex.utf8_lexeme lexbuf in
-  {loc; scan; comments; v}
+  let a = {file = !file; line = !line;
+	   col=(Lex.lexeme_start lexbuf) - !colo} in
+  let z = {file = !file; line = !line;
+	   col=(Lex.lexeme_end lexbuf) - !colo} in
+  let scan = scan_of_string {a;z} (Lex.utf8_lexeme lexbuf) in
+    {span={a;z}; macros; scan; comments; v}
 
 let add_post_comment comment =
   (!last_comment_ref) := comment::!(!last_comment_ref)
@@ -139,9 +150,9 @@ and block_comment start lines = lexer
   | "\n" -> newline lexbuf; block_comment start lines lexbuf
   | "*/" -> lines
   | ([^'*']|('*'+[^'/']))* ->
-    block_comment start ((Lex.utf8_lexeme lexbuf)::lines) lexbuf
+      block_comment start ((Lex.utf8_lexeme lexbuf)::lines) lexbuf
   | eof -> error (UnterminatedComment start);
-    Lex.rollback lexbuf; lines
+      Lex.rollback lexbuf; lines
 and comment_lex klex = lexer
   | "//"[^'\n']* ->
     let start = !first_tok in
