@@ -18,7 +18,7 @@ exception UnterminatedConditional of unit pptok
 exception UnknownBehavior of string pptok
 
 type cond_expr =
-    Group of cond_expr pptok
+  | Group of cond_expr pptok
   | Constant of int pptok
   | Omacros of string pptok list pptok
   | Fmacro of (string pptok * (string pptok list)) pptok
@@ -47,7 +47,7 @@ type cond_expr =
   | Or of (cond_expr * cond_expr) pptok
 
 type pptok_type =
-    Int of (base * int) pptok
+  | Int of (base * int) pptok
   | Float of float pptok
   | Word of string pptok
   | Call of string pptok
@@ -66,35 +66,65 @@ type pptok_expr =
   | Version of int pptok pptok
   | Extension of (string pptok * behavior pptok) pptok
   | Line of (int pptok option * int pptok) pptok
-  | Concat of (pptok_expr * pptok_expr) pptok
+  | List of pptok_expr list pptok
 
 let proj : 'a pptok -> unit pptok = fun t -> { t with v=() }
 
-let rec first_of_pptok_type = function
-  | Int t -> t.span.a
-  | Float t -> t.span.a
-  | Word t -> t.span.a
-  | Call t -> t.span.a
-  | Punc t -> t.span.a
-  | Tokens t -> t.span.a
+let proj_pptok_type = function
+  | Int t -> proj t
+  | Float t -> proj t
+  | Word t -> proj t
+  | Call t -> proj t
+  | Punc t -> proj t
+  | Tokens t -> proj t
 
-let rec last_of_pptok_type = function
-  | Int t -> t.span.z
-  | Float t -> t.span.z
-  | Word t -> t.span.z
-  | Call t -> t.span.z
-  | Punc t -> t.span.z
-  | Tokens t -> t.span.z
+let proj_cond_expr = function
+  | Group t -> proj t
+  | Constant t -> proj t
+  | Omacros t -> proj t
+  | Fmacro t -> proj t
+  | Defined t -> proj t
+  | Pos t -> proj t
+  | Neg t -> proj t
+  | BitNot t -> proj t
+  | Not t -> proj t
+  | Mul t -> proj t
+  | Div t -> proj t
+  | Mod t -> proj t
+  | Add t -> proj t
+  | Sub t -> proj t
+  | BitLeft t -> proj t
+  | BitRight t -> proj t
+  | Lt t -> proj t
+  | Gt t -> proj t
+  | Lte t -> proj t
+  | Gte t -> proj t
+  | Eq t -> proj t
+  | Neq t -> proj t
+  | BitAnd t -> proj t
+  | BitXor t -> proj t
+  | BitOr t -> proj t
+  | And t -> proj t
+  | Or t -> proj t
 
-let rec span_of_pptok_types = function
-  | [] -> None
-  | (h::_) as ptl ->
-      Some {a=first_of_pptok_type h;
-	    z=last_of_pptok_type (List.hd (List.rev ptl))}
+let proj_pptok_expr = function
+  | Comments t -> proj t
+  | Chunk t -> proj t
+  | If t -> proj t
+  | Def t -> proj t
+  | Fun t -> proj t
+  | Undef t -> proj t
+  | Err t -> proj t
+  | Pragma t -> proj t
+  | Version t -> proj t
+  | Extension t -> proj t
+  | Line t -> proj t
+  | List t -> proj t
 
-let span_of_comments = function [] -> None
-  | (h::_) as cl ->
-      Some {a=h.span.a; z=(List.hd (List.rev cl)).span.z}
+let span_of_list : 'a pptok list -> span = function
+  | [] -> raise (ParserError "spanning empty pptok list")
+  | (h::_) as ptl -> {a=(proj h).span.a;
+		      z=(proj (List.hd (List.rev ptl))).span.z}
 
 let file = ref {src=0; input=0}
 let line = ref {src=1; input=1}
@@ -105,7 +135,7 @@ let macros = Macros.empty
 let fuse_pptok = function
   | [] -> raise (ParserError "fusing empty pptok list")
   | (h::_) as tokl ->
-      {span={a=h.span.a;z=(List.hd (List.rev tokl)).span.z};
+      {span=span_of_list tokl;
        macros;
        scan=(fun start -> List.fold_left
 	       (fun (loc,str) tok ->
@@ -114,3 +144,8 @@ let fuse_pptok = function
 	       (start,"") tokl);
        comments=(fst h.comments,snd (List.hd (List.rev tokl)).comments);
        v=()}
+
+let fuse_pptok_expr = function
+  | [] -> raise (ParserError "fusing empty pptok_expr list")
+  | (h::_) as el ->
+    List {(fuse_pptok (List.map proj_pptok_expr el)) with v=el}

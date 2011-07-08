@@ -64,7 +64,7 @@ cond_unop
 | o=BANG; e=cond_unop { Not {(fuse_pptok [proj o; proj e]) with v=e} }
 | int=INTCONSTANT { Constant {int with v=snd int.v} }
 | macro=CALL; args=separated_list(COMMA,source*); r=RIGHT_PAREN {
-    let tokl = (proj macro)::(List.append args [r]) in
+    let tokl = (proj macro)::(List.rev ((proj r)::(List.rev_map (fun -> proj_pptok_type) args))) in (* TODO: what about commas? *)
       Fmacro {(fuse_pptok tokl) with v=(macro,args)}
   }
 | op=WORD macro=WORD? {
@@ -153,34 +153,40 @@ cond_continue
 
 directive
 : first=IF; c=cond_expr; last=ENDPPDIRECTIVE; b=body; f=cond_continue {
-  If {(fuse_pptok [first; proj c; last; proj b; proj f]) with v=(c,b,f.v)}
+  If {(fuse_pptok [first; proj_cond_expr c; last; proj_pptok_expr b; proj f])
+  with v=(c,b,f.v)}
 }
 | first=IFDEF; m=WORD; last=ENDPPDIRECTIVE; b=body; f=cond_continue {
-    If {(fuse_pptok [first; proj m; last; proj b; proj f])
+    If {(fuse_pptok [first; proj m; last; proj_pptok_expr b; proj f])
 	with v=(Defined {m with v=m},b,f.v)}
   }
 | first=IFNDEF; m=WORD; last=ENDPPDIRECTIVE; b=body; f=cond_continue {
-    If {(fuse_pptok [first; proj m; last; proj b; proj f])
+    If {(fuse_pptok [first; proj m; last; proj_pptok_expr b; proj f])
 	with v=(Not {m with v=Defined {m with v=m}},b,f.v)}
   }
 | first=DEFINE; m=WORD; stream=source* {
-    Def {(fuse_pptok (first::(proj m)::stream)) with v=(m, stream)}
+    Def {(fuse_pptok (first::(proj m)::(List.map proj_pptok_type stream)))
+	  with v=(m, stream)}
   }
 | d=DEFINE; m=CALL; args=separated_list(COMMA,WORD); r=RIGHT_PAREN; s=source* {
-    let t = fuse_pptok (List.append (d::(proj m)::args) (r::s)) in
-      Fun {t with v=(m, args, s)}
+  let t = fuse_pptok (List.append (d::(proj m)
+				   ::(List.map proj args))
+			((proj r)::(List.map proj_pptok_type s))) in
+  Fun {t with v=(m, args, s)}
   }
 | first=UNDEF; m=WORD {
     Undef {(fuse_pptok [first; proj m]) with v=m}
   }
 | first=ERROR; stream=source* {
-    Err {(fuse_pptok (first::(List.map proj stream))) with v=stream}
+    Err {(fuse_pptok (first::(List.map proj_pptok_type stream)))
+    with v=stream}
   }
 | first=PRAGMA; stream=source* {
-    Pragma {(fuse_pptok (first::(List.map proj stream))) with v=stream}
+  Pragma {(fuse_pptok (first::(List.map proj_pptok_type stream)))
+  with v=stream}
   }
 | first=EXTENSION; ext=WORD; c=COLON; b=behavior {
-    Extension {(fuse_pptok [first; proj ext; c; proj b]) with v=(ext, b)}
+    Extension {(fuse_pptok [first; proj ext; proj c; proj b]) with v=(ext, b)}
   }
 | first=VERSION; v=INTCONSTANT { (* TODO: Check only decimal base *)
     Version {(fuse_pptok [first; proj v]) with v={v with v=snd v.v}}
@@ -188,67 +194,49 @@ directive
 | first=LINE; l=INTCONSTANT { (* TODO: Check only decimal base *)
     Line {(fuse_pptok [first; proj l]) with v=(None, {l with v=snd l.v})}
   }
-| first=LINE; l=INTCONSTANT; src=INTCONSTANT { (* TODO: Check only decimal base *)
+| first=LINE; l=INTCONSTANT; src=INTCONSTANT {
+    (* TODO: Check only decimal base *)
     Line {(fuse_pptok [first; proj l; proj src])
-	  with v=({src with v=snd src.v}, snd l.v)}
+	  with v=(Some {src with v=snd src.v}, {l with v=snd l.v})}
   }
 
 ppdir
 : dir=directive; last=ENDPPDIRECTIVE; rest=body? {
   match rest with None -> dir
-    | Some expr ->
-      Concat (span_concat
-		(Chunk ({first=(span_of_pptok_expr dir).first;last},
-			{macros=Macros.empty; stream=[]}))
-		expr, dir, expr)
+    | Some expr -> fuse_pptok_expr [dir; expr]
 }
 | last=ENDPPDIRECTIVE; rest=body? {
-  match rest with None -> Chunk ({first=last; last}, {macros=Macros.empty; stream=[]})
+  match rest with
+    | None -> Chunk {(fuse_pptok [last]) with v=[]}
     | Some expr -> expr
 }
 
 chunk
 : s=source r=source* {
-  match span_of_pptok_types (s::r) with
-    | Some span -> Chunk (span,{macros=Macros.empty; stream=s::r})
-    | None -> raise (ParserError 1)
+  Chunk {(fuse_pptok [s::r]) with v=s::r}
 }
 
 body
 : pp=ppdir { pp }
 | chunk=chunk; pp=ppdir? {
   match pp with None -> chunk
-    | Some expr -> Concat (span_concat chunk expr, chunk, expr)
+    | Some expr -> fuse_pptok_expr [chunk; expr]
 }
 
 translation_unit
 : top=BOF?; body=body?; bot=EOF {
-  let cspan cs default = match span_of_comments cs with
-    | Some s -> s | None -> default
-  in
-  let append_comments expr cs =
-    let espan = span_of_pptok_expr expr in
-    let csspan = cspan cs espan in
-    Concat ({first=espan.first; last=csspan.last},expr, Comments (csspan, cs))
-  in
-  let prepend_comments expr cs =
-    let espan = span_of_pptok_expr expr in
-    let csspan = cspan cs espan in
-    Concat ({first=csspan.first; last=espan.last}, Comments (csspan,cs),expr)
-  in let def = {first=bot; last=bot} in
-     match top, body, fst bot.comments with
-       | None,None,[] ->
-	 Chunk (def,{macros=Macros.empty; stream=[]})
-       | None,Some body,[] -> body
-       | None,None,cs -> Comments (cspan cs def,cs)
-       | None,Some body,cs -> append_comments body cs
-       | Some t,None,[] -> let cs = !(snd t.comments) in
-			   Comments (cspan cs def,cs)
-       | Some t,Some body,[] -> prepend_comments body !(snd t.comments)
-       | Some t,None,cs ->
-	 prepend_comments (Comments (cspan cs def,cs)) !(snd t.comments)
-       | Some t,Some body,cs ->
-	 let m = append_comments body cs in
-	 prepend_comments m !(snd t.comments)
+  let cexpr cs = Comments {(fuse_pptok cs) with v=cs} in
+  match top, body, fst bot.comments with
+    | None,None,[] -> Chunk {bot with v=[]}
+    | None,Some body,[] -> body
+    | None,None,cs -> cexpr cs
+    | None,Some body,cs -> fuse_pptok_expr [body; cexpr cs]
+    | Some t,None,[] -> cexpr !(snd t.comments)
+    | Some t,Some body,[] ->
+      fuse_pptok_expr [cexpr !(snd t.comments); body]
+    | Some t,None,cs ->
+      fuse_pptok_expr [cexpr !(snd t.comments); cexpr cs]
+    | Some t,Some body,cs ->
+      fuse_pptok_expr [cexpr !(snd t.comments); body; cexpr cs]
 }
 %%
