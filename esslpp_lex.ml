@@ -25,10 +25,15 @@ let last_comment_ref = ref (ref [])
 let scan_of_string ({a;z}) s = fun start ->
   let pre =
     if a.file.src <> start.file.src || (a.line.src - start.line.src) < 0
-    then sprintf "#line %d %d\n" a.line.src a.file.src
+    then sprintf "\n#line %d %d\n" a.line.src a.file.src
     else String.make (a.line.src - start.line.src) '\n'
-  in (z,sprintf "%s%s%s" pre (String.make a.col ' ') s) (* TODO: start.col *)
-       (* TODO: count actual length *)
+  in
+  let cerr,cfix =
+    if start.col < a.col
+    then 0,String.make (a.col - start.col) ' '
+    else (start.col - a.col),""
+  in ({z with col=z.col+cerr},
+      sprintf "%s%s%s" pre cfix s)
 
 let newline lexbuf =
   if !first_tok then head := false; (* \n\n ends header *)
@@ -70,9 +75,9 @@ let rec lex = lexer
   | "\n" -> let t = tok lexbuf () in newline lexbuf;
       if !ppdirective then (ppdirective := false; ENDPPDIRECTIVE t)
       else lex lexbuf
-  | "#" | "%:" -> if !first_tok (* TODO: %:? *)
-    then (ppdirective := true; ppdir_lex lexbuf)
-    else (error (InvalidDirectiveLocation (tok lexbuf ())); lex lexbuf)
+  | "#" -> (if not !first_tok
+	    then error (InvalidDirectiveLocation (tok lexbuf ())));
+      ppdirective := true; ppdir_lex lexbuf
   | letter (letter | digit)* "("? ->
       let t = tok lexbuf (Lex.utf8_lexeme lexbuf) in
 	begin match String.sub t.v ((String.length t.v)-1) 1 with

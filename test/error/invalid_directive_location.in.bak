@@ -1,0 +1,2 @@
+void main() { #error directives must be first semantic token on line
+       #error so this is fine

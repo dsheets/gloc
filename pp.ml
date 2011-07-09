@@ -7,7 +7,7 @@ type src_loc = { src: int; input: int }
 type loc = { file : src_loc; line: src_loc; col: int }
 type span = { a: loc; z: loc }
 type 't pptok = { span: span;
-		  macros: unit Macros.t;
+		  macros: int Macros.t;
 		  scan: loc -> loc * string;
                   comments: comments * comments ref;
                   v: 't }
@@ -17,11 +17,21 @@ exception ParserError of string
 exception UnterminatedConditional of unit pptok
 exception UnknownBehavior of string pptok
 
+type pptok_type =
+  | Int of (base * int) pptok
+  | Float of float pptok
+  | Word of string pptok
+  | Call of string pptok
+  | Punc of Punc.tok pptok
+  | Comma of Punc.tok pptok
+  | Leftp of Punc.tok pptok
+  | Rightp of Punc.tok pptok
+  | Tokens of pptok_type list pptok
+
 type cond_expr =
   | Group of cond_expr pptok
+  | Opaque of pptok_type list pptok
   | Constant of int pptok
-  | Omacros of string pptok list pptok
-  | Fmacro of (string pptok * (string pptok list)) pptok
   | Defined of string pptok pptok
   | Pos of cond_expr pptok
   | Neg of cond_expr pptok
@@ -46,14 +56,6 @@ type cond_expr =
   | And of (cond_expr * cond_expr) pptok
   | Or of (cond_expr * cond_expr) pptok
 
-type pptok_type =
-  | Int of (base * int) pptok
-  | Float of float pptok
-  | Word of string pptok
-  | Call of string pptok
-  | Punc of Punc.tok pptok
-  | Tokens of pptok_type list pptok
-
 type pptok_expr =
   | Comments of comments pptok
   | Chunk of pptok_type list pptok
@@ -76,13 +78,15 @@ let proj_pptok_type = function
   | Word t -> proj t
   | Call t -> proj t
   | Punc t -> proj t
+  | Comma t -> proj t
+  | Leftp t -> proj t
+  | Rightp t -> proj t
   | Tokens t -> proj t
 
 let proj_cond_expr = function
   | Group t -> proj t
+  | Opaque t -> proj t
   | Constant t -> proj t
-  | Omacros t -> proj t
-  | Fmacro t -> proj t
   | Defined t -> proj t
   | Pos t -> proj t
   | Neg t -> proj t
