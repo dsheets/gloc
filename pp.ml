@@ -153,3 +153,9 @@ let fuse_pptok_expr = function
   | [] -> raise (ParserError "fusing empty pptok_expr list")
   | (h::_) as el ->
     List {(fuse_pptok (List.map proj_pptok_expr el)) with v=el}
+
+let cexpr cs = Comments {(fuse_pptok cs) with v=cs}
+
+let pptok_expr_of_body bl def = match bl with
+  | [] -> List { def with v=[] }
+  | l -> fuse_pptok_expr l

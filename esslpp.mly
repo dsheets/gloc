@@ -61,40 +61,44 @@ behavior
 }
 
 cond_continue
-: d=ENDIF; ENDPPDIRECTIVE { {d with v=None} }
-| first=ELIF; s=source+; last=ENDPPDIRECTIVE; b=body; f=cond_continue {
+: d=ENDIF { {d with v=None} }
+| first=ELIF; s=source+; last=ENDPPDIRECTIVE; b=body*; f=cond_continue {
     let proj_s = List.map proj_pptok_type s in
+    let b = pptok_expr_of_body b last in
     let t = fuse_pptok ((first::proj_s)
 			@(last::(proj_pptok_expr b)::(proj f)::[])) in
       {t with v=Some
 	  (If {t with v=(Opaque {(fuse_pptok proj_s) with v=s}, b, f.v)})}
   }
-| d=ELSE; ENDPPDIRECTIVE; b=body; e=ENDIF {
-    {(fuse_pptok [d; proj_pptok_expr b; e]) with v=Some b}
-  }
+| d=ELSE; ENDPPDIRECTIVE; b=body*; e=ENDIF {
+  let b = pptok_expr_of_body b e in
+  {(fuse_pptok [d; proj_pptok_expr b; e]) with v=Some b}
+}
 
 directive
-: first=IF; s=source+; last=ENDPPDIRECTIVE; b=body; f=cond_continue {
+: first=IF; s=source+; last=ENDPPDIRECTIVE; b=body*; f=cond_continue {
   let proj_s = List.map proj_pptok_type s in
-    If {(fuse_pptok ((first::proj_s)@(last::(proj_pptok_expr b)::(proj f)::[])))
-	with v=(Opaque {(fuse_pptok proj_s) with v=s},b,f.v)}
+  let b = pptok_expr_of_body b last in
+  If {(fuse_pptok ((first::proj_s)@(last::(proj_pptok_expr b)::(proj f)::[])))
+  with v=(Opaque {(fuse_pptok proj_s) with v=s},b,f.v)}
 }
-| first=IFDEF; m=WORD; last=ENDPPDIRECTIVE; b=body; f=cond_continue {
-    If {(fuse_pptok [first; proj m; last; proj_pptok_expr b; proj f])
-	with v=(Defined {m with v=m},b,f.v)}
-  }
-| first=IFNDEF; m=WORD; last=ENDPPDIRECTIVE; b=body; f=cond_continue {
-    If {(fuse_pptok [first; proj m; last; proj_pptok_expr b; proj f])
-	with v=(Not {m with v=Defined {m with v=m}},b,f.v)}
-  }
+| first=IFDEF; m=WORD; last=ENDPPDIRECTIVE; b=body*; f=cond_continue {
+  let b = pptok_expr_of_body b last in
+  If {(fuse_pptok [first; proj m; last; proj_pptok_expr b; proj f])
+  with v=(Defined {m with v=m},b,f.v)}
+}
+| first=IFNDEF; m=WORD; last=ENDPPDIRECTIVE; b=body*; f=cond_continue {
+  let b = pptok_expr_of_body b last in
+  If {(fuse_pptok [first; proj m; last; proj_pptok_expr b; proj f])
+  with v=(Not {m with v=Defined {m with v=m}},b,f.v)}
+}
 | first=DEFINE; m=WORD; stream=source* {
     Def {(fuse_pptok (first::(proj m)::(List.map proj_pptok_type stream)))
 	  with v=(m, stream)}
   }
 | d=DEFINE; m=CALL; args=separated_list(COMMA,WORD); r=RIGHT_PAREN; s=source* {
-  let t = fuse_pptok (List.append (d::(proj m)
-				   ::(List.map proj args))
-			((proj r)::(List.map proj_pptok_type s))) in
+  let t = fuse_pptok ((d::(proj m)::(List.map proj args))
+		      @((proj r)::(List.map proj_pptok_type s))) in
   Fun {t with v=(m, args, s)}
   }
 | first=UNDEF; m=WORD {
@@ -123,43 +127,38 @@ directive
 	  with v=(Some {src with v=snd src.v}, {l with v=snd l.v})}
   }
 
-ppdir
-: dir=directive; last=ENDPPDIRECTIVE; rest=body? {
-  match rest with None -> dir
-    | Some expr -> fuse_pptok_expr [dir; expr]
-}
-| last=ENDPPDIRECTIVE; rest=body? {
-  match rest with
-    | None -> Chunk {(fuse_pptok [last]) with v=[]}
-    | Some expr -> expr
-}
-
-chunk
-: s=source r=source* {
-  Chunk {(fuse_pptok (List.map proj_pptok_type (s::r))) with v=s::r}
-}
-
 body
-: pp=ppdir { pp }
-| chunk=chunk; pp=ppdir? {
-  match pp with None -> chunk
-    | Some expr -> fuse_pptok_expr [chunk; expr]
+: dir=directive; last=ENDPPDIRECTIVE { dir }
+| last=ENDPPDIRECTIVE { Chunk {(fuse_pptok [last]) with v=[]} }
+| s=source {
+  Chunk {(proj_pptok_type s) with v=[s]}
 }
 
 translation_unit
-: top=BOF?; body=body?; bot=EOF {
-  let cexpr cs = Comments {(fuse_pptok cs) with v=cs} in
-  match top, body, fst bot.comments with
-    | None,None,[] -> Chunk {bot with v=[]}
-    | None,Some body,[] -> body
-    | None,None,cs -> cexpr cs
-    | None,Some body,cs -> fuse_pptok_expr [body; cexpr cs]
-    | Some t,None,[] -> cexpr !(snd t.comments)
-    | Some t,Some body,[] ->
-      fuse_pptok_expr [cexpr !(snd t.comments); body]
-    | Some t,None,cs ->
-      fuse_pptok_expr [cexpr !(snd t.comments); cexpr cs]
-    | Some t,Some body,cs ->
-      fuse_pptok_expr [cexpr !(snd t.comments); body; cexpr cs]
+: bot=EOF {
+  match fst bot.comments with
+    | [] -> pptok_expr_of_body [] bot
+    | cs -> cexpr cs
+}
+| body=body+; bot=EOF {
+  let b = pptok_expr_of_body body bot in
+  match fst bot.comments with
+    | [] -> b
+    | cs -> fuse_pptok_expr [b; cexpr cs]
+}
+| top=BOF; bot=EOF {
+  match !(snd top.comments), fst bot.comments with
+    | [], [] -> pptok_expr_of_body [] bot
+    | [], cs -> cexpr cs
+    | cs, [] -> cexpr cs
+    | ts, bs -> fuse_pptok_expr [cexpr ts; cexpr bs]
+}
+| top=BOF; body=body+; bot=EOF {
+  let b = pptok_expr_of_body body bot in
+  match !(snd top.comments), fst bot.comments with
+    | [], [] -> b
+    | [], cs -> fuse_pptok_expr [b; cexpr cs]
+    | cs, [] -> fuse_pptok_expr [cexpr cs; b]
+    | ts, bs -> fuse_pptok_expr [cexpr ts; b; cexpr bs]
 }
 %%
