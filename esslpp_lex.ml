@@ -184,6 +184,7 @@ and comment_lex klex = lexer
   | _ -> Lex.rollback lexbuf; klex lexbuf
 and ppdir_lex = lexer
   | " " | "\t" | "\r" -> ppdir_lex lexbuf
+  | "\n" -> lex lexbuf
   | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex ppdir_lex lexbuf
   | "/*" -> Lex.rollback lexbuf; comment_lex ppdir_lex lexbuf
   | "extension" -> EXTENSION (tok lexbuf ())

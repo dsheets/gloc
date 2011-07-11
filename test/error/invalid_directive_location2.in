@@ -1,0 +1,3 @@
+/* header */
+q #error directive must be first semantic token
+/* so this is fine */ #error OK
