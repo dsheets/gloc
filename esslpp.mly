@@ -48,6 +48,7 @@ source_np
     
 source
 : s=source_np { s }
+| c=CALL { Call c }
 | l=LEFT_PAREN { Leftp l }
 | r=RIGHT_PAREN { Rightp r }
 
