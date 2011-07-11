@@ -36,6 +36,9 @@ let string_of_error = function
       sprintf "%s:\nunknown behavior \"%s\"\n" (string_of_tokpos t) t.v
   | UnterminatedComment t ->
       sprintf "%s:\nunterminated comment\n" (string_of_tokpos t)
+  | UnterminatedConditional t ->
+      sprintf "%s:\nunterminated conditional \"%s\"" (string_of_tokpos t)
+	(snd (t.scan t.span.a))
   | UnknownCharacter t ->
       sprintf "%s:\nunknown character '%s'\n" (string_of_tokpos t)
 	(snd (t.scan t.span.a))

@@ -70,31 +70,58 @@ cond_continue
       {t with v=Some
 	  (If {t with v=(Opaque {(fuse_pptok proj_s) with v=s}, b, f.v)})}
   }
+| first=ELIF; s=source+; last=ENDPPDIRECTIVE; b=body*; error {
+    let proj_s = List.map proj_pptok_type s in
+    let b = pptok_expr_of_body b last in
+    let t = fuse_pptok ((first::proj_s)@(last::(proj_pptok_expr b)::[])) in
+      error (UnterminatedConditional first);
+      {t with v=Some
+	  (If {t with v=(Opaque {(fuse_pptok proj_s) with v=s}, b, None)})}
+  }
 | d=ELSE; ENDPPDIRECTIVE; b=body*; e=ENDIF {
   let b = pptok_expr_of_body b e in
   {(fuse_pptok [d; proj_pptok_expr b; e]) with v=Some b}
 }
 
 directive
-: first=IF; s=source+; last=ENDPPDIRECTIVE; b=body*; f=cond_continue {
-  let proj_s = List.map proj_pptok_type s in
-  let b = pptok_expr_of_body b last in
-  If {(fuse_pptok ((first::proj_s)@(last::(proj_pptok_expr b)::(proj f)::[])))
-  with v=(Opaque {(fuse_pptok proj_s) with v=s},b,f.v)}
-}
+  : first=IF; s=source+; last=ENDPPDIRECTIVE; b=body*; f=cond_continue {
+    let proj_s = List.map proj_pptok_type s in
+    let b = pptok_expr_of_body b last in
+      If {(fuse_pptok ((first::proj_s)@(last::(proj_pptok_expr b)::(proj f)::[])))
+	  with v=(Opaque {(fuse_pptok proj_s) with v=s},b,f.v)}
+  }
+| first=IF; s=source+; last=ENDPPDIRECTIVE; b=body*; error {
+    let proj_s = List.map proj_pptok_type s in
+    let b = pptok_expr_of_body b last in
+      error (UnterminatedConditional first);
+      If {(fuse_pptok ((first::proj_s)@(last::(proj_pptok_expr b)::[])))
+	  with v=(Opaque {(fuse_pptok proj_s) with v=s},b,None)}
+  }
 | first=IFDEF; m=WORD; last=ENDPPDIRECTIVE; b=body*; f=cond_continue {
-  let b = pptok_expr_of_body b last in
-  If {(fuse_pptok [first; proj m; last; proj_pptok_expr b; proj f])
-  with v=(Defined {m with v=m},b,f.v)}
-}
+    let b = pptok_expr_of_body b last in
+      If {(fuse_pptok [first; proj m; last; proj_pptok_expr b; proj f])
+	  with v=(Defined {m with v=m},b,f.v)}
+  }
+| first=IFDEF; m=WORD; last=ENDPPDIRECTIVE; b=body*; error {
+    let b = pptok_expr_of_body b last in
+      error (UnterminatedConditional first);
+      If {(fuse_pptok [first; proj m; last; proj_pptok_expr b])
+	  with v=(Defined {m with v=m},b,None)}
+  }
 | first=IFNDEF; m=WORD; last=ENDPPDIRECTIVE; b=body*; f=cond_continue {
-  let b = pptok_expr_of_body b last in
-  If {(fuse_pptok [first; proj m; last; proj_pptok_expr b; proj f])
-  with v=(Not {m with v=Defined {m with v=m}},b,f.v)}
-}
+    let b = pptok_expr_of_body b last in
+      If {(fuse_pptok [first; proj m; last; proj_pptok_expr b; proj f])
+	  with v=(Not {m with v=Defined {m with v=m}},b,f.v)}
+  }
+| first=IFNDEF; m=WORD; last=ENDPPDIRECTIVE; b=body*; error {
+    let b = pptok_expr_of_body b last in
+      error (UnterminatedConditional first);
+      If {(fuse_pptok [first; proj m; last; proj_pptok_expr b])
+	  with v=(Not {m with v=Defined {m with v=m}},b,None)}
+  }
 | first=DEFINE; m=WORD; stream=source* {
     Def {(fuse_pptok (first::(proj m)::(List.map proj_pptok_type stream)))
-	  with v=(m, stream)}
+	 with v=(m, stream)}
   }
 | d=DEFINE; m=CALL; args=separated_list(COMMA,WORD); r=RIGHT_PAREN; s=source* {
   let t = fuse_pptok ((d::(proj m)::(List.map proj args))
@@ -128,11 +155,11 @@ directive
   }
 
 body
-: dir=directive; last=ENDPPDIRECTIVE { dir }
+: dir=directive; ENDPPDIRECTIVE | dir=directive; error { dir }
 | last=ENDPPDIRECTIVE { Chunk {(fuse_pptok [last]) with v=[]} }
 | s=source {
-  Chunk {(proj_pptok_type s) with v=[s]}
-}
+    Chunk {(proj_pptok_type s) with v=[s]}
+  }
 
 translation_unit
 : bot=EOF {
