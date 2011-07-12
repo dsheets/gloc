@@ -39,8 +39,8 @@ let newline lexbuf =
   if !first_tok then head := false; (* \n\n ends header *)
   first_tok := true;
   line := {src=(!line).src + 1; input=(!line).input + 1};
-  colo := 1+(Lex.lexeme_start lexbuf) (* col 0 is one after eol *)
-let tok ?(comment=false) lexbuf v =
+  colo := (Lex.lexeme_end lexbuf)
+let tok ?(comment=false) ?(pre="") lexbuf v =
   let comments = if comment then
       let post_comment = ref [] in
       let () = last_comment_ref := post_comment in ([],post_comment)
@@ -50,13 +50,14 @@ let tok ?(comment=false) lexbuf v =
 	  let () = comment_stack := [] in
 	  let post_comment = ref [] in
 	  let () = last_comment_ref := post_comment in
-	  (pre_comments,post_comment)
+	    (pre_comments,post_comment)
     ) in
+  let prelen = String.length pre in
   let a = {file = !file; line = !line;
-	   col=(Lex.lexeme_start lexbuf) - !colo} in
+	   col=(Lex.lexeme_start lexbuf) - !colo - prelen} in
   let z = {file = !file; line = !line;
 	   col=(Lex.lexeme_end lexbuf) - !colo} in
-  let scan = scan_of_string {a;z} (Lex.utf8_lexeme lexbuf) in
+  let scan = scan_of_string {a;z} (pre^(Lex.utf8_lexeme lexbuf)) in
     {span={a;z}; macros; scan; comments; v}
 
 let add_post_comment comment =
@@ -174,12 +175,13 @@ and comment_lex klex = lexer
     let openc = tok ~comment:true lexbuf () in
     let lines = block_comment openc [] lexbuf in
     let comment = {openc with v=lines} in
-    if !head then
-      if !colo = 0 && start then
-	(add_post_comment comment; BOF openc)
+      if !head then
+	if !colo = 0 && start then
+	  (add_post_comment comment; BOF openc)
+	else (add_post_comment comment; klex lexbuf)
+      else if start then
+	(comment_stack := comment::!comment_stack; klex lexbuf)
       else (add_post_comment comment; klex lexbuf)
-    else if start then (comment_stack := comment::!comment_stack; klex lexbuf)
-    else (add_post_comment comment; klex lexbuf)
   | " " | "\t" | "\r" -> comment_lex klex lexbuf
   | _ -> Lex.rollback lexbuf; klex lexbuf
 and ppdir_lex = lexer
@@ -187,19 +189,19 @@ and ppdir_lex = lexer
   | "\n" -> lex lexbuf
   | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex ppdir_lex lexbuf
   | "/*" -> Lex.rollback lexbuf; comment_lex ppdir_lex lexbuf
-  | "extension" -> EXTENSION (tok lexbuf ())
-  | "version" -> VERSION (tok lexbuf ())
-  | "line" -> LINE (tok lexbuf ())
-  | "define" -> DEFINE (tok lexbuf ())
-  | "undef" -> UNDEF (tok lexbuf ())
-  | "if" -> IF (tok lexbuf ())
-  | "ifdef" -> IFDEF (tok lexbuf ())
-  | "ifndef" -> IFNDEF (tok lexbuf ())
-  | "else" -> ELSE (tok lexbuf ())
-  | "elif" -> ELIF (tok lexbuf ())
-  | "endif" -> ENDIF (tok lexbuf ())
-  | "error" -> ERROR (tok lexbuf ())
-  | "pragma" -> PRAGMA (tok lexbuf ())
+  | "extension" -> EXTENSION (tok ~pre:"#" lexbuf ())
+  | "version" -> VERSION (tok ~pre:"#" lexbuf ())
+  | "line" -> LINE (tok ~pre:"#" lexbuf ())
+  | "define" -> DEFINE (tok ~pre:"#" lexbuf ())
+  | "undef" -> UNDEF (tok ~pre:"#" lexbuf ())
+  | "if" -> IF (tok ~pre:"#" lexbuf ())
+  | "ifdef" -> IFDEF (tok ~pre:"#" lexbuf ())
+  | "ifndef" -> IFNDEF (tok ~pre:"#" lexbuf ())
+  | "else" -> ELSE (tok ~pre:"#" lexbuf ())
+  | "elif" -> ELIF (tok ~pre:"#" lexbuf ())
+  | "endif" -> ENDIF (tok ~pre:"#" lexbuf ())
+  | "error" -> ERROR (tok ~pre:"#" lexbuf ())
+  | "pragma" -> PRAGMA (tok ~pre:"#" lexbuf ())
   | not_white+ ->
     error (InvalidDirective (tok lexbuf (Lex.utf8_lexeme lexbuf)));
     lex lexbuf

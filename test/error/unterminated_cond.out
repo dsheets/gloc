@@ -1,2 +1,2 @@
-File 0, line 1, col 1 - 3:
-unterminated conditional "if"
+File 0, line 1, col 0 - 3:
+unterminated conditional "#if"
