@@ -22,15 +22,22 @@ let ppdirective = ref false
 let comment_stack = ref []
 let last_comment_ref = ref (ref [])
 
-let scan_of_string ({a;z}) s = fun start ->
-  let start,pre =
-    if a.file.src <> start.file.src || (a.line.src - start.line.src) < 0
-    then {a with col=0},
-      sprintf "\n#line %d %d\n" a.line.src a.file.src
-    else if a.line.src - start.line.src > 0
-    then {start with line=a.line; col=0},
-      String.make (a.line.src - start.line.src) '\n'
-    else start,""
+let scan_of_string ({a;z}) (prec,postc) s = fun start ->
+  let start,pre = match prec with
+    | [] ->
+      if a.file.src <> start.file.src || (a.line.src - start.line.src) < 0
+      then {a with col=0},
+	sprintf "\n#line %d %d\n" a.line.src a.file.src
+      else if a.line.src - start.line.src > 0
+      then {start with line=a.line; col=0},
+	String.make (a.line.src - start.line.src) '\n'
+      else start,""
+    | cs -> let start, pre = List.fold_left
+	      (fun (start,pre) t ->
+		let loc,s = t.scan start in
+		(loc,pre^s)
+	      ) ({start with col=start.col+2},"/*") cs
+	    in ({start with col=start.col+2},pre^"*/")
   in
   let cerr,cfix =
     if start.col < a.col
@@ -62,7 +69,7 @@ let tok ?(comment=false) ?(pre="") ?(drop=0) lexbuf v =
   let a = {file = !file; line = !line;
 	   col=(Lex.lexeme_start lexbuf) - !colo - prelen} in
   let z = {file = !file; line = !line; col=(Lex.lexeme_end lexbuf) - !colo} in
-  let scan = scan_of_string {a;z} (pre^s) in
+  let scan = scan_of_string {a;z} comments (pre^s) in
     {span={a;z}; macros; scan; comments; v}
 
 let add_post_comment comment =
@@ -161,7 +168,8 @@ and block_comment start lines = lexer
   | "\n" -> newline lexbuf; block_comment start lines lexbuf
   | "*/" -> lines
   | ([^'*']|('*'+[^'/']))* ->
-      block_comment start ((Lex.utf8_lexeme lexbuf)::lines) lexbuf
+    let t = tok in
+    block_comment start ((Lex.utf8_lexeme lexbuf)::lines) lexbuf
   | eof -> error (UnterminatedComment start);
       Lex.rollback lexbuf; lines
 and comment_lex klex = lexer
@@ -207,6 +215,6 @@ and ppdir_lex = lexer
   | "endif" -> ENDIF (tok ~pre:"#" lexbuf ())
   | "error" -> ERROR (tok ~pre:"#" lexbuf ())
   | "pragma" -> PRAGMA (tok ~pre:"#" lexbuf ())
-  | not_white+ ->
-    error (InvalidDirective (tok lexbuf (Lex.utf8_lexeme lexbuf)));
+  | letter+ -> error (InvalidDirective (tok lexbuf (Lex.utf8_lexeme lexbuf)));
     lex lexbuf
+
