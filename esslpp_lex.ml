@@ -23,24 +23,28 @@ let comment_stack = ref []
 let last_comment_ref = ref (ref [])
 
 let scan_of_string ({a;z}) s = fun start ->
-  let pre =
+  let start,pre =
     if a.file.src <> start.file.src || (a.line.src - start.line.src) < 0
-    then sprintf "\n#line %d %d\n" a.line.src a.file.src
-    else String.make (a.line.src - start.line.src) '\n'
+    then {a with col=0},
+      sprintf "\n#line %d %d\n" a.line.src a.file.src
+    else if a.line.src - start.line.src > 0
+    then {start with line=a.line; col=0},
+      String.make (a.line.src - start.line.src) '\n'
+    else start,""
   in
   let cerr,cfix =
     if start.col < a.col
     then 0,String.make (a.col - start.col) ' '
     else (start.col - a.col),""
-  in ({z with col=z.col+cerr},
-      sprintf "%s%s%s" pre cfix s)
+  in ({z with col=z.col+cerr}, sprintf "%s%s%s" pre cfix s)
 
 let newline lexbuf =
   if !first_tok then head := false; (* \n\n ends header *)
   first_tok := true;
   line := {src=(!line).src + 1; input=(!line).input + 1};
   colo := (Lex.lexeme_end lexbuf)
-let tok ?(comment=false) ?(pre="") lexbuf v =
+
+let tok ?(comment=false) ?(pre="") ?(drop=0) lexbuf v =
   let comments = if comment then
       let post_comment = ref [] in
       let () = last_comment_ref := post_comment in ([],post_comment)
@@ -53,11 +57,12 @@ let tok ?(comment=false) ?(pre="") lexbuf v =
 	    (pre_comments,post_comment)
     ) in
   let prelen = String.length pre in
+  let s = Lex.utf8_lexeme lexbuf in
+  let s = String.sub s 0 ((String.length s) - drop)  in
   let a = {file = !file; line = !line;
 	   col=(Lex.lexeme_start lexbuf) - !colo - prelen} in
-  let z = {file = !file; line = !line;
-	   col=(Lex.lexeme_end lexbuf) - !colo} in
-  let scan = scan_of_string {a;z} (pre^(Lex.utf8_lexeme lexbuf)) in
+  let z = {file = !file; line = !line; col=(Lex.lexeme_end lexbuf) - !colo} in
+  let scan = scan_of_string {a;z} (pre^s) in
     {span={a;z}; macros; scan; comments; v}
 
 let add_post_comment comment =
@@ -73,7 +78,7 @@ let regexp not_white = [^'\n''\t'' ''\r']
 let rec lex = lexer
   | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex lex lexbuf
   | "/*" -> Lex.rollback lexbuf; comment_lex lex lexbuf
-  | "\n" -> let t = tok lexbuf () in newline lexbuf;
+  | "\n" -> let t = tok ~drop:1 lexbuf () in newline lexbuf;
       if !ppdirective then (ppdirective := false; ENDPPDIRECTIVE t)
       else lex lexbuf
   | "#" -> (if not !first_tok
@@ -186,7 +191,7 @@ and comment_lex klex = lexer
   | _ -> Lex.rollback lexbuf; klex lexbuf
 and ppdir_lex = lexer
   | " " | "\t" | "\r" -> ppdir_lex lexbuf
-  | "\n" -> lex lexbuf
+  | "\n" -> Lex.rollback lexbuf; lex lexbuf
   | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex ppdir_lex lexbuf
   | "/*" -> Lex.rollback lexbuf; comment_lex ppdir_lex lexbuf
   | "extension" -> EXTENSION (tok ~pre:"#" lexbuf ())

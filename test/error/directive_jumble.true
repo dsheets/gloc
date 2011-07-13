@@ -1,0 +1,4 @@
+#version 100
+#error foo
+#error bar
+#error baz
