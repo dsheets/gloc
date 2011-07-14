@@ -1,0 +1,38 @@
+Ashima Backslash: The WebGL Shader Toolchain
+
+Backslash provides a suite of tools to ease the development of advanced
+shader systems. Backslash 0.8 features:
+ - an ESSL preprocessor to expand shader source for further analysis
+ - a JSON-encapsulated shader object format with symbolic dependencies to ease linking
+ - a client-side linker to assemble shader source strings for rendering
+ - compile-time macro definition
+ - link-time macro definition
+ - source-to-source translation with accurate source locations and comments
+ - comment stripping
+ - identifier obfuscation
+ - source compression
+ - an option to enable emulation of the line continuation character, \
+ - runs as both a native binary and in-the-browser via js_of_ocaml
+
+Features in the pipeline for 1.0 include:
+ - Preprocessor conditional expression partial evaluation
+ - Finer-grained name collision management through pragma directives
+ - Macros across translation unit boundaries
+
+Features in the pipeline for 1.1 include:
+ - Shader to JavaScript compilation
+ - JavaScript shader stub auto-generation
+ - OCaml shader stub auto-generation
+ - ESSL type-checking
+ - Camlp4 quotations for easy program transforms in OCaml
+
+Backslash is licensed under the MIT license and distributed by Ashima
+Arts as a member of the greater WebGL community.
+
+Special thanks to the WebGL working group for making this possible by
+allowing UTF-8 in shader comments. ;-)
+
+Suggestions? Bugs? Features? Comments? Feel free to use the GitHub
+project management features to help out the project!
+
+
