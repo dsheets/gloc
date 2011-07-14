@@ -17,6 +17,9 @@ exception ParserError of string
 exception UnterminatedConditional of unit pptok
 exception UnknownBehavior of string pptok
 exception HolyVersion of unit pptok
+exception UnsupportedVersion of int pptok
+exception InvalidVersionBase of base pptok
+exception InvalidLineBase of base pptok
 
 type pptok_type =
   | Int of (base * int) pptok
@@ -137,6 +140,16 @@ let errors : exn list ref = ref []
 let error exc = errors := exc::!errors
 let macros = Macros.empty
 
+let check_version_base t =
+  match fst t.v with
+    | Hex | Oct -> error (InvalidVersionBase {t with v=fst t.v})
+    | Dec -> ()
+
+let check_line_base t =
+  match fst t.v with
+    | Hex | Oct -> error (InvalidLineBase {t with v=fst t.v})
+    | Dec -> ()
+
 let fuse_pptok = function
   | [] -> raise (ParserError "fusing empty pptok list")
   | (h::_) as tokl ->
@@ -182,6 +195,7 @@ let normalize_ppexpr e =
   let rec loop ini prev = function
     | (Version v)::r ->
 	(if not ini then error (HolyVersion (proj v)));
+	(if v.v.v <> 100 then error (UnsupportedVersion v.v));
 	loop false ((Version v)::prev) r
     | (List l)::r -> let ini,l = loop ini [] l.v in
 	loop ini ((fuse_pptok_expr l)::prev) r

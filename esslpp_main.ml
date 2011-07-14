@@ -39,7 +39,7 @@ let string_of_error = function
   | UnterminatedComment t ->
       sprintf "%s:\nunterminated comment\n" (string_of_tokpos t)
   | UnterminatedConditional t ->
-      sprintf "%s:\nunterminated conditional \"%s\"" (string_of_tokpos t)
+      sprintf "%s:\nunterminated conditional \"%s\"\n" (string_of_tokpos t)
 	(snd (t.scan t.span.a))
   | UnknownCharacter t ->
       sprintf "%s:\nunknown character '%s'\n" (string_of_tokpos t)
@@ -51,7 +51,14 @@ let string_of_error = function
   | InvalidOctal t ->
       sprintf "%s:\ninvalid octal constant \"%s\"\n" (string_of_tokpos t) t.v
   | HolyVersion t ->
-      sprintf "%s:\nversion must be first semantic token" (string_of_tokpos t)
+      sprintf "%s:\nversion must be first semantic token\n" (string_of_tokpos t)
+  | UnsupportedVersion t ->
+      sprintf "%s:\nversion %d is unsupported\n" (string_of_tokpos t) t.v
+  | InvalidVersionBase t ->
+      sprintf "%s:\nversion must be specified in decimal\n" (string_of_tokpos t)
+  | InvalidLineBase t ->
+      sprintf "%s:\nline control arguments must be specified in decimal\n"
+	(string_of_tokpos t)
   | exn -> sprintf "Unknown error:\n%s\n" (Printexc.to_string exn)
 ;;
 

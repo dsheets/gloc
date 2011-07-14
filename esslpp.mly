@@ -143,14 +143,20 @@ directive
 | first=EXTENSION; ext=WORD; c=COLON; b=behavior {
     Extension {(fuse_pptok [first; proj ext; proj c; proj b]) with v=(ext, b)}
   }
-| first=VERSION; v=INTCONSTANT { (* TODO: Check only decimal base *)
+| first=VERSION; v=INTCONSTANT {
+    check_version_base v;
     Version {(fuse_pptok [first; proj v]) with v={v with v=snd v.v}}
   }
-| first=LINE; l=INTCONSTANT { (* TODO: Check only decimal base *)
+| first=LINE; l=INTCONSTANT {
+    check_line_base l;
+    line := {!line with src=snd l.v};
     Line {(fuse_pptok [first; proj l]) with v=(None, {l with v=snd l.v})}
   }
 | first=LINE; l=INTCONSTANT; src=INTCONSTANT {
-    (* TODO: Check only decimal base *)
+    check_line_base l;
+    check_line_base src;
+    line := {!line with src=snd l.v};
+    file := {!file with src=snd src.v};
     Line {(fuse_pptok [first; proj l; proj src])
 	  with v=(Some {src with v=snd src.v}, {l with v=snd l.v})}
   }

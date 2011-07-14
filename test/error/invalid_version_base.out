@@ -1,2 +1,3 @@
-#version 0144/*  can only be decimal '100' no more no less and always*//*
-   on the first line!*/
+File 0, line 1, col 9 - 13:
+version must be specified in decimal
+
