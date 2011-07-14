@@ -50,6 +50,8 @@ let string_of_error = function
       sprintf "%s:\ninvalid directive \"%s\"\n" (string_of_tokpos t) t.v
   | InvalidOctal t ->
       sprintf "%s:\ninvalid octal constant \"%s\"\n" (string_of_tokpos t) t.v
+  | HolyVersion t ->
+      sprintf "%s:\nversion must be first semantic token" (string_of_tokpos t)
   | exn -> sprintf "Unknown error:\n%s\n" (Printexc.to_string exn)
 ;;
 

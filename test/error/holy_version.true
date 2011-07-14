@@ -1,1 +1,2 @@
-error
+File 0, line 2, col 0 - 12:
+version must be first semantic token

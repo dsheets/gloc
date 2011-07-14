@@ -16,6 +16,7 @@ and comments = string pptok list pptok list
 exception ParserError of string
 exception UnterminatedConditional of unit pptok
 exception UnknownBehavior of string pptok
+exception HolyVersion of unit pptok
 
 type pptok_type =
   | Int of (base * int) pptok
@@ -163,4 +164,27 @@ let pptok_expr_of_body bl def = match bl with
   | [] -> List { def with v=[] }
   | l -> fuse_pptok_expr l
 
-let normalize_ppexpr e = e
+(*type pptok_expr =
+  | Comments of comments pptok
+  | Chunk of pptok_type list pptok
+  | If of (cond_expr * pptok_expr * (pptok_expr option)) pptok
+  | Def of (string pptok * pptok_type list) pptok
+  | Fun of (string pptok * (string pptok list) * pptok_type list) pptok
+  | Undef of string pptok pptok
+  | Err of pptok_type list pptok
+  | Pragma of pptok_type list pptok
+  | Version of int pptok pptok
+  | Extension of (string pptok * behavior pptok) pptok
+  | Line of (int pptok option * int pptok) pptok
+  | List of pptok_expr list pptok
+*)
+let normalize_ppexpr e =
+  let rec loop ini prev = function
+    | (Version v)::r ->
+	(if not ini then error (HolyVersion (proj v)));
+	loop false ((Version v)::prev) r
+    | (List l)::r -> let ini,l = loop ini [] l.v in
+	loop ini ((fuse_pptok_expr l)::prev) r
+    | d::r -> loop false (d::prev) r
+    | [] -> (ini,List.rev prev)
+  in List.hd (snd (loop true [] [e]))
