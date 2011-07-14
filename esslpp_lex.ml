@@ -18,7 +18,6 @@ exception InvalidOctal of string pptok
 let head = ref true
 let colo = ref 0
 let first_tok = ref true
-let first_nwt = ref true
 let ppdirective = ref false
 let comment_stack = ref []
 let last_comment_ref = ref (ref [])
@@ -53,16 +52,16 @@ let scan_of_string ({a;z}) (prec,postc) s = fun start ->
     then 0,String.make (a.col - start.col) ' '
     else (start.col - a.col + 1)," "
   in let fin = {z with col=z.col+cerr} in
-  let fin,post = match !postc with
+  let fin,post = match List.rev !postc with
     | [] -> fin,""
     | cs -> scan_of_comments cs fin
   in (fin, sprintf "%s%s%s%s" pre cfix s post)
 
 let newline ?(comment=false) lexbuf =
   if not comment then
-    (if !first_nwt then head := false; (* \n\n ends header *)
+    ((if !colo - (Lex.lexeme_start lexbuf) = 0
+      then head := false); (* \n\n ends header *)
      first_tok := true);
-  first_nwt := true;
   line := {src=(!line).src + 1; input=(!line).input + 1};
   colo := (Lex.lexeme_end lexbuf)
 
@@ -76,7 +75,6 @@ let tok ?(comment=false) ?(pre="") ?(drop=0) ?(rewind=0) lexbuf v =
 	let () = last_comment_ref := post_comment in
 	  (pre_comments,post_comment)
        ) in
-  let () = first_nwt := false in
   let prelen = String.length pre in
   let s = Lex.utf8_lexeme lexbuf in
   let s = String.sub s drop ((String.length s) - drop)  in
@@ -100,12 +98,12 @@ let regexp not_white = [^'\n''\t'' ''\r']
 let rec lex = lexer
   | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex lex lexbuf
   | "/*" -> Lex.rollback lexbuf; comment_lex lex lexbuf
-  | "\n" -> let t = tok ~drop:1 lexbuf () in newline lexbuf;
+  | "\n" -> let t = tok ~comment:true ~drop:1 lexbuf () in newline lexbuf;
       if !ppdirective then (ppdirective := false; ENDPPDIRECTIVE t)
       else lex lexbuf
   | "#" -> (if not !first_tok
 	    then error (InvalidDirectiveLocation (tok lexbuf ())));
-      ppdirective := true; head:= false; first_nwt := false; ppdir_lex lexbuf
+      ppdirective := true; head:= false; ppdir_lex lexbuf
   | letter (letter | digit)* "("? ->
       let t = tok lexbuf (Lex.utf8_lexeme lexbuf) in
 	begin match String.sub t.v ((String.length t.v)-1) 1 with
@@ -180,16 +178,17 @@ let rec lex = lexer
     else EOF (tok lexbuf ())
   | _ -> error (UnknownCharacter (tok lexbuf ())); lex lexbuf
 and block_comment start r lines = lexer
-  | "\n" -> let t = tok ~comment:true ~drop:1 lexbuf "" in
+  | "\n" -> let t = tok ~comment:true ~drop:1 ~rewind:(r+1) lexbuf "" in
       newline ~comment:true lexbuf;
       block_comment start 0 (t::lines) lexbuf
-  | " "*"*/" -> let l = Lex.lexeme_length lexbuf in
-      (tok ~comment:true ~drop:l ~rewind:(r+l) lexbuf "")::lines
-  | ([^'*']|('*'+[^'/']))* ->
+  | " "*"*/" ->
+    let l = Lex.lexeme_length lexbuf in
+    List.rev ((tok ~comment:true ~drop:l ~rewind:(r+l) lexbuf "")::lines)
+  | ([^'*''\n']|('*'+[^'/''\n']))* ->
       let t = tok ~comment:true ~rewind:r lexbuf (Lex.utf8_lexeme lexbuf) in
 	block_comment start r (t::lines) lexbuf
   | eof -> error (UnterminatedComment start);
-      Lex.rollback lexbuf; lines
+      Lex.rollback lexbuf; List.rev lines
 and comment_lex klex = lexer
   | "//"[^'\n']* ->
     let start = !first_tok in
@@ -197,26 +196,26 @@ and comment_lex klex = lexer
       (String.after (Lex.utf8_lexeme lexbuf) 2) in
     let comment = {(fuse_pptok [comment]) with v=[comment]} in
     if !head then
-      if !colo = 0 && start then
-	(add_post_comment comment;
-	 BOF {comment with comments=([],!last_comment_ref); v=()})
-      else (add_post_comment comment; klex lexbuf)
+      (add_post_comment comment;
+       if !colo = 0 && start then
+	 BOF {comment with comments=([],!last_comment_ref); v=()}
+       else klex lexbuf)
     else if start then (comment_stack := comment::!comment_stack; klex lexbuf)
     else (add_post_comment comment; klex lexbuf)
   | "/*"" "* ->
     let start = !first_tok in
     let l = Lex.lexeme_length lexbuf in
-    let openc = tok ~comment:true ~drop:l lexbuf "" in
+    let openc = tok ~comment:true ~drop:l ~rewind:(l-2) lexbuf "" in
     let lines = block_comment {openc with v=()} (l-2) [openc] lexbuf in
-    let comment = {(fuse_pptok (List.rev lines)) with v=lines} in
-      if !head then
-	if !colo = 0 && start then
-	  (add_post_comment comment;
-	   BOF {openc with comments=([],!last_comment_ref); v=()})
-	else (add_post_comment comment; klex lexbuf)
-      else if start then
-	(comment_stack := comment::!comment_stack; klex lexbuf)
-      else (add_post_comment comment; klex lexbuf)
+    let comment = {(fuse_pptok lines) with v=lines} in
+    if !head then
+      (add_post_comment comment;
+       if !colo = 0 && start then
+	 BOF {openc with comments=([],!last_comment_ref); v=()}
+       else klex lexbuf)
+    else if start then
+      (comment_stack := comment::!comment_stack; klex lexbuf)
+    else (add_post_comment comment; klex lexbuf)
   | " " | "\t" | "\r" -> comment_lex klex lexbuf
   | _ -> Lex.rollback lexbuf; klex lexbuf
 and ppdir_lex = lexer

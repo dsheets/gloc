@@ -178,15 +178,15 @@ translation_unit
   match !(snd top.comments), fst bot.comments with
     | [], [] -> pptok_expr_of_body [] bot
     | [], cs -> cexpr cs
-    | cs, [] -> cexpr cs
-    | ts, bs -> fuse_pptok_expr [cexpr ts; cexpr bs]
+    | cs, [] -> cexpr (List.rev cs)
+    | ts, bs -> fuse_pptok_expr [cexpr (List.rev ts); cexpr bs]
 }
 | top=BOF; body=body+; bot=EOF {
   let b = pptok_expr_of_body body bot in
   match !(snd top.comments), fst bot.comments with
     | [], [] -> b
     | [], cs -> fuse_pptok_expr [b; cexpr cs]
-    | cs, [] -> fuse_pptok_expr [cexpr cs; b]
-    | ts, bs -> fuse_pptok_expr [cexpr ts; b; cexpr bs]
+    | cs, [] -> fuse_pptok_expr [cexpr (List.rev cs); b]
+    | ts, bs -> fuse_pptok_expr [cexpr (List.rev ts); b; cexpr bs]
 }
 %%

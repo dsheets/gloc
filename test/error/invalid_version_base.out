@@ -1,1 +1,2 @@
-#version 0144/*  can only be decimal '100' no more no less and always*/
+#version 0144/*  can only be decimal '100' no more no less and always*//*
+   on the first line!*/

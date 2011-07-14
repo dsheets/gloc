@@ -156,8 +156,8 @@ let fuse_pptok_expr = function
 
 let cexpr cs = let t = {(fuse_pptok cs) with v=cs} in
   Comments {t with scan=fun loc ->
-	      let loc,s = t.scan {loc with col=loc.col+2} in
-		{loc with col=loc.col+2}, "/*"^s^"*/"}
+            let loc,s = t.scan {loc with col=loc.col+2} in
+	      {loc with col=loc.col+2}, "/*"^s^"*/"}
     
 let pptok_expr_of_body bl def = match bl with
   | [] -> List { def with v=[] }
