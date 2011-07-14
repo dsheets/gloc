@@ -11,7 +11,7 @@
 
 #error OK/*  eol comment*/
 
-                                                /*  comment    more comment    more comment
+/*comment       more comment       more comment*/ /*
 
    comment trailer
   more trailer

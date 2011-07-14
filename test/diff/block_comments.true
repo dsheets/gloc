@@ -1,1 +1,19 @@
-error
+/* a header comment
+  more
+   header
+   comments */
+
+/*pre-directive comment */ #error OK
+/* pre-command comment */#error OK
+/*     */ #error/*  
+*/OK part of/*
+*/directive
+
+#error OK/*  eol comment*/
+
+/*comment       more comment       more comment*/ /*
+
+   comment trailer
+  more trailer
+   comments
+     final trailer*/

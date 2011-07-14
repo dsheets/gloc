@@ -98,8 +98,10 @@ let regexp not_white = [^'\n''\t'' ''\r']
 let rec lex = lexer
   | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex lex lexbuf
   | "/*" -> Lex.rollback lexbuf; comment_lex lex lexbuf
-  | "\n" -> let t = tok ~comment:true ~drop:1 lexbuf () in newline lexbuf;
-      if !ppdirective then (ppdirective := false; ENDPPDIRECTIVE t)
+  | "\n" -> let t = tok ~comment:true ~drop:1 ~rewind:1 lexbuf () in
+      newline lexbuf;
+      if !ppdirective
+      then (ppdirective := false; ENDPPDIRECTIVE t)
       else lex lexbuf
   | "#" -> (if not !first_tok
 	    then error (InvalidDirectiveLocation (tok lexbuf ())));
@@ -219,8 +221,9 @@ and comment_lex klex = lexer
   | " " | "\t" | "\r" -> comment_lex klex lexbuf
   | _ -> Lex.rollback lexbuf; klex lexbuf
 and ppdir_lex = lexer
-  | " " | "\t" | "\r" -> ppdir_lex lexbuf
-  | "\n" -> Lex.rollback lexbuf; lex lexbuf
+  | " " | "\t" -> ppdir_lex lexbuf
+  | "\n" -> let t = tok ~drop:1 lexbuf () in
+      newline lexbuf; ppdirective := false; ENDPPDIRECTIVE t
   | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex ppdir_lex lexbuf
   | "/*" -> Lex.rollback lexbuf; comment_lex ppdir_lex lexbuf
   | "extension" -> EXTENSION (tok ~pre:"#" lexbuf ())
@@ -236,6 +239,5 @@ and ppdir_lex = lexer
   | "endif" -> ENDIF (tok ~pre:"#" lexbuf ())
   | "error" -> ERROR (tok ~pre:"#" lexbuf ())
   | "pragma" -> PRAGMA (tok ~pre:"#" lexbuf ())
-  | letter+ -> error (InvalidDirective (tok lexbuf (Lex.utf8_lexeme lexbuf)));
-    lex lexbuf
-
+  | letter+ | _ -> error (InvalidDirective (tok lexbuf (Lex.utf8_lexeme lexbuf)));
+      lex lexbuf

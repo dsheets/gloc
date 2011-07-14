@@ -1,2 +1,3 @@
-Uncaught exception:
-Ulexing.Error
+File 0, line 2, col 13 - 14:
+invalid directive "#"
+
