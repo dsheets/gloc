@@ -162,3 +162,5 @@ let cexpr cs = let t = {(fuse_pptok cs) with v=cs} in
 let pptok_expr_of_body bl def = match bl with
   | [] -> List { def with v=[] }
   | l -> fuse_pptok_expr l
+
+let normalize_ppexpr e = e

@@ -206,13 +206,14 @@ and comment_lex klex = lexer
     else (add_post_comment comment; klex lexbuf)
   | "/*"" "* ->
     let start = !first_tok in
+    let startcolo = !colo in
     let l = Lex.lexeme_length lexbuf in
     let openc = tok ~comment:true ~drop:l ~rewind:(l-2) lexbuf "" in
     let lines = block_comment {openc with v=()} (l-2) [openc] lexbuf in
     let comment = {(fuse_pptok lines) with v=lines} in
     if !head then
       (add_post_comment comment;
-       if !colo = 0 && start then
+       if startcolo = 0 && start then
 	 BOF {openc with comments=([],!last_comment_ref); v=()}
        else klex lexbuf)
     else if start then

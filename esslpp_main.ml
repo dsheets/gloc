@@ -62,10 +62,11 @@ let parse = MenhirLib.Convert.traditional2revised
 let ppexpr = try parse (fun () -> lex lexbuf) with
   | err -> printf "Uncaught exception:\n%s\n" (Printexc.to_string err);
     exit 1
-in if (List.length !errors) > 0 then
+in let ppexpr = normalize_ppexpr ppexpr in
+  if (List.length !errors) > 0 then
     (List.iter (fun e -> printf "%s\n" (string_of_error e)) (List.rev !errors);
      exit 1)
   else
     printf "%s\n"
       (snd ((proj_pptok_expr ppexpr).scan
-	       {file={src=0;input=0};line={src=1;input=1};col=0}))
+	      {file={src=0;input=0};line={src=1;input=1};col=0}))
