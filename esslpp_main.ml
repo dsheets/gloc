@@ -27,7 +27,9 @@ let string_of_tokpos
 	    z={file={src=zf}; line={src=zl}; col=zc}}}) =
   if af=zf then
     if al=zl
-    then sprintf "File %d, line %d, col %d - %d" af al ac zc
+    then if ac=zc
+    then sprintf "File %d, line %d, col %d" af al ac
+    else sprintf "File %d, line %d, col %d - %d" af al ac zc
     else sprintf "File %d, l%d c%d - l%d c%d" af al ac zl zc
   else sprintf "F%d l%d c%d - F%d l%d c%d" af al ac zf zl zc
 

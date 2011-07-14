@@ -1,0 +1,12 @@
+/* a header comment*/
+
+
+/*  pre-directive comment  */ #error OK
+/*   pre-command comment  */ #error OK
+/*     */ #error/*  
+*/OK part of/* 
+*/directive
+
+#error OK/*  eol comment*/
+
+/*  comment       more comment     more comment*/ 

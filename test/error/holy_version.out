@@ -1,2 +1,2 @@
 #error this is fine
-#version 100
+#version 100/*  but Holy Version shalln't be preceded by a semantic token!*/

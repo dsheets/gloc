@@ -1,1 +1,3 @@
- /*                                                                                                                                                                      version 100
+/*  This directive spans multiple lines
+  * as the spec allows comments (semantically equivalent to spaces)
+  * to be present between the hash and the directive name */#version 100
