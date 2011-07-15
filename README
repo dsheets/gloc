@@ -1,7 +1,7 @@
-Ashima Backslash: The Shader Toolchain
+Ashima Glock: The Shader Toolchain
 
-Backslash provides a suite of tools to ease the development of advanced
-shader systems. Backslash 0.8 features:
+Glock provides a suite of tools to ease the development of advanced
+shader systems. Glock 0.8 features:
  - an ESSL preprocessor to expand shader source for further analysis
  - a JSON-encapsulated shader object format with symbolic dependencies to ease linking
  - a client-side linker to assemble shader source strings for rendering
@@ -26,7 +26,7 @@ Features in the pipeline for 1.1 include:
  - ESSL type-checking
  - camlp4 quotations for easy program transforms in OCaml
 
-Backslash is licensed under the MIT license and distributed by Ashima
+Glock is licensed under the MIT license and distributed by Ashima
 Arts as a member of the greater WebGL community.
 
 Special thanks to the WebGL working group for making this possible by

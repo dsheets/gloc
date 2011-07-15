@@ -52,6 +52,9 @@ source
 | l=LEFT_PAREN { Leftp l }
 | r=RIGHT_PAREN { Rightp r }
 
+not_int
+: WORD | punc | FLOATCONSTANT | COMMA | CALL | LEFT_PAREN | RIGHT_PAREN { () }
+
 behavior
 : b=WORD { match b.v with
   | "require" -> {b with v=Require}
@@ -147,6 +150,10 @@ directive
     check_version_base v;
     Version {(fuse_pptok [first; proj v]) with v={v with v=snd v.v}}
   }
+| first=VERSION; not_int; source* {
+    error (InvalidVersionArg first);
+    Version {first with v={first with v=100}}
+  }
 | first=LINE; l=INTCONSTANT {
     check_line_base l;
     line := {!line with src=snd l.v};
@@ -159,6 +166,10 @@ directive
     file := {!file with src=snd src.v};
     Line {(fuse_pptok [first; proj l; proj src])
 	  with v=(Some {src with v=snd src.v}, {l with v=snd l.v})}
+  }
+| first=LINE; not_int; source* {
+    error (InvalidLineArg first);
+    Line {first with v=(None, {first with v=(!line).src})}
   }
 
 body

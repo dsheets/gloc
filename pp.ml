@@ -19,7 +19,9 @@ exception UnknownBehavior of string pptok
 exception HolyVersion of unit pptok
 exception UnsupportedVersion of int pptok
 exception InvalidVersionBase of base pptok
+exception InvalidVersionArg of unit pptok
 exception InvalidLineBase of base pptok
+exception InvalidLineArg of unit pptok
 
 type pptok_type =
   | Int of (base * int) pptok
@@ -197,8 +199,46 @@ let normalize_ppexpr e =
 	(if not ini then error (HolyVersion (proj v)));
 	(if v.v.v <> 100 then error (UnsupportedVersion v.v));
 	loop false ((Version v)::prev) r
+    | (List a)::(List b)::r ->
+	loop ini prev ((fuse_pptok_expr (a.v@b.v))::r)
     | (List l)::r -> let ini,l = loop ini [] l.v in
-	loop ini ((fuse_pptok_expr l)::prev) r
+	if List.length l = 1
+	then match List.hd l with
+	  | (Version _) as v -> loop ini (v::prev) r
+	  | d -> loop ini prev (d::r)
+	else loop ini ((fuse_pptok_expr l)::prev) r
+    | (Chunk a)::(Chunk b)::r ->
+	loop false prev ((Chunk {(fuse_pptok [proj a; proj b]) with v=a.v@b.v})::r)
+    | ((Comments _) as c)::r -> loop ini (c::prev) r
     | d::r -> loop false (d::prev) r
     | [] -> (ini,List.rev prev)
   in List.hd (snd (loop true [] [e]))
+
+let string_of_ppexpr_tree e =
+  let rec loop indent p = function
+    | (Comments _)::r -> loop indent (p^indent^"comments\n") r
+    | (Chunk c)::r ->
+	loop indent
+	  (p^indent^"chunk of "^(string_of_int (List.length c.v))^"\n") r
+    | (If i)::r ->
+	let _,tb,fbo = i.v in
+	let newind = indent^"  " in
+	  loop indent (p^indent^"if\n"
+		       ^(loop newind "" [tb])
+		       ^(match fbo with
+			   | None -> ""
+			   | Some fb ->
+			       indent^"else\n"
+			       ^(loop newind "" [fb]))) r
+    | (Def _)::r -> loop indent (p^indent^"define\n") r
+    | (Fun _)::r -> loop indent (p^indent^"defun\n") r
+    | (Undef _)::r -> loop indent (p^indent^"undef\n") r
+    | (Err _)::r -> loop indent (p^indent^"error\n") r
+    | (Pragma _)::r -> loop indent (p^indent^"pragma\n") r
+    | (Version _)::r -> loop indent (p^indent^"version\n") r
+    | (Extension _)::r -> loop indent (p^indent^"extension\n") r
+    | (Line _)::r -> loop indent (p^indent^"line\n") r
+    | (List l)::r -> loop indent (p^indent^"list\n"
+				  ^(loop (indent^"  ") "" l.v)) r
+    | [] -> p
+  in loop "" "" [e]
