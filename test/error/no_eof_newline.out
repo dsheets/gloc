@@ -1,3 +1,5 @@
 #if 6 == 6
 #error always
 #endif
+void main() { }
+#define HA

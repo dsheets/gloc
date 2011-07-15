@@ -1,0 +1,14 @@
+#version \
+100
+
+#define FOO
+
+#if def\
+ined FOO
+
+#endif
+
+void main() {
+
+}
+

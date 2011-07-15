@@ -3,3 +3,7 @@
 #line 02
 #line 2 0xF
 #error error at file 15, line 2
+#line 0xF 010
+#error error at file 8, line 15
+#line 100 50
+#error error at file 50, line 100
