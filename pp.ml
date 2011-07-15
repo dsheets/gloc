@@ -179,20 +179,6 @@ let pptok_expr_of_body bl def = match bl with
   | [] -> List { def with v=[] }
   | l -> fuse_pptok_expr l
 
-(*type pptok_expr =
-  | Comments of comments pptok
-  | Chunk of pptok_type list pptok
-  | If of (cond_expr * pptok_expr * (pptok_expr option)) pptok
-  | Def of (string pptok * pptok_type list) pptok
-  | Fun of (string pptok * (string pptok list) * pptok_type list) pptok
-  | Undef of string pptok pptok
-  | Err of pptok_type list pptok
-  | Pragma of pptok_type list pptok
-  | Version of int pptok pptok
-  | Extension of (string pptok * behavior pptok) pptok
-  | Line of (int pptok option * int pptok) pptok
-  | List of pptok_expr list pptok
-*)
 let normalize_ppexpr e =
   let rec loop ini prev = function
     | (Version v)::r ->
@@ -213,6 +199,55 @@ let normalize_ppexpr e =
     | d::r -> loop false (d::prev) r
     | [] -> (ini,List.rev prev)
   in List.hd (snd (loop true [] [e]))
+
+(*type pptok_expr =
+  | Comments of comments pptok
+  | Chunk of pptok_type list pptok
+  | If of (cond_expr * pptok_expr * (pptok_expr option)) pptok
+  | Def of (string pptok * pptok_type list) pptok
+  | Fun of (string pptok * (string pptok list) * pptok_type list) pptok
+  | Undef of string pptok pptok
+  | Err of pptok_type list pptok
+  | Pragma of pptok_type list pptok
+  | Version of int pptok pptok
+  | Extension of (string pptok * behavior pptok) pptok
+  | Line of (int pptok option * int pptok) pptok
+  | List of pptok_expr list pptok
+*)
+let macro_expand_ppexpr env ppexpr =
+  let rec loop env prev = function
+    | (Comments c)::r -> loop env ((Comments c)::prev) r
+    | (Chunk c)::r ->
+      (* TODO: rebuild Chunk *)
+      loop env ((Chunk {c with v=macro_expand env c.v})::prev) r
+    | (If i)::r ->
+      let cond,tb,fb = i.v in
+      let cond = match cond with
+	| Opaque ptlt -> Opaque (macro_expand env ptlt)
+	| _ -> cond
+      in let tb = loop (guard env) [] tb in
+	 let fb = match fb with
+	   | Some fb -> loop (guard env) [] fb
+	   | None -> None
+	 in loop env ((If i)::prev) r (* TODO: rebuild If *)
+    | (Def f)::r -> let env = define env (fst f.v).v (snd f.v) in
+		    loop env ((Def f)::prev) r
+    | (Fun f)::r -> let name,args,body = f.v in
+		    let env = defun env name.v
+		      (List.map (fun a -> a.v) args)
+		      body
+		    in loop env ((Fun f)::prev) r
+    | (Undef u)::r -> let env = undef env u.v.v in
+		      loop env ((Undef u)::prev) r
+    | (Err e)::r -> loop env ((Err e)::prev) r
+    | (Pragma p)::r -> loop env ((Pragma p)::prev) r
+    | (Version v)::r -> loop env ((Version v)::prev) r
+    | (Extension x)::r -> loop env ((Extension x)::prev) r
+    | (Line l)::r -> loop env ((Line l)::prev) r
+    | (List l)::r -> let env,l = loop env [] l in
+		     loop env ((List l)::prev) r
+    | [] -> cleanup_macros env (List.rev prev)
+  in loop env [] ppexpr
 
 let string_of_ppexpr_tree e =
   let rec loop indent p = function

@@ -14,7 +14,7 @@
 #error 6/* a multiline trailing comment
  that is followed by additional arguments */ and more error args
 
-#define MYMACRO(a b)/* 
+#define MYMACRO(a,b)/* 
 */ this should be part of/* 
 */ the macro. This is still part of/* 
 */ the macro.
