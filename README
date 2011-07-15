@@ -1,4 +1,4 @@
-gloc: (WebGL|ESSL)gl(sl) o(bject) c(ompiler)
+gloc: (WebGL|ESSL) gl(sl) o(bject) c(ompiler)
 
 gloc provides a suite of tools to ease the development of advanced
 shader systems. gloc 0.8 features:
