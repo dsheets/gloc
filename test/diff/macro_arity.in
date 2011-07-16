@@ -1,0 +1,15 @@
+int Q;
+int J;
+void foo() {}
+
+#define Q() 7
+void main() {
+     Q;
+     Q();
+#undef Q
+#define Q J
+     Q;
+#undef Q
+#define Q foo
+     Q();
+}

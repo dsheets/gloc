@@ -6,5 +6,15 @@ void hidden() {}
 void recurse() {}
 #endif
 #if !D Q
-void main() {}
+#define Q 7
+void D(int);
+void main() {
+     D(Q);
+}
 #endif
+
+void defined(int q) {
+#define defined 4 +
+	D Q;
+}
+

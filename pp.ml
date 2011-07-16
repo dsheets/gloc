@@ -32,7 +32,6 @@ type pptok_type =
   | Comma of Punc.tok pptok
   | Leftp of Punc.tok pptok
   | Rightp of Punc.tok pptok
-  | Tokens of pptok_type list pptok
 
 type cond_expr =
   | Group of cond_expr pptok
@@ -87,7 +86,6 @@ let proj_pptok_type = function
   | Comma t -> proj t
   | Leftp t -> proj t
   | Rightp t -> proj t
-  | Tokens t -> proj t
 
 let proj_cond_expr = function
   | Group t -> proj t
@@ -179,7 +177,7 @@ let pptok_expr_of_body bl def = match bl with
   | [] -> List { def with v=[] }
   | l -> fuse_pptok_expr l
 
-let normalize_ppexpr e =
+let normalize_ppexpr e = (* TODO: remove Call tokens *)
   let rec loop ini prev = function
     | (Version v)::r ->
 	(if not ini then error (HolyVersion (proj v)));
@@ -213,7 +211,44 @@ let normalize_ppexpr e =
   | Extension of (string pptok * behavior pptok) pptok
   | Line of (int pptok option * int pptok) pptok
   | List of pptok_expr list pptok
+
+type pptok_type =
+  | Int of (base * int) pptok
+  | Float of float pptok
+  | Word of string pptok
+  | Call of string pptok
+  | Punc of Punc.tok pptok
+  | Comma of Punc.tok pptok
+  | Leftp of Punc.tok pptok
+  | Rightp of Punc.tok pptok
 *)
+let macro_expand env ptl =
+  let rec loop env prev = function
+    | (Int i)::r -> loop env ((Int i)::prev) r
+    | (Float f)::r -> loop env ((Float f)::prev) r
+    | (Word w)::(Leftp p)::r -> begin match lookup env w.v with
+	| Some ({arity=None; stream}) -> loop env prev (stream@[Leftp p]@r)
+	| Some ({arity=Some (a,binders); stream}) ->
+	    let args, r = macro_arg_collect a r in
+	    let appenv = List.fold_left2
+	      (fun appenv binder arg ->
+		 define appenv binder (loop env [] arg))
+	      macros binders args
+	    in loop env prev ((loop appenv [] stream)@r)
+	| None -> loop env ((Leftp p)::(Word w)::prev) r
+      end
+    | (Word w)::r -> begin match lookup env w.v with
+	| Some ({arity=None; stream}) -> loop env prev (stream@r)
+	| Some ({arity=Some _}) | None -> loop env ((Word w)::prev) r
+      end
+    | (Call c)::r -> raise (ParserError "Call token in normalized stream")
+    | (Punc p)::r -> loop env ((Punc p)::prev) r
+    | (Comma c)::r -> loop env ((Comma c)::prev) r
+    | (Leftp p)::r -> loop env ((Leftp p)::prev) r
+    | (Rightp p)::r -> loop env ((Rightp p)::prev) r
+    | [] -> List.rev prev
+  in loop env [] ptl
+
 let macro_expand_ppexpr env ppexpr =
   let rec loop env prev = function
     | (Comments c)::r -> loop env ((Comments c)::prev) r
@@ -223,7 +258,7 @@ let macro_expand_ppexpr env ppexpr =
     | (If i)::r ->
       let cond,tb,fb = i.v in
       let cond = match cond with
-	| Opaque ptlt -> Opaque (macro_expand env ptlt)
+	| Opaque ptlt -> Opaque (macro_expand_cond env ptlt)
 	| _ -> cond
       in let tb = loop (guard env) [] tb in
 	 let fb = match fb with

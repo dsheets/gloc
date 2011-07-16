@@ -1,0 +1,9 @@
+precision highp float;
+#define asm 5
+#define vec2 vec3
+
+vec2 foo() { return vec2(asm); }
+
+void main() {
+     asm;
+}

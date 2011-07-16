@@ -1,0 +1,9 @@
+#define A(B) ((B)/2)
+#define Z(A) ((A)*2)
+#define Q(A,B) A(B)
+#define J A(2) + Q
+
+void main() {
+     Q(Z,Q(Z,7));
+     J(Z,J(Z,7));
+}

@@ -13,6 +13,8 @@ void Q(int a,int b){}
 
 #line 1000
 
+void foo();
+
 void main() {
 Q(1,2);
 P(3,4);
@@ -24,4 +26,15 @@ K;
 P LP -1 C -2 RP;
 // Q(-3 C -4); // fails because C doesn't expand fast enough
 // Q(-3 , -4 RP; // fails because RP doesn't expand fast enough
+
+}
+
+#define H (6,7),Q
+#define G(X) APP(X)
+#define APP(ARGS,FN) FN ARGS
+#line 2000
+
+void foo() {
+     APP((6,7),Q);
+     G(H);
 }

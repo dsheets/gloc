@@ -1,0 +1,40 @@
+#define A
+#define A
+
+#define B 1
+#define B 1
+
+#define C 1
+//#define C 2 // this is the only illegal one
+
+void foo() {
+     __LINE__;
+     __FILE__;
+}
+
+#if GL_ES
+#define __FILE__ 6
+#else
+#define __FILE__ "foo"
+#endif
+#define __LINE__ 1000
+
+void bar() {
+     __LINE__;
+     __FILE__;
+}
+
+#undef __FILE__
+#undef __LINE__
+
+#if GL_ES
+#define __FILE__ 13
+#else
+#define __FILE__ "bar"
+#endif
+#define __LINE__ 6000
+
+void main() {
+     __LINE__;
+     __FILE__;
+}
