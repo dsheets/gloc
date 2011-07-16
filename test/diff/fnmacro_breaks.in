@@ -1,0 +1,27 @@
+void Q(int a,int b){}
+
+#define Q(A,B) ((A)+(B))
+#define P Q
+#define O Q(
+#define N Q(5
+#define M Q(6,
+#define L Q(7,8
+#define K Q(9,10)
+#define LP (
+#define RP )
+#define C ,
+
+#line 1000
+
+void main() {
+Q(1,2);
+P(3,4);
+O 3,4);
+N,6);
+M 7);
+L);
+K;
+P LP -1 C -2 RP;
+// Q(-3 C -4); // fails because C doesn't expand fast enough
+// Q(-3 , -4 RP; // fails because RP doesn't expand fast enough
+}

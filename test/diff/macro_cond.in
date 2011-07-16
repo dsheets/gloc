@@ -1,0 +1,27 @@
+#define Q
+#line 100
+#define J defined Q
+#if J
+void foo() {}
+#endif
+#undef Q
+#if !J
+void remote_defined() {}
+#endif
+
+#line 1000
+#define A 1
+#define B 2
+#define OP defined
+#if OP A && OP B
+#define Q 7
+#endif
+int blah() { return Q; }
+#if OP 5
+#define Q 77
+#endif
+void main() { glPosition = Q; }
+#define defined Q
+#if defined < 100
+int baz() { return defined; }
+#endif

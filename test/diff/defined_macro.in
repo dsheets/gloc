@@ -1,0 +1,10 @@
+#define D defined
+#if D F
+void hidden() {}
+#endif
+#if D D
+void recurse() {}
+#endif
+#if !D Q
+void main() {}
+#endif

@@ -1,0 +1,9 @@
+#error __LINE__ is the line of the error directive
+#line __LINE__ __FILE__
+#ifdef GL_ES
+#define L 666 7
+#else
+#define L 666 "foo"
+#endif
+#line L
+void main() { return 0; } // error on line 666, file 7 or file "foo" if c++
