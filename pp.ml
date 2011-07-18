@@ -1,4 +1,4 @@
-module Macros = Map.Make(struct type t = string let compare = compare end)
+module Env = Map.Make(struct type t = string let compare = compare end)
 
 type base = Oct | Dec | Hex
 type behavior = Require | Enable | Warn | Disable
@@ -7,11 +7,23 @@ type src_loc = { src: int; input: int }
 type loc = { file : src_loc; line: src_loc; col: int }
 type span = { a: loc; z: loc }
 type 't pptok = { span: span;
-		  macros: int Macros.t;
 		  scan: loc -> loc * string;
                   comments: comments * comments ref;
                   v: 't }
 and comments = string pptok list pptok list
+and pptok_type =
+  | Int of (base * int) pptok
+  | Float of float pptok
+  | Word of (string * unit Env.t) pptok
+  | Call of string pptok
+  | Punc of Punc.tok pptok
+  | Comma of Punc.tok pptok
+  | Leftp of Punc.tok pptok
+  | Rightp of Punc.tok pptok
+and stream = pptok_type list
+and macro = { name: string option;
+	      arity: (int * string list) option;
+	      stream: stream }
 
 exception ParserError of string
 exception UnterminatedConditional of unit pptok
@@ -23,19 +35,14 @@ exception InvalidVersionArg of unit pptok
 exception InvalidLineBase of base pptok
 exception InvalidLineArg of unit pptok
 
-type pptok_type =
-  | Int of (base * int) pptok
-  | Float of float pptok
-  | Word of string pptok
-  | Call of string pptok
-  | Punc of Punc.tok pptok
-  | Comma of Punc.tok pptok
-  | Leftp of Punc.tok pptok
-  | Rightp of Punc.tok pptok
+exception MacroArgUnclosed of unit pptok
+exception MacroArgInnerParenUnclosed of unit pptok
+exception MacroArgTooFew of unit pptok * int * int
+exception MacroArgTooMany of unit pptok * int * int
 
 type cond_expr =
   | Group of cond_expr pptok
-  | Opaque of pptok_type list pptok
+  | Opaque of stream pptok
   | Constant of int pptok
   | Defined of string pptok pptok
   | Pos of cond_expr pptok
@@ -61,18 +68,20 @@ type cond_expr =
   | And of (cond_expr * cond_expr) pptok
   | Or of (cond_expr * cond_expr) pptok
 
+type line_dir = Stream of stream | Loc of int pptok option * int pptok
+
 type pptok_expr =
   | Comments of comments pptok
-  | Chunk of pptok_type list pptok
+  | Chunk of stream pptok
   | If of (cond_expr * pptok_expr * (pptok_expr option)) pptok
-  | Def of (string pptok * pptok_type list) pptok
-  | Fun of (string pptok * (string pptok list) * pptok_type list) pptok
+  | Def of (string pptok * stream) pptok
+  | Fun of (string pptok * (string pptok list) * stream) pptok
   | Undef of string pptok pptok
-  | Err of pptok_type list pptok
-  | Pragma of pptok_type list pptok
+  | Err of stream pptok
+  | Pragma of stream pptok
   | Version of int pptok pptok
   | Extension of (string pptok * behavior pptok) pptok
-  | Line of (int pptok option * int pptok) pptok
+  | Line of line_dir pptok
   | List of pptok_expr list pptok
 
 let proj : 'a pptok -> unit pptok = fun t -> { t with v=() }
@@ -138,7 +147,6 @@ let file = ref {src=0; input=0}
 let line = ref {src=1; input=1}
 let errors : exn list ref = ref []
 let error exc = errors := exc::!errors
-let macros = Macros.empty
 
 let check_version_base t =
   match fst t.v with
@@ -154,7 +162,6 @@ let fuse_pptok = function
   | [] -> raise (ParserError "fusing empty pptok list")
   | (h::_) as tokl ->
       {span=span_of_list tokl;
-       macros;
        scan=(fun start -> List.fold_left
 	       (fun (loc,str) tok ->
 		  let nloc,nstr = tok.scan loc in
@@ -192,7 +199,8 @@ let normalize_ppexpr e = (* TODO: remove Call tokens *)
 	  | d -> loop ini prev (d::r)
 	else loop ini ((fuse_pptok_expr l)::prev) r
     | (Chunk a)::(Chunk b)::r ->
-	loop false prev ((Chunk {(fuse_pptok [proj a; proj b]) with v=a.v@b.v})::r)
+	loop false prev
+	  ((Chunk {(fuse_pptok [proj a; proj b]) with v=a.v@b.v})::r)
     | ((Comments _) as c)::r -> loop ini (c::prev) r
     | d::r -> loop false (d::prev) r
     | [] -> (ini,List.rev prev)
@@ -222,24 +230,94 @@ type pptok_type =
   | Leftp of Punc.tok pptok
   | Rightp of Punc.tok pptok
 *)
-let macro_expand env ptl =
+let lookup env (name,ms) =
+  if Env.mem name ms then None
+  else
+    try
+      let m = Env.find name env in
+      Some { m with stream=List.map
+	  (function
+	    | Word w ->
+	      let me = if m.name=None
+		then Env.fold Env.add ms (snd w.v)
+		else Env.fold Env.add ms (Env.add name () (snd w.v))
+	      in Word {w with v=(fst w.v,me)}
+	    | x -> x)
+	  m.stream
+	   }
+    with Not_found -> None
+
+let macro_arg_collect start stream =
+  let rec outer opa args = function
+    | (Rightp p)::r -> (args, r)
+    | (Comma c)::r -> outer [] ((List.rev opa)::args) r
+    | (Leftp p)::r ->
+      let e, r = inner [Leftp p] r in
+      outer (e@opa) args r
+    | t::r -> outer (t::opa) args r
+    | [] ->
+      error (MacroArgUnclosed start);
+      ((List.rev opa)::args,[])
+  and inner opp = function
+    | (Leftp p)::r ->
+      let e, r = inner [Leftp p] r in
+      inner (e@opp) r
+    | (Rightp p)::r -> ((Rightp p)::opp, r)
+    | t::r -> inner (t::opp) r
+    | [] ->
+      error (MacroArgInnerParenUnclosed
+	       (proj_pptok_type (List.hd (List.rev opp))));
+      (opp, [])
+  in let args, r = outer [] [] stream in (List.rev args, r)
+
+let defarg env name stream = Env.add name {name=None; arity=None; stream} env
+
+let macro_expand ?(cond=false) env ptl =
+  let extend_list fill lst len =
+    lst@(Array.to_list (Array.make (len - (List.length lst)) fill))
+  in
+  let rec drop_head_list lst len = match len, lst with
+    | 0,_ -> lst
+    | x,_::r -> drop_head_list r (x-1)
+    | _,[] -> raise (ParserError "drop_head_list empty list arg")
+  in
   let rec loop env prev = function
     | (Int i)::r -> loop env ((Int i)::prev) r
     | (Float f)::r -> loop env ((Float f)::prev) r
-    | (Word w)::(Leftp p)::r -> begin match lookup env w.v with
-	| Some ({arity=None; stream}) -> loop env prev (stream@[Leftp p]@r)
-	| Some ({arity=Some (a,binders); stream}) ->
-	    let args, r = macro_arg_collect a r in
-	    let appenv = List.fold_left2
-	      (fun appenv binder arg ->
-		 define appenv binder (loop env [] arg))
-	      macros binders args
-	    in loop env prev ((loop appenv [] stream)@r)
-	| None -> loop env ((Leftp p)::(Word w)::prev) r
-      end
-    | (Word w)::r -> begin match lookup env w.v with
-	| Some ({arity=None; stream}) -> loop env prev (stream@r)
-	| Some ({arity=Some _}) | None -> loop env ((Word w)::prev) r
+    | (Word w)::r ->
+      begin match cond, prev with
+	| true,(Word {v=("defined",_)})::_
+	| true,(Leftp _)::(Word {v=("defined",_)})::_ ->
+	  loop env ((Word w)::prev) r (* defined is soooo "special" *)
+	| _,_ -> begin match r with
+	    | (Leftp p)::r -> begin match lookup env w.v with
+		| Some ({arity=None; stream}) ->
+		  loop env prev (stream@[Leftp p]@r)
+		| Some ({arity=Some (a,binders); stream}) ->
+		  let args, r = macro_arg_collect (proj p) r in
+		  let arglen = List.length args in
+		  let args = if arglen < a
+		    then (error (MacroArgTooFew ((proj w),arglen,a));
+			  extend_list [] args a)
+		    else if arglen > a
+		    then (error (MacroArgTooMany ((proj w),arglen,a));
+			  List.rev (drop_head_list
+				      (List.rev args)
+				      ((List.length args) - a)))
+		    else args
+		  in
+		  let appenv = List.fold_left2
+		    (fun appenv binder arg ->
+		      defarg appenv binder (loop env [] arg)) (* "prescan" *)
+		    Env.empty binders args
+		  in loop env prev ((loop appenv [] stream)@r)
+		| None -> loop env ((Leftp p)::(Word w)::prev) r
+	    end
+	    | r -> begin match lookup env w.v with
+		| Some ({arity=None; stream}) -> loop env prev (stream@r)
+		| Some ({arity=Some _}) | None -> loop env ((Word w)::prev) r
+	    end
+	end
       end
     | (Call c)::r -> raise (ParserError "Call token in normalized stream")
     | (Punc p)::r -> loop env ((Punc p)::prev) r
@@ -253,18 +331,26 @@ let macro_expand_ppexpr env ppexpr =
   let rec loop env prev = function
     | (Comments c)::r -> loop env ((Comments c)::prev) r
     | (Chunk c)::r ->
-      (* TODO: rebuild Chunk *)
-      loop env ((Chunk {c with v=macro_expand env c.v})::prev) r
+      let s = macro_expand env c.v in
+      loop env ((Chunk {(fuse_pptok
+			   (List.map proj_pptok_type s)) with v=s})::prev) r
     | (If i)::r ->
       let cond,tb,fb = i.v in
       let cond = match cond with
-	| Opaque ptlt -> Opaque (macro_expand_cond env ptlt)
+	| Opaque ptlt ->
+	  let s = macro_expand ~cond:true env ptlt.v in
+	  Opaque {(fuse_pptok ~nl:false
+		     (List.map proj_pptok_type s)) with v=s}
 	| _ -> cond
-      in let tb = loop (guard env) [] tb in
-	 let fb = match fb with
-	   | Some fb -> loop (guard env) [] fb
-	   | None -> None
-	 in loop env ((If i)::prev) r (* TODO: rebuild If *)
+      in match cond_eval env cond with
+	| True ->
+	| False ->
+	| Deferred o ->
+	  let tb = loop (guard env) [] tb in
+	  let fb = match fb with
+	    | Some fb -> loop (guard env) [] fb
+	    | None -> None
+	  in loop env ((If i)::prev) r (* TODO: rebuild If *)
     | (Def f)::r -> let env = define env (fst f.v).v (snd f.v) in
 		    loop env ((Def f)::prev) r
     | (Fun f)::r -> let name,args,body = f.v in

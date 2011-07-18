@@ -154,6 +154,7 @@ directive
     error (InvalidVersionArg first);
     Version {first with v={first with v=100}}
   }
+(* TODO: support macro expansion in line directives as per spec *)
 | first=LINE; l=INTCONSTANT {
     check_line_base l;
     line := {!line with src=snd l.v};

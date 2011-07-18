@@ -1,0 +1,23 @@
+#define Q(A,B) ((A)+(B))
+
+Q(
+#define J 4
+J
+#undef J
+,
+#define J 5
+J)
+
+Q(
+#if J==5
+J
+#else
+1
+#endif
+,
+#if J!=5
+J
+#else
+1
+#endif
+)
