@@ -154,7 +154,12 @@ directive
     error (InvalidVersionArg first);
     Version {first with v={first with v=100}}
   }
-(* TODO: support macro expansion in line directives as per spec *)
+(* TODO: support macro expansion in line directives as per spec
+ * This requires performing streaming macro definition and expansion
+ * as well as streaming conditional evaluation. It is an error to
+ * put a line directive in an open conditional or to use an open or
+ * open conditional macro in a line directive.
+ *)
 | first=LINE; l=INTCONSTANT {
     check_line_base l;
     line := {!line with src=snd l.v};

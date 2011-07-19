@@ -230,21 +230,25 @@ type pptok_type =
   | Leftp of Punc.tok pptok
   | Rightp of Punc.tok pptok
 *)
-let lookup env (name,ms) =
-  if Env.mem name ms then None
-  else
-    try
+let lookup env w =
+  let (name,ms) = w.v in
+    if Env.mem name ms then None
+    else if name = "__LINE__"
+    then
+    else if name = "__FILE__"
+    then
+    else try
       let m = Env.find name env in
-      Some { m with stream=List.map
-	  (function
-	    | Word w ->
-	      let me = if m.name=None
-		then Env.fold Env.add ms (snd w.v)
-		else Env.fold Env.add ms (Env.add name () (snd w.v))
-	      in Word {w with v=(fst w.v,me)}
-	    | x -> x)
-	  m.stream
-	   }
+	Some { m with stream=List.map
+	    (function
+	       | Word w ->
+		   let me = if m.name=None
+		   then Env.fold Env.add ms (snd w.v)
+		   else Env.fold Env.add ms (Env.add name () (snd w.v))
+		   in Word {w with v=(fst w.v,me)}
+	       | x -> x)
+	    m.stream
+	     }
     with Not_found -> None
 
 let macro_arg_collect start stream =
@@ -285,40 +289,44 @@ let macro_expand ?(cond=false) env ptl =
     | (Int i)::r -> loop env ((Int i)::prev) r
     | (Float f)::r -> loop env ((Float f)::prev) r
     | (Word w)::r ->
-      begin match cond, prev with
-	| true,(Word {v=("defined",_)})::_
-	| true,(Leftp _)::(Word {v=("defined",_)})::_ ->
-	  loop env ((Word w)::prev) r (* defined is soooo "special" *)
-	| _,_ -> begin match r with
-	    | (Leftp p)::r -> begin match lookup env w.v with
-		| Some ({arity=None; stream}) ->
-		  loop env prev (stream@[Leftp p]@r)
-		| Some ({arity=Some (a,binders); stream}) ->
-		  let args, r = macro_arg_collect (proj p) r in
-		  let arglen = List.length args in
-		  let args = if arglen < a
-		    then (error (MacroArgTooFew ((proj w),arglen,a));
-			  extend_list [] args a)
-		    else if arglen > a
-		    then (error (MacroArgTooMany ((proj w),arglen,a));
-			  List.rev (drop_head_list
-				      (List.rev args)
-				      ((List.length args) - a)))
-		    else args
-		  in
-		  let appenv = List.fold_left2
-		    (fun appenv binder arg ->
-		      defarg appenv binder (loop env [] arg)) (* "prescan" *)
-		    Env.empty binders args
-		  in loop env prev ((loop appenv [] stream)@r)
-		| None -> loop env ((Leftp p)::(Word w)::prev) r
-	    end
-	    | r -> begin match lookup env w.v with
-		| Some ({arity=None; stream}) -> loop env prev (stream@r)
-		| Some ({arity=Some _}) | None -> loop env ((Word w)::prev) r
+	begin match cond, prev with
+	  | true,(Word {v=("defined",_)})::_
+	  | true,(Leftp _)::(Word {v=("defined",_)})::_ ->
+	      loop env ((Word w)::prev) r (* defined is soooo "special" *)
+	  | _,_ -> begin match r with
+	      | (Leftp p)::r -> begin match lookup env w with
+		  | Some ({arity=None; stream}) ->
+		      loop env prev (stream@[Leftp p]@r)
+		  | Some ({arity=Some (a,binders); stream}) ->
+		      let args, r = macro_arg_collect (proj p) r in
+		      let arglen = List.length args in
+		      let args = if arglen < a
+		      then (error (MacroArgTooFew ((proj w),arglen,a));
+			    extend_list [] args a)
+		      else if arglen > a
+		      then (error (MacroArgTooMany ((proj w),arglen,a));
+			    List.rev (drop_head_list
+					(List.rev args)
+					((List.length args) - a)))
+		      else args
+		      in
+		      let appenv = List.fold_left2
+			(fun appenv binder arg ->
+			   defarg appenv binder (loop env [] arg)) (* "prescan" *)
+			Env.empty binders args
+		      in loop env prev ((loop appenv [] stream)@r)
+		  | None ->
+		      check_reserved (fst w.v);
+		      loop env ((Leftp p)::(Word w)::prev) r
+		end
+	      | r -> begin match lookup env w with
+		  | Some ({arity=None; stream}) -> loop env prev (stream@r)
+		  | Some ({arity=Some _}) | None ->
+		      check_reserved (fst w.v);
+		      loop env ((Word w)::prev) r
+		end
 	    end
 	end
-      end
     | (Call c)::r -> raise (ParserError "Call token in normalized stream")
     | (Punc p)::r -> loop env ((Punc p)::prev) r
     | (Comma c)::r -> loop env ((Comma c)::prev) r
@@ -352,7 +360,8 @@ let macro_expand_ppexpr env ppexpr =
 	    | None -> None
 	  in loop env ((If i)::prev) r (* TODO: rebuild If *)
     | (Def f)::r -> let env = define env (fst f.v).v (snd f.v) in
-		    loop env ((Def f)::prev) r
+	check_reserved_macro (fst f.v).v;
+	loop env ((Def f)::prev) r
     | (Fun f)::r -> let name,args,body = f.v in
 		    let env = defun env name.v
 		      (List.map (fun a -> a.v) args)
@@ -367,7 +376,7 @@ let macro_expand_ppexpr env ppexpr =
     | (Line l)::r -> loop env ((Line l)::prev) r
     | (List l)::r -> let env,l = loop env [] l in
 		     loop env ((List l)::prev) r
-    | [] -> cleanup_macros env (List.rev prev)
+    | [] -> cleanup env (List.rev prev)
   in loop env [] ppexpr
 
 let string_of_ppexpr_tree e =
