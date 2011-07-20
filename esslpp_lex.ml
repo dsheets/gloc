@@ -1,6 +1,5 @@
 module Lex = Ulexing
 
-open Printf
 open Pp
 open Esslpp
 
@@ -21,41 +20,6 @@ let first_tok = ref true
 let ppdirective = ref false
 let comment_stack = ref []
 let last_comment_ref = ref (ref [])
-
-let scan_of_comments cs start =
-  let ({a}) = (List.hd cs).span in
-  let start, pre = if (a.line.src - start.line.src) > 0
-  then {start with line=a.line; col=0},
-    String.make (a.line.src - start.line.src) '\n'
-  else start,"" in
-  let start, pre = List.fold_left
-    (fun (start,pre) t ->
-       let loc,s = t.scan start in
-	 (loc,pre^s)
-    ) ({start with col=start.col+2},pre^"/*") cs
-  in ({start with col=start.col+2},pre^"*/")
-
-let scan_of_string ({a;z}) (prec,postc) s = fun start ->
-  let start,pre = match prec with
-    | [] ->
-      if a.file.src <> start.file.src || (a.line.src - start.line.src) < 0
-      then {a with col=0},
-	sprintf "\n#line %d %d\n" a.line.src a.file.src
-      else if a.line.src - start.line.src > 0
-      then {start with line=a.line; col=0},
-	String.make (a.line.src - start.line.src) '\n'
-      else start,""
-    | cs -> scan_of_comments cs start
-  in
-  let cerr,cfix =
-    if start.col <= a.col
-    then 0,String.make (a.col - start.col) ' '
-    else (start.col - a.col + 1)," "
-  in let fin = {z with col=z.col+cerr} in
-  let fin,post = match List.rev !postc with
-    | [] -> fin,""
-    | cs -> scan_of_comments cs fin
-  in (fin, sprintf "%s%s%s%s" pre cfix s post)
 
 let newline ?(comment=false) lexbuf =
   if not comment then

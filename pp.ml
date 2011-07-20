@@ -1,3 +1,5 @@
+open Printf
+
 module Env = Map.Make(struct type t = string let compare = compare end)
 
 type base = Oct | Dec | Hex
@@ -39,6 +41,9 @@ exception MacroArgUnclosed of unit pptok
 exception MacroArgInnerParenUnclosed of unit pptok
 exception MacroArgTooFew of unit pptok * int * int
 exception MacroArgTooMany of unit pptok * int * int
+exception ReservedKeyword of string pptok
+
+type cond_expr_result = Deferred | Result of Int32.t
 
 type cond_expr =
   | Group of cond_expr pptok
@@ -143,10 +148,47 @@ let span_of_list : 'a pptok list -> span = function
   | (h::_) as ptl -> {a=(proj h).span.a;
 		      z=(proj (List.hd (List.rev ptl))).span.z}
 
+let emit_newline = ref true
 let file = ref {src=0; input=0}
 let line = ref {src=1; input=1}
 let errors : exn list ref = ref []
 let error exc = errors := exc::!errors
+
+let scan_of_comments cs start =
+  let ({a}) = (List.hd cs).span in
+  let start, pre = if (a.line.src - start.line.src) > 0 && !emit_newline
+  then {start with line=a.line; col=0},
+    String.make (a.line.src - start.line.src) '\n'
+  else start,"" in
+  let start, pre = List.fold_left
+    (fun (start,pre) t ->
+       let loc,s = t.scan start in
+	 (loc,pre^s)
+    ) ({start with col=start.col+2},pre^"/*") cs
+  in ({start with col=start.col+2},pre^"*/")
+
+let scan_of_string ({a;z}) (prec,postc) s = fun start ->
+  let start,pre = match prec with
+    | [] ->
+      if !emit_newline
+	&& (a.file.src <> start.file.src || (a.line.src - start.line.src) < 0)
+      then {a with col=0},
+	sprintf "\n#line %d %d\n" a.line.src a.file.src
+      else if a.line.src - start.line.src > 0 && !emit_newline
+      then {start with line=a.line; col=0},
+	String.make (a.line.src - start.line.src) '\n'
+      else start,""
+    | cs -> scan_of_comments cs start
+  in
+  let cerr,cfix =
+    if start.col <= a.col
+    then 0,String.make (a.col - start.col) ' '
+    else (start.col - a.col + 1)," "
+  in let fin = {z with col=z.col+cerr} in
+  let fin,post = match List.rev !postc with
+    | [] -> fin,""
+    | cs -> scan_of_comments cs fin
+  in (fin, sprintf "%s%s%s%s" pre cfix s post)
 
 let check_version_base t =
   match fst t.v with
@@ -158,15 +200,32 @@ let check_line_base t =
     | Hex | Oct -> error (InvalidLineBase {t with v=fst t.v})
     | Dec -> ()
 
-let fuse_pptok = function
+let check_reserved st =
+  let reserved_keywords =
+    ["asm"; "class"; "union"; "enum"; "typedef"; "template"; "this"; "packed";
+     "goto"; "switch"; "default"; "inline"; "noinline"; "volatile"; "public";
+     "static"; "extern"; "external"; "interface"; "flat"; "long"; "short";
+     "double"; "half"; "fixed"; "unsigned"; "superp"; "input"; "output";
+     "hvec2"; "hvec3"; "hvec4"; "dvec2"; "dvec3"; "dvec4"; "fvec2"; "fvec3";
+     "fvec4"; "sampler1D"; "sampler3D"; "sampler1DShadow"; "sampler2DShadow";
+     "sampler2DRect"; "sampler3DRect"; "sampler2DRectShadow"; "sizeof"; "cast";
+     "namespace"; "using"]
+  in if List.mem st.v reserved_keywords then error (ReservedKeyword st)
+
+let fuse_pptok ?(nl=true) = function
   | [] -> raise (ParserError "fusing empty pptok list")
   | (h::_) as tokl ->
       {span=span_of_list tokl;
-       scan=(fun start -> List.fold_left
-	       (fun (loc,str) tok ->
-		  let nloc,nstr = tok.scan loc in
-		    (nloc,str^nstr))
-	       (start,"") tokl);
+       scan=(fun start ->
+	       let oenl = !emit_newline in
+	       let () = emit_newline := nl in
+	       let loc,rs = List.fold_left
+		 (fun (loc,str) tok ->
+		    let nloc,nstr = tok.scan loc in
+		      (nloc,str^nstr))
+		 (start,"") tokl
+	       in emit_newline := oenl; (loc,rs)
+	    );
        comments=(fst h.comments,snd (List.hd (List.rev tokl)).comments);
        v=()}
 
@@ -206,37 +265,22 @@ let normalize_ppexpr e = (* TODO: remove Call tokens *)
     | [] -> (ini,List.rev prev)
   in List.hd (snd (loop true [] [e]))
 
-(*type pptok_expr =
-  | Comments of comments pptok
-  | Chunk of pptok_type list pptok
-  | If of (cond_expr * pptok_expr * (pptok_expr option)) pptok
-  | Def of (string pptok * pptok_type list) pptok
-  | Fun of (string pptok * (string pptok list) * pptok_type list) pptok
-  | Undef of string pptok pptok
-  | Err of pptok_type list pptok
-  | Pragma of pptok_type list pptok
-  | Version of int pptok pptok
-  | Extension of (string pptok * behavior pptok) pptok
-  | Line of (int pptok option * int pptok) pptok
-  | List of pptok_expr list pptok
+let int_replace_word w i =
+  let s = string_of_int i in
+  let sl = String.length s in
+  let span = {w.span with z={w.span.a with col=w.span.a.col+sl}} in
+  let comments = ([], ref []) in
+    Int { span; scan=scan_of_string span comments s; comments; v=(Dec,i) }
 
-type pptok_type =
-  | Int of (base * int) pptok
-  | Float of float pptok
-  | Word of string pptok
-  | Call of string pptok
-  | Punc of Punc.tok pptok
-  | Comma of Punc.tok pptok
-  | Leftp of Punc.tok pptok
-  | Rightp of Punc.tok pptok
-*)
 let lookup env w =
   let (name,ms) = w.v in
     if Env.mem name ms then None
-    else if name = "__LINE__"
-    then
-    else if name = "__FILE__"
-    then
+    else if name = "__LINE__" then
+      Some {name=None; arity=None;
+	    stream=[int_replace_word w w.span.a.line.src]}
+    else if name = "__FILE__" then
+      Some {name=None; arity=None;
+	    stream=[int_replace_word w w.span.a.file.src]}
     else try
       let m = Env.find name env in
 	Some { m with stream=List.map
@@ -316,13 +360,13 @@ let macro_expand ?(cond=false) env ptl =
 			Env.empty binders args
 		      in loop env prev ((loop appenv [] stream)@r)
 		  | None ->
-		      check_reserved (fst w.v);
+		      check_reserved {w with v=(fst w.v)};
 		      loop env ((Leftp p)::(Word w)::prev) r
 		end
 	      | r -> begin match lookup env w with
 		  | Some ({arity=None; stream}) -> loop env prev (stream@r)
 		  | Some ({arity=Some _}) | None ->
-		      check_reserved (fst w.v);
+		      check_reserved {w with v=(fst w.v)};
 		      loop env ((Word w)::prev) r
 		end
 	    end
@@ -335,49 +379,111 @@ let macro_expand ?(cond=false) env ptl =
     | [] -> List.rev prev
   in loop env [] ptl
 
-let macro_expand_ppexpr env ppexpr =
+let coerce_binop fn x y = if fn x y then Int32.one else Int32.zero
+
+let rec cond_eval env = function
+  | Group p -> cond_eval env p.v
+  | Opaque o -> Deferred
+  | Constant c -> Result (Int32.of_int c.v)
+  | Defined d -> if Env.mem d.v.v env || d.v.v="__LINE__" || d.v.v="__FILE__"
+    then Result Int32.one else Result Int32.zero
+  | Pos p -> cond_eval env p.v
+  | Neg n -> cond_unop env Int32.neg n.v
+  | BitNot b -> cond_unop env Int32.lognot b.v
+  | Not n -> cond_unop env
+      (function x when x=Int32.zero -> Int32.one | _ -> Int32.zero) n.v
+  | Mul m -> cond_binop env Int32.mul m.v
+  | Div d -> cond_binop env Int32.div d.v
+  | Mod m -> cond_binop env Int32.rem m.v
+  | Add a -> cond_binop env Int32.add a.v
+  | Sub s -> cond_binop env Int32.sub s.v
+  | BitLeft b -> cond_binop env
+      (fun x y -> Int32.shift_left x (Int32.to_int y)) b.v
+  | BitRight b -> cond_binop env
+      (fun x y -> Int32.shift_right x (Int32.to_int y)) b.v
+  | Lt l -> cond_binop env (coerce_binop (<)) l.v
+  | Gt g -> cond_binop env (coerce_binop (>)) g.v
+  | Lte l -> cond_binop env (coerce_binop (<=)) l.v
+  | Gte g -> cond_binop env (coerce_binop (>=)) g.v
+  | Eq e -> cond_binop env (coerce_binop (=)) e.v
+  | Neq n -> cond_binop env (coerce_binop (<>)) n.v
+  | BitAnd b -> cond_binop env Int32.logand b.v
+  | BitXor b -> cond_binop env Int32.logxor b.v
+  | BitOr b -> cond_binop env Int32.logor b.v
+  | And c -> let a,b = c.v in begin match cond_eval env a with
+      | Result x when x=Int32.zero -> Result Int32.zero
+      | Deferred -> Deferred
+      | Result _ -> begin match cond_eval env b with
+	  | Result x when x=Int32.zero -> Result Int32.zero
+	  | Deferred -> Deferred
+	  | Result _ -> Result Int32.one
+	end
+    end
+  | Or d -> let a,b = d.v in begin match cond_eval env a with
+      | Result x when x=Int32.zero -> begin match cond_eval env b with
+	  | Result x when x=Int32.zero -> Result Int32.zero
+	  | Result _ -> Result Int32.one
+	  | Deferred -> Deferred
+	end
+      | Result _ -> Result Int32.one
+      | Deferred -> Deferred
+    end
+and cond_unop env f a =
+  match cond_eval env a with
+    | Result i -> Result (f i)
+    | _ -> Deferred
+and cond_binop env f (a,b) =
+  match (cond_eval env a),(cond_eval env b) with
+    | Result x, Result y -> Result (f x y)
+    | _, _ -> Deferred
+
+let preprocess_ppexpr env ppexpr =
   let rec loop env prev = function
-    | (Comments c)::r -> loop env ((Comments c)::prev) r
-    | (Chunk c)::r ->
-      let s = macro_expand env c.v in
-      loop env ((Chunk {(fuse_pptok
-			   (List.map proj_pptok_type s)) with v=s})::prev) r
+    | (Comments c)::r -> loop env prev r
+    | (Chunk c)::r -> let s = macro_expand env c.v in
+	loop env ((Chunk {(fuse_pptok
+			     (List.map proj_pptok_type s)) with v=s})::prev) r
     | (If i)::r ->
       let cond,tb,fb = i.v in
       let cond = match cond with
 	| Opaque ptlt ->
 	  let s = macro_expand ~cond:true env ptlt.v in
-	  Opaque {(fuse_pptok ~nl:false
-		     (List.map proj_pptok_type s)) with v=s}
+	  let ts = tokenize s in
+	    parse_cond_expr {(fuse_pptok ~nl:false
+				(List.map proj_pptok_type s)) with v=s}
 	| _ -> cond
-      in match cond_eval env cond with
-	| True ->
-	| False ->
-	| Deferred o ->
-	  let tb = loop (guard env) [] tb in
-	  let fb = match fb with
-	    | Some fb -> loop (guard env) [] fb
-	    | None -> None
-	  in loop env ((If i)::prev) r (* TODO: rebuild If *)
+      in begin match cond_eval env cond with
+	| Result x when x=Int32.zero ->
+	    (match fb with
+	       | Some fb -> loop env prev (fb::r)
+	       | None -> loop env prev r)
+	| Result _ -> loop env prev (tb::r)
+	| Deferred ->
+	    List.append
+	      (loop env prev (tb::r))
+	      (match fb with
+		 | Some fb -> loop env prev (fb::r)
+		 | None -> [])
+	end
     | (Def f)::r -> let env = define env (fst f.v).v (snd f.v) in
 	check_reserved_macro (fst f.v).v;
-	loop env ((Def f)::prev) r
+	loop env prev r
     | (Fun f)::r -> let name,args,body = f.v in
-		    let env = defun env name.v
-		      (List.map (fun a -> a.v) args)
-		      body
-		    in loop env ((Fun f)::prev) r
+      let env = defun env name.v
+	(List.map (fun a -> a.v) args)
+	body
+      in check_reserved_macro name.v;
+	loop env prev r
     | (Undef u)::r -> let env = undef env u.v.v in
-		      loop env ((Undef u)::prev) r
-    | (Err e)::r -> loop env ((Err e)::prev) r
-    | (Pragma p)::r -> loop env ((Pragma p)::prev) r
-    | (Version v)::r -> loop env ((Version v)::prev) r
-    | (Extension x)::r -> loop env ((Extension x)::prev) r
-    | (Line l)::r -> loop env ((Line l)::prev) r
-    | (List l)::r -> let env,l = loop env [] l in
-		     loop env ((List l)::prev) r
-    | [] -> cleanup env (List.rev prev)
-  in loop env [] ppexpr
+	loop env prev r
+    | (Err e)::r -> error (ErrorDirective e); loop env prev r
+    | (Pragma p)::r -> loop (register_pragma env p) prev r
+    | (Version v)::r -> loop env prev r
+    | (Extension x)::r -> loop (register_extension env x) prev r
+    | (Line l)::r -> loop env prev r
+    | (List l)::r -> loop env prev (l::r)
+    | [] -> env, (List.rev prev)
+  in loop env [] [ppexpr]
 
 let string_of_ppexpr_tree e =
   let rec loop indent p = function
