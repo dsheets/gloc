@@ -1,6 +1,12 @@
-File 0, line 3, col 5 - 6:
+File 0, line 5, col 5 - 6:
 too few macro arguments: expected 1, got 0
 
-File 0, line 4, col 5 - 6:
-too few macro arguments: expected 1, got 0
+File 0, line 6, col 5 - 6:
+too many macro arguments: expected 1, got 2
+
+File 0, line 8, col 5 - 6:
+too many macro arguments: expected 0, got 1
+
+File 0, line 9, col 5 - 6:
+too many macro arguments: expected 0, got 2
 

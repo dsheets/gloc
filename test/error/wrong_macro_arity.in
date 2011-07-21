@@ -1,6 +1,10 @@
+#define G() 5
 #define F(A) (A)
 void main() {
      F((3,2));
      F();
      F(5,3);
+     G();
+     G(3);
+     G(3,4);
 }

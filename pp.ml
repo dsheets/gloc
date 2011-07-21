@@ -150,7 +150,7 @@ let lookup env w =
 
 let macro_arg_collect start stream =
   let rec outer opa args = function
-    | (Rightp p)::r -> (args, r)
+    | (Rightp p)::r -> if opa=[] then (args, r) else ((List.rev opa)::args, r)
     | (Comma c)::r -> outer [] ((List.rev opa)::args) r
     | (Leftp p)::r ->
       let e, r = inner [Leftp p] r in
