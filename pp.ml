@@ -88,13 +88,14 @@ let normalize_ppexpr e =
 	loop false ((Chunk { c with v=normalize_calls c.v})::prev) r
     | ((Comments _) as c)::r -> loop ini (c::prev) r
     | (If i)::r -> let c,t,f = i.v in
+      let tb = snd (loop false [] [t]) in
 	loop false
 	  ((If { i with
 		   v=(map_cond_expr_stream normalize_calls c,
-		      fuse_pptok_expr (snd (loop false [] [t])),
+		      (if tb=[] then t else fuse_pptok_expr tb),
 		      match f with
-			| Some f ->
-			    Some (fuse_pptok_expr (snd (loop false [] [f])))
+			| Some f -> let fb = snd (loop false [] [f]) in
+			    Some (if fb=[] then f else fuse_pptok_expr fb)
 			| None -> None)
 	       })::prev) r
     | (Def d)::r -> let n,s = d.v in
@@ -105,7 +106,8 @@ let normalize_ppexpr e =
 	loop false ((Pragma {p with v=normalize_calls p.v})::prev) r
     | d::r -> loop false (d::prev) r
     | [] -> (ini,List.rev prev)
-  in fuse_pptok_expr (snd (loop true [] [e]))
+  in let ne = snd (loop true [] [e]) in
+    if ne=[] then e else fuse_pptok_expr ne
 
 let int_replace_word w i =
   let s = string_of_int i in
@@ -305,29 +307,31 @@ let preprocess_ppexpr env ppexpr =
   let rec loop env prev = function
     | (Comments c)::r -> loop env prev r
     | (Chunk c)::r -> let s = macro_expand env c.v in
-	loop env ((Chunk {(fuse_pptok
-			     (List.map proj_pptok_type s)) with v=s})::prev) r
+	if s=[] then loop env prev r
+	else loop env
+	  ((Chunk {(fuse_pptok
+		      (List.map proj_pptok_type s)) with v=s})::prev) r
     | (If i)::r ->
-      let cond,tb,fb = i.v in
-      let cond = match cond with
-	| Opaque ptlt ->
-	  let s = macro_expand ~cond:true env ptlt.v in
-	  let ts = ce_tokenize s in
-	    parse_cond_expr (ce_lexerfn ts)
-	| _ -> cond
-      in begin match cond_eval env cond with
-	| Result x when x=Int32.zero ->
-	    (match fb with
-	       | Some fb -> loop env prev (fb::r)
-	       | None -> loop env prev r)
-	| Result _ -> loop env prev (tb::r)
-	| Deferred ->
-	    List.append
-	      (loop env prev (tb::r))
+	let cond,tb,fb = i.v in
+	let cond = match cond with
+	  | Opaque ptlt ->
+	      let s = macro_expand ~cond:true env ptlt.v in
+	      let ts = ce_tokenize s in
+		parse_cond_expr (ce_lexerfn ts)
+	  | _ -> cond
+	in begin match cond_eval env cond with
+	  | Result x when x=Int32.zero ->
 	      (match fb with
 		 | Some fb -> loop env prev (fb::r)
-		 | None -> [])
-	end
+		 | None -> loop env prev r)
+	  | Result _ -> loop env prev (tb::r)
+	  | Deferred ->
+	      List.append
+		(loop env prev (tb::r))
+		(match fb with
+		   | Some fb -> loop env prev (fb::r)
+		   | None -> [])
+	  end
     | (Def f)::r -> let env = define env (fst f.v).v (snd f.v) in
 	check_reserved_macro (fst f.v);
 	loop env prev r
