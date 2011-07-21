@@ -156,7 +156,7 @@ let lookup env w =
 
 let macro_arg_collect start stream =
   let rec outer opa args = function
-    | (Rightp p)::r -> if opa=[] then (args, r) else ((List.rev opa)::args, r)
+    | (Rightp p)::r -> ((List.rev opa)::args, r)
     | (Comma c)::r -> outer [] ((List.rev opa)::args) r
     | (Leftp p)::r ->
       let e, r = inner [Leftp p] r in
@@ -199,9 +199,11 @@ let macro_expand ?(cond=false) env ptl =
 		  | Some ({args=None; stream}) ->
 		      loop env prev ((stream w.span.a)@[Leftp p]@r)
 		  | Some ({args=Some binders; stream}) ->
-		      let args, r = macro_arg_collect (proj p) r in
-		      let arglen = List.length args in
 		      let blen = List.length binders in
+		      let args, r = macro_arg_collect (proj p) r in
+			(* nullary macro fns are a special case of unary *)
+		      let args = if blen=0 && args=[[]] then [] else args in
+		      let arglen = List.length args in
 		      let args = if arglen < blen
 		      then (error (MacroArgTooFew ((proj w),arglen,blen));
 			    extend_list [] args blen)
