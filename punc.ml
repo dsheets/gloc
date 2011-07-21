@@ -1,3 +1,9 @@
+(* Copyright (c) 2011 David Sheets, Ashima Arts.
+ * All rights reserved.
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ *)
+
 type tok =
     LEFT_OP | RIGHT_OP | INC_OP | DEC_OP | LE_OP | GE_OP | EQ_OP | NE_OP
   | AND_OP | OR_OP | XOR_OP | MUL_ASSIGN | DIV_ASSIGN | ADD_ASSIGN | MOD_ASSIGN
