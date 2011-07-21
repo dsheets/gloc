@@ -346,7 +346,8 @@ let preprocess_ppexpr env ppexpr =
     | (Extension x)::r -> loop (register_extension env x) prev r
     | (Line l)::r -> loop env prev r
     | (List l)::r -> loop env prev (l.v@r)
-    | [] -> [env, fuse_pptok_expr (List.rev prev)]
+    | [] -> if prev=[] then []
+      else [env, fuse_pptok_expr (List.rev prev)]
   in loop env [] [ppexpr]
 
 let string_of_ppexpr_tree e =

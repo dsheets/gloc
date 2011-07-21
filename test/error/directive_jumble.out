@@ -1,0 +1,9 @@
+File 0, line 2, col 0 - 10:
+#error foo
+
+File 0, line 3, col 0 - 10:
+#error bar
+
+File 0, line 4, col 0 - 10:
+#error baz
+

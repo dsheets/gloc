@@ -1,3 +1,6 @@
 File 0, line 2, col 0 - 12:
 version must be first semantic token
 
+File 0, line 1, col 0 - 19:
+#error this is fine
+
