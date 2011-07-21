@@ -1,26 +1,26 @@
 %{
-  open Pp
+  open Pp_lib
 %}
 
-%token <unit Pp.pptok> BOF EOF ENDPPDIRECTIVE
-%token <unit Pp.pptok> EXTENSION VERSION LINE
-%token <unit Pp.pptok> DEFINE UNDEF IF IFDEF IFNDEF ELSE ELIF ENDIF ERROR
-%token <unit Pp.pptok> PRAGMA
-%token <string Pp.pptok> WORD CALL
-%token <float Pp.pptok> FLOATCONSTANT
-%token <(Pp.base * int) Pp.pptok> INTCONSTANT
+%token <unit Pp_lib.pptok> BOF EOF ENDPPDIRECTIVE
+%token <unit Pp_lib.pptok> EXTENSION VERSION LINE
+%token <unit Pp_lib.pptok> DEFINE UNDEF IF IFDEF IFNDEF ELSE ELIF ENDIF ERROR
+%token <unit Pp_lib.pptok> PRAGMA
+%token <string Pp_lib.pptok> WORD CALL
+%token <float Pp_lib.pptok> FLOATCONSTANT
+%token <(Pp_lib.base * int) Pp_lib.pptok> INTCONSTANT
 
-%token <Punc.tok Pp.pptok> LEFT_OP RIGHT_OP INC_OP DEC_OP LE_OP GE_OP EQ_OP
-%token <Punc.tok Pp.pptok> NE_OP AND_OP OR_OP XOR_OP MUL_ASSIGN DIV_ASSIGN
-%token <Punc.tok Pp.pptok> ADD_ASSIGN MOD_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN
-%token <Punc.tok Pp.pptok> AND_ASSIGN XOR_ASSIGN OR_ASSIGN SUB_ASSIGN
-%token <Punc.tok Pp.pptok> LEFT_PAREN RIGHT_PAREN LEFT_BRACKET RIGHT_BRACKET
-%token <Punc.tok Pp.pptok> LEFT_BRACE RIGHT_BRACE DOT COMMA COLON EQUAL
-%token <Punc.tok Pp.pptok> SEMICOLON BANG DASH TILDE PLUS STAR SLASH PERCENT
-%token <Punc.tok Pp.pptok> LEFT_ANGLE RIGHT_ANGLE VERTICAL_BAR CARET
-%token <Punc.tok Pp.pptok> AMPERSAND QUESTION
+%token <Punc.tok Pp_lib.pptok> LEFT_OP RIGHT_OP INC_OP DEC_OP LE_OP GE_OP EQ_OP
+%token <Punc.tok Pp_lib.pptok> NE_OP AND_OP OR_OP XOR_OP MUL_ASSIGN DIV_ASSIGN
+%token <Punc.tok Pp_lib.pptok> ADD_ASSIGN MOD_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN
+%token <Punc.tok Pp_lib.pptok> AND_ASSIGN XOR_ASSIGN OR_ASSIGN SUB_ASSIGN
+%token <Punc.tok Pp_lib.pptok> LEFT_PAREN RIGHT_PAREN LEFT_BRACKET RIGHT_BRACKET
+%token <Punc.tok Pp_lib.pptok> LEFT_BRACE RIGHT_BRACE DOT COMMA COLON EQUAL
+%token <Punc.tok Pp_lib.pptok> SEMICOLON BANG DASH TILDE PLUS STAR SLASH PERCENT
+%token <Punc.tok Pp_lib.pptok> LEFT_ANGLE RIGHT_ANGLE VERTICAL_BAR CARET
+%token <Punc.tok Pp_lib.pptok> AMPERSAND QUESTION
 
-%type <Pp.pptok_expr> translation_unit
+%type <Pp_lib.pptok_expr> translation_unit
 
 %start translation_unit
 
@@ -37,7 +37,7 @@ punc
 | p=AMPERSAND | p=QUESTION { p }
 
 source_ncnp
-: w=WORD { Word w }
+: w=WORD { Word { w with v=(w.v,Env.empty)} }
 | f=FLOATCONSTANT { Float f }
 | i=INTCONSTANT { Int i }
 | p=punc { Punc p }

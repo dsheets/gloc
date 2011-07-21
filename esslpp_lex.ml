@@ -1,6 +1,6 @@
 module Lex = Ulexing
 
-open Pp
+open Pp_lib
 open Esslpp
 
 module String = struct
@@ -47,7 +47,7 @@ let tok ?(comment=false) ?(pre="") ?(drop=0) ?(rewind=0) lexbuf v =
   let z = {file = !file; line = !line;
 	   col=(Lex.lexeme_end lexbuf) - !colo - rewind} in
   let scan = scan_of_string {a;z} comments (pre^s) in
-    {span={a;z}; macros; scan; comments; v}
+    {span={a;z}; scan; comments; v}
 
 let add_post_comment comment =
   (!last_comment_ref) := comment::!(!last_comment_ref)

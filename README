@@ -3,36 +3,38 @@ gloc: (WebGL|ESSL) gl(sl) o(bject) c(ompiler)
 gloc provides a suite of tools to ease the development of advanced
 shader systems. gloc 0.8 features:
  - an ESSL preprocessor to expand shader source for further analysis
+ - preprocessor conditional expression partial evaluation
  - a JSON-encapsulated shader object format with symbolic dependencies to ease linking
  - a client-side linker to assemble shader source strings for rendering
  - compile-time macro definition
  - link-time macro definition
  - source-to-source translation with accurate source locations and comments
- - runs as both a native binary and in-the-browser via js_of_ocaml
+ - runs as both a native binary and in-the-browser via ocamljs
+ - optional emulation of the line continuation character, \
 
-Features in the pipeline for 1.0 include:
- - preprocessor conditional expression partial evaluation
+Features planned for 0.9 include:
  - finer-grained name collision management through pragma directives
  - macros across translation unit boundaries
  - comment stripping
  - identifier obfuscation
  - source compression
- - an option to enable emulation of the line continuation character, \
-
-Features in the pipeline for 1.1 include:
- - shader to JavaScript compilation
- - JavaScript shader stub auto-generation
- - OCaml shader stub auto-generation
- - ESSL type-checking
- - camlp4 quotations for easy program transforms in OCaml
 
 gloc is licensed under the MIT license and distributed by Ashima
 Arts as a member of the greater WebGL community.
 
-Special thanks to the WebGL working group for making this possible by
-allowing UTF-8 in shader comments. This is the PP dance.
+Commercial users of gloc include:
+ - Ashima Arts' Ooman (http://ashimagames.com/)
 
-Suggestions? Bugs? Features? Comments? Feel free to use the GitHub
-project management features to help out the project!
+gloc shader libraries include:
+ - Ashima Arts' webgl-noise
+
+Special thanks to the WebGL working group for making this possible by
+allowing UTF8 in shader comments. This is the PP dance.
+
+Suggestions? Bugs? Features? Comments? Please use the GitHub
+project management features in the top bar to help out the project!
+
+Do you use gloc in production? Have you published open source shader
+libraries that use gloc? Let us know and we'll add you to this file.
 
 

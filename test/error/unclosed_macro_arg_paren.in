@@ -1,0 +1,4 @@
+#define F(A) (A)
+void main() {
+     F ( ( 5
+}

@@ -1,4 +1,4 @@
-PP = ../../esslpp_main.byte
+PP = OCAMLRUNPARAM=b ../../esslpp_main.d.byte
 
 INS := $(wildcard *.in)
 OUTS := $(INS:.in=.out)

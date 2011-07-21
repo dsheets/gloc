@@ -1,0 +1,5 @@
+#define __FOO__
+#define GL_BAR
+void main() {
+     asm;
+}

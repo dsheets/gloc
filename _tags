@@ -1,3 +1,4 @@
 <esslpp_lex.*>: syntax(camlp4o), package(ulex)
 <esslpp_main.*>: package(menhirLib)
-<*.*>: package(ulex)
+<ce_lib.*>: package(menhirLib)
+<*.*>: package(ulex), package(str)
