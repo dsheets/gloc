@@ -10,6 +10,43 @@ open Pp
 open Esslpp_lex
 open Esslpp
 
+type dialect = WebGL
+type version = int * int * int
+type accuracy = Best | Decomment | Minify
+type bondage = Error | Warn | Ignore
+type language = {dialect:dialect;
+		 version:version;
+		 accuracy:accuracy;
+		 bond:bondage;
+		}
+
+type states = {preprocess:bool ref;
+	       compile:bool ref;
+	       output:string option ref;
+	       lang:language ref;
+	      }
+	       
+let default_lang = { dialect=WebGL;
+		     version=(1,0,0);
+		     accuracy=Best;
+		     bond=Warn }
+		     
+let exec_states = { preprocess=ref false;
+		    compile=ref false;
+		    output=ref None;
+		    inlang=ref default_lang;
+		    outlang=ref default_lang }
+
+let arguments =
+  ["-E", Set exec_states.preprocess, "preprocess output source";
+   "-c", Set exec_states.compile, "produce glo object";
+   "-o", String (fun o -> exec_states.output := Some o), "output file";
+   "-w", , "inhibit all warning messages";
+   "-x",,;
+   "-out",,;
+  ]
+			 
+
 let string_of_tokpos
     ({span={a={file={src=af}; line={src=al}; col=ac};
 	    z={file={src=zf}; line={src=zl}; col=zc}}}) =
@@ -87,12 +124,14 @@ let parse = MenhirLib.Convert.traditional2revised
   translation_unit in
 let ppexpr = try parse (fun () -> lex lexbuf) with
   | err -> eprintf "Uncaught exception:\n%s\n" (Printexc.to_string err);
+    eprintf "Fatal: unrecoverable internal parser error (1)";
     exit 1
 in
 let () = if (List.length !errors) > 0
 then (List.iter (fun e -> eprintf "%s\n" (string_of_error e))
 	(List.rev !errors);
-      exit 1)
+      eprintf "Fatal: unrecoverable parse error (2)"
+      exit 2)
 in
 let ppexpr = normalize_ppexpr ppexpr in
 let macros = Env.add "__VERSION__" (omacro "__VERSION__" (synth_int (Dec,100)))
@@ -101,7 +140,8 @@ let ppl = preprocess_ppexpr {macros; extensions=Env.empty} ppexpr in
   if (List.length !errors) > 0 then
     (List.iter (fun e -> eprintf "%s\n" (string_of_error e))
        (List.rev !errors);
-     exit 1)
+     eprintf "Fatal: unrecoverable preprocessor error (3)";
+     exit 3)
   else
     (*printf "%s\n" (string_of_ppexpr_tree ppexpr);*)
     List.iter (fun (env,ppexpr) ->
