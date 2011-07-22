@@ -156,7 +156,7 @@ directive
     check_version_base v;
     Version {(fuse_pptok [first; proj v]) with v={v with v=snd v.v}}
   }
-| first=VERSION; not_int; source* {
+| first=VERSION; error {
     error (InvalidVersionArg first);
     Version {first with v={first with v=100}}
   }

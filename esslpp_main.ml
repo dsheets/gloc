@@ -47,6 +47,10 @@ let string_of_error = function
   | InvalidLineBase t ->
       sprintf "%s:\nline control arguments must be specified in decimal\n"
 	(string_of_tokpos t)
+  | InvalidVersionArg t ->
+      sprintf "%s:\ninvalid version argument\n" (string_of_tokpos t)
+  | InvalidLineArg t ->
+      sprintf "%s:\ninvalid line argument\n" (string_of_tokpos t)
   | MacroArgUnclosed t ->
       sprintf "%s:\nunclosed macro argument list\n" (string_of_tokpos t)
   | MacroArgInnerParenUnclosed t ->
@@ -82,11 +86,11 @@ let parse = MenhirLib.Convert.traditional2revised
   (fun _ -> Lexing.dummy_pos)
   translation_unit in
 let ppexpr = try parse (fun () -> lex lexbuf) with
-  | err -> printf "Uncaught exception:\n%s\n" (Printexc.to_string err);
+  | err -> eprintf "Uncaught exception:\n%s\n" (Printexc.to_string err);
     exit 1
 in
 let () = if (List.length !errors) > 0
-then (List.iter (fun e -> printf "%s\n" (string_of_error e))
+then (List.iter (fun e -> eprintf "%s\n" (string_of_error e))
 	(List.rev !errors);
       exit 1)
 in
@@ -95,7 +99,7 @@ let macros = Env.add "__VERSION__" (omacro "__VERSION__" (synth_int (Dec,100)))
   (Env.singleton "GL_ES" (omacro "GL_ES" (synth_int (Dec,1)))) in
 let ppl = preprocess_ppexpr {macros; extensions=Env.empty} ppexpr in
   if (List.length !errors) > 0 then
-    (List.iter (fun e -> printf "%s\n" (string_of_error e))
+    (List.iter (fun e -> eprintf "%s\n" (string_of_error e))
        (List.rev !errors);
      exit 1)
   else

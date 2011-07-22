@@ -4,7 +4,7 @@ INS := $(wildcard *.in)
 OUTS := $(INS:.in=.out)
 
 %.out : %.in %.true
-	@$(PP) < $*.in > $@ || true
+	@$(PP) < $*.in &> $@ || true
 	@echo $*
 	@diff $@ $*.true || true
 
