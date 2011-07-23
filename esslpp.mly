@@ -93,6 +93,8 @@ cond_continue
   {(fuse_pptok [d; proj_pptok_expr b; e]) with v=Some b}
 }
 
+arg : a=WORD; c=COMMA? { (a,c) }
+
 directive
   : first=IF; s=source+; last=ENDPPDIRECTIVE; b=body*; f=cond_continue {
     let proj_s = List.map proj_pptok_type s in
@@ -133,11 +135,17 @@ directive
     Def {(fuse_pptok (first::(proj m)::(List.map proj_pptok_type stream)))
 	 with v=(m, stream)}
   }
-| d=DEFINE; m=CALL; args=separated_list(COMMA,WORD); r=RIGHT_PAREN; s=source* {
-  let t = fuse_pptok ((d::(proj m)::(List.map proj args))
+| d=DEFINE; m=CALL; args=list(arg); r=RIGHT_PAREN; s=source* {
+  let t = fuse_pptok ((d::(proj m)
+		       ::(List.flatten
+			    (List.map
+			       (function
+				 | a,None -> [proj a]
+				 | a,Some c -> [proj a; proj c] 
+			       ) args)))
 		      @((proj r)::(List.map proj_pptok_type s))) in
-  Fun {t with v=(m, args, s)}
-  }
+  Fun {t with v=(m, (List.map fst args), s)}
+}
 | first=UNDEF; m=WORD {
     Undef {(fuse_pptok [first; proj m]) with v=m}
   }
