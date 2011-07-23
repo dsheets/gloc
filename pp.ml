@@ -20,12 +20,18 @@ let check_reserved st =
      "namespace"; "using"]
   in if List.mem st.v reserved_keywords then error (ReservedKeyword st)
 
-let check_reserved_macro m =
+let check_reserved_macro_redefine m =
   if String.length m.v > 2 && String.sub m.v 0 3 = "GL_"
-  then error (ReservedMacro m)
+  then error (RedefineReservedMacro m)
   else if Str.string_match (Str.regexp ".*__") m.v 0
-  then error (ReservedMacro m)
-    
+  then error (RedefineReservedMacro m)
+
+let check_reserved_macro_undefine m =
+  if String.length m.v > 2 && String.sub m.v 0 3 = "GL_"
+  then error (UndefineReservedMacro m)
+  else if Str.string_match (Str.regexp ".*__") m.v 0
+  then error (UndefineReservedMacro m)
+
 let rec map_cond_expr_stream f = function
   | Group g -> Group { g with v=map_cond_expr_stream f g.v }
   | Opaque o -> Opaque { o with v=f o.v }
@@ -219,7 +225,9 @@ let macro_expand ?(cond=false) env ptl =
 		      let appenv = List.fold_left2
 			(fun appenv binder arg ->
 			   defarg appenv binder (loop env [] arg)) (* "prescan" *)
-			{macros=Env.empty; extensions=Env.empty}
+			{macros=Env.empty;
+			 extensions=Env.empty;
+			 openmacros=[]}
 			binders args
 		      in loop env prev ((loop appenv [] (stream w.span.a))@r)
 		  | None ->
@@ -247,7 +255,7 @@ let coerce_binop fn x y = if fn x y then Int32.one else Int32.zero
 
 let rec cond_eval env = function
   | Group p -> cond_eval env p.v
-  | Opaque o -> Deferred
+  | Opaque o -> Deferred [{ o with v=snd (o.scan o.span.a) }]
   | Constant c -> Result (Int32.of_int c.v)
   | Defined d ->
       if Env.mem d.v.v env.macros
@@ -278,10 +286,10 @@ let rec cond_eval env = function
   | BitOr b -> cond_binop env Int32.logor b.v
   | And c -> let a,b = c.v in begin match cond_eval env a with
       | Result x when x=Int32.zero -> Result Int32.zero
-      | Deferred -> Deferred
+      | Deferred i -> Deferred i
       | Result _ -> begin match cond_eval env b with
 	  | Result x when x=Int32.zero -> Result Int32.zero
-	  | Deferred -> Deferred
+	  | Deferred i -> Deferred i
 	  | Result _ -> Result Int32.one
 	end
     end
@@ -289,19 +297,21 @@ let rec cond_eval env = function
       | Result x when x=Int32.zero -> begin match cond_eval env b with
 	  | Result x when x=Int32.zero -> Result Int32.zero
 	  | Result _ -> Result Int32.one
-	  | Deferred -> Deferred
+	  | Deferred i -> Deferred i
 	end
       | Result _ -> Result Int32.one
-      | Deferred -> Deferred
+      | Deferred i -> Deferred i
     end
 and cond_unop env f a =
   match cond_eval env a with
     | Result i -> Result (f i)
-    | _ -> Deferred
+    | Deferred i -> Deferred i
 and cond_binop env f (a,b) =
   match (cond_eval env a),(cond_eval env b) with
     | Result x, Result y -> Result (f x y)
-    | _, _ -> Deferred
+    | Deferred i, Result _ -> Deferred i
+    | Result _, Deferred i -> Deferred i
+    | Deferred i, Deferred j -> Deferred (j@i)
 
 let preprocess_ppexpr env ppexpr =
   let rec loop env prev = function
@@ -317,7 +327,12 @@ let preprocess_ppexpr env ppexpr =
 	  | Opaque ptlt ->
 	      let s = macro_expand ~cond:true env ptlt.v in
 	      let ts = ce_tokenize s in
-		parse_cond_expr (ce_lexerfn ts)
+		begin try parse_cond_expr (ce_lexerfn ts)
+		with Esslpp_ce.Error ->
+		  let t = {(fuse_pptok ~nl:false
+			      (List.map proj_pptok_type s)) with v=s}
+		  in error (PPCondExprParseError t); Opaque t
+		end
 	  | _ -> cond
 	in begin match cond_eval env cond with
 	  | Result x when x=Int32.zero ->
@@ -325,7 +340,8 @@ let preprocess_ppexpr env ppexpr =
 		 | Some fb -> loop env prev (fb::r)
 		 | None -> loop env prev r)
 	  | Result _ -> loop env prev (tb::r)
-	  | Deferred ->
+	  | Deferred i ->
+	      let env = { env with openmacros=i@env.openmacros } in
 	      List.append
 		(loop env prev (tb::r))
 		(match fb with
@@ -333,17 +349,17 @@ let preprocess_ppexpr env ppexpr =
 		   | None -> [])
 	  end
     | (Def f)::r -> let env = define env (fst f.v).v (snd f.v) in
-	check_reserved_macro (fst f.v);
+	check_reserved_macro_redefine (fst f.v);
 	loop env prev r
     | (Fun f)::r -> let name,args,body = f.v in
       let env = defun env name.v
 	(List.map (fun a -> a.v) args)
 	body
-      in check_reserved_macro name;
+      in check_reserved_macro_redefine name;
 	loop env prev r
     | (Undef u)::r -> let env = undef env u.v.v in
+	check_reserved_macro_undefine u.v;
 	loop env prev r
-	  (* TODO: suppress? *)
     | (Err e)::r -> error (ErrorDirective e); loop env prev r
     | (Pragma p)::r -> loop (register_pragma env p) prev r
     | (Version v)::r -> loop env prev r

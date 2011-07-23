@@ -1,0 +1,10 @@
+File 0, line 2, col 11 - 21:
+/*  comment */ #error foo
+
+File 0, line 3, col 9 - 19:
+/*  again */ #error bar
+
+File 0, line 4, col 0 - 10:
+#error baz/*third*/
+
+Fatal: unrecoverable preprocessor error (3)

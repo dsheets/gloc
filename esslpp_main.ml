@@ -5,6 +5,8 @@
  *)
 
 open Printf
+module A = Arg
+
 open Pp_lib
 open Pp
 open Esslpp_lex
@@ -12,7 +14,7 @@ open Esslpp
 
 type dialect = WebGL
 type version = int * int * int
-type accuracy = Best | Decomment | Minify
+type accuracy = Best (*| Decomment | Minify | Pretty *)
 type bondage = Error | Warn | Ignore
 type language = {dialect:dialect;
 		 version:version;
@@ -20,43 +22,75 @@ type language = {dialect:dialect;
 		 bond:bondage;
 		}
 
-type states = {preprocess:bool ref;
-	       compile:bool ref;
-	       output:string option ref;
-	       lang:language ref;
-	      }
-	       
+type state = {preprocess:bool ref;
+	      compile:bool ref;
+	      verbose:bool ref;
+	      linectrl:bool ref;
+	      output:string option ref;
+	      inputs:string list ref;
+	      inlang:language ref;
+	      outlang:language ref;
+	     }
+
+let gloc_version = (0,8,0)
+let gloc_distributor = "Ashima Arts"
+
 let default_lang = { dialect=WebGL;
 		     version=(1,0,0);
 		     accuracy=Best;
 		     bond=Warn }
 		     
-let exec_states = { preprocess=ref false;
-		    compile=ref false;
-		    output=ref None;
-		    inlang=ref default_lang;
-		    outlang=ref default_lang }
+let exec_state = { preprocess=ref false;
+		   compile=ref false;
+		   verbose=ref false;
+		   linectrl=ref true;
+		   output=ref None;
+		   inputs=ref [];
+		   inlang=ref default_lang;
+		   outlang=ref default_lang }
+
+let with_bond bond = fun lang -> { lang with bond }
+let with_dialect = function
+  | "webgl" -> (fun lang -> { lang with dialect=WebGL })
+  | _ -> (fun lang -> lang)
+let set_inlang map = fun () -> exec_state.inlang := (map !(exec_state.inlang))
+let set_outlang map = fun () -> exec_state.outlang := (map !(exec_state.outlang))
 
 let arguments =
-  ["-E", Set exec_states.preprocess, "preprocess output source";
-   "-c", Set exec_states.compile, "produce glo object";
-   "-o", String (fun o -> exec_states.output := Some o), "output file";
-   "-w", , "inhibit all warning messages";
-   "-x",,;
-   "-out",,;
+  [(*"-c", A.Set exec_state.compile, "produce glo object";*)
+   "-o", A.String (fun o -> exec_state.output := Some o), "output file";
+   (*"-w", A.Unit (set_inlang (with_bond Ignore)), "inhibit all warning messages";*)
+   "-E", A.Set exec_state.preprocess, "preprocess output source";
+   "-L", A.Clear exec_state.linectrl,
+   "disregard incoming line control for errors";
+   "-x", A.Symbol (["webgl"],(fun s -> set_inlang (with_dialect s) ())),
+   " input language";
+   "-t", A.Symbol (["webgl"],(fun s -> set_outlang (with_dialect s) ())),
+   " target language";
+   (*"-v", A.Set exec_state.verbose, "verbose compilation or version information";*)
   ]
-			 
+let anon_fun arg = exec_state.inputs := arg::!(exec_state.inputs)
+
+let string_of_version (maj,min,rev) = sprintf "%d.%d.%d" maj min rev
+let usage_msg = sprintf "gloc version %s (%s)"
+  (string_of_version gloc_version)
+  gloc_distributor
+
+let () = A.parse arguments anon_fun usage_msg
 
 let string_of_tokpos
-    ({span={a={file={src=af}; line={src=al}; col=ac};
-	    z={file={src=zf}; line={src=zl}; col=zc}}}) =
-  if af=zf then
-    if al=zl
-    then if ac=zc
-    then sprintf "File %d, line %d, col %d" af al ac
-    else sprintf "File %d, line %d, col %d - %d" af al ac zc
-    else sprintf "File %d, l%d c%d - l%d c%d" af al ac zl zc
-  else sprintf "F%d l%d c%d - F%d l%d c%d" af al ac zf zl zc
+    ({span={a={file=af; line=al; col=ac};
+	    z={file=zf; line=zl; col=zc}}}) =
+  let af,al,zf,zl = if !(exec_state.linectrl)
+  then (af.src,al.src,zf.src,zl.src)
+  else (af.input,al.input,zf.input,zl.input)
+  in if af=zf then
+      if al=zl
+      then if ac=zc
+      then sprintf "File %d, line %d, col %d" af al ac
+      else sprintf "File %d, line %d, col %d - %d" af al ac zc
+      else sprintf "File %d, l%d c%d - l%d c%d" af al ac zl zc
+    else sprintf "F%d l%d c%d - F%d l%d c%d" af al ac zf zl zc
 
 let string_of_error = function
   | UnknownBehavior t ->
@@ -102,8 +136,11 @@ let string_of_error = function
   | ReservedKeyword t ->
       sprintf "%s:\n\"%s\" is a reserved keyword and may not be used\n"
 	(string_of_tokpos t) t.v
-  | ReservedMacro t ->
-      sprintf "%s:\n\"%s\" is a reserved macro and may not be used\n"
+  | RedefineReservedMacro t ->
+      sprintf "%s:\n\"%s\" is a reserved macro and may not be redefined\n"
+	(string_of_tokpos t) t.v
+  | UndefineReservedMacro t ->
+      sprintf "%s:\n\"%s\" is a reserved macro and may not be undefined\n"
 	(string_of_tokpos t) t.v
   | ErrorDirective t ->
       sprintf "%s:\n%s\n" (string_of_tokpos t) (snd (t.scan t.span.a))
@@ -111,11 +148,20 @@ let string_of_error = function
       sprintf "%s:\n\"%s\" is not supported in preprocessor expressions\n"
 	(string_of_tokpos t) (snd (t.scan t.span.a))
   | FloatUnsupported t ->
-      sprintf "%s:\nfloating point is not support in preprocessor expressions\n"
+      sprintf "%s:\nfloating point is not supported in preprocessor expressions\n"
 	(string_of_tokpos t)
+  | PPCondExprParseError t ->
+      sprintf "%s:\nerror parsing conditional expression \"%s\"\n"
+	(string_of_tokpos t) (snd (t.scan t.span.a))
   | exn -> sprintf "Unknown error:\n%s\n" (Printexc.to_string exn)
+
+let string_pperror_of_string_tok st =
+  sprintf "%s:\nundecidable preprocessor conditional branch: %s\n"
+    (string_of_tokpos st)
+    st.v
 ;;
 
+let start = {file={src=0;input=0};line={src=1;input=1};col=0} in
 let lexbuf = Ulexing.from_utf8_channel stdin in
 let parse = MenhirLib.Convert.traditional2revised
   (fun t -> t)
@@ -124,28 +170,47 @@ let parse = MenhirLib.Convert.traditional2revised
   translation_unit in
 let ppexpr = try parse (fun () -> lex lexbuf) with
   | err -> eprintf "Uncaught exception:\n%s\n" (Printexc.to_string err);
-    eprintf "Fatal: unrecoverable internal parser error (1)";
+    eprintf "Fatal: unrecoverable internal parser error (1)\n";
     exit 1
 in
 let () = if (List.length !errors) > 0
 then (List.iter (fun e -> eprintf "%s\n" (string_of_error e))
 	(List.rev !errors);
-      eprintf "Fatal: unrecoverable parse error (2)"
+      eprintf "Fatal: unrecoverable parse error (2)\n";
       exit 2)
 in
 let ppexpr = normalize_ppexpr ppexpr in
 let macros = Env.add "__VERSION__" (omacro "__VERSION__" (synth_int (Dec,100)))
   (Env.singleton "GL_ES" (omacro "GL_ES" (synth_int (Dec,1)))) in
-let ppl = preprocess_ppexpr {macros; extensions=Env.empty} ppexpr in
+let ppl = preprocess_ppexpr {macros;
+			     extensions=Env.empty;
+			     openmacros=[]} ppexpr in
   if (List.length !errors) > 0 then
     (List.iter (fun e -> eprintf "%s\n" (string_of_error e))
        (List.rev !errors);
-     eprintf "Fatal: unrecoverable preprocessor error (3)";
+     eprintf "Fatal: unrecoverable preprocessor error (3)\n";
      exit 3)
   else
-    (*printf "%s\n" (string_of_ppexpr_tree ppexpr);*)
-    List.iter (fun (env,ppexpr) ->
-		 printf "%s\n"
-		   (snd ((proj_pptok_expr ppexpr).scan
-			   {file={src=0;input=0};line={src=1;input=1};col=0})))
-      ppl
+    let ppexpr = if !(exec_state.preprocess)
+    then if List.length ppl > 1
+    then let o = List.fold_left
+      (fun dl pp -> List.fold_left
+	 (fun dl om -> if List.mem om dl then dl else om::dl)
+	 dl (fst pp).openmacros)
+      [] ppl
+    in List.iter (fun st -> eprintf "%s\n" (string_pperror_of_string_tok st))
+	 o;
+      eprintf "Fatal: unrecoverable preprocessor divergence (4)\n";
+      exit 4
+    else match ppl with (_,e)::_ -> e
+      | [] -> Chunk { span={a=start;z=start};
+		      scan=(fun loc -> (loc,""));
+		      comments=([],ref []);
+		      v=[] }
+    else ppexpr
+    in let out = match !(exec_state.output) with
+      | None -> stdout
+      | Some fn -> open_out fn
+    in fprintf out "%s\n" (snd ((proj_pptok_expr ppexpr).scan start))
+
+(*printf "%s\n" (string_of_ppexpr_tree ppexpr);*)

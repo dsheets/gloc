@@ -169,14 +169,21 @@ directive
 | first=LINE; l=INTCONSTANT {
     check_line_base l;
     line := {!line with src=snd l.v};
-    Line {(fuse_pptok [first; proj l]) with v=(None, {l with v=snd l.v})}
+    Line {(fuse_pptok
+	     ~zloc:{line={src=(!line).src-1; input=(!line).input-1};
+		    file=(!file); col=l.span.z.col}
+	     [first; proj l])
+	  with v=(None, {l with v=snd l.v})}
   }
 | first=LINE; l=INTCONSTANT; src=INTCONSTANT {
     check_line_base l;
     check_line_base src;
     line := {!line with src=snd l.v};
     file := {!file with src=snd src.v};
-    Line {(fuse_pptok [first; proj l; proj src])
+    Line {(fuse_pptok
+	     ~zloc:{line={src=(!line).src-1; input=(!line).input-1};
+		    file=(!file); col=src.span.z.col}
+	     [first; proj l; proj src])
 	  with v=(Some {src with v=snd src.v}, {l with v=snd l.v})}
   }
 | first=LINE; not_int; source* {

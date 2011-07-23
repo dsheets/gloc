@@ -1,0 +1,19 @@
+int Q;
+int J;
+void foo() {}
+
+
+void main() {
+     Q;
+#line 5
+            7
+
+
+        ;
+
+          J
+      ;
+
+          foo
+      ();
+}

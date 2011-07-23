@@ -1,0 +1,4 @@
+File 0, line 1, col 9 - 12:
+version 101 is unsupported
+
+Fatal: unrecoverable preprocessor error (3)

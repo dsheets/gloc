@@ -1,0 +1,4 @@
+File 0, line 1, col 9 - 11:
+invalid octal constant "09"
+
+Fatal: unrecoverable parse error (2)

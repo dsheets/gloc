@@ -1,0 +1,40 @@
+/*A comment header */
+
+#if 4 == 4
+/*A pre-directive comment */  #pragma 1
+
+/*  A pre-command comment */ #pragma 2
+
+#pragma/* a pre-argument comment */  3
+
+#pragma 4/* a trailing comment */
+
+#pragma 5/*  a c++-style comment*/
+
+#pragma 6/* a multiline trailing comment
+ that is followed by additional arguments */ and more error args
+
+#define MYMACRO(a b)/* 
+*/ this should be part of/* 
+*/ the macro. This is still part of/* 
+*/ the macro.
+
+#endif
+
+/* 
+*/ #pragma/*  
+*/this/*
+*/is/*
+*/all/*
+*/one/*
+*/directive
+
+/* and
+*/ #pragma/*  
+here's*/another/*see what i did there with a naughty apostrophe?
+    
+*/single directive/*
+
+  a comment trailer 
+   more trailer
+  even more trailer */

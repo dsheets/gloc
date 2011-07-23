@@ -1,0 +1,4 @@
+File 0, line 2, col 2:
+unterminated comment
+
+Fatal: unrecoverable parse error (2)

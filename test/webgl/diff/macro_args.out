@@ -1,0 +1,7 @@
+#define B B
+#define A 2
+#define Q(A B) ((A)+(B))
+
+void main() {
+     Q(B,A)
+}

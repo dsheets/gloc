@@ -1,0 +1,4 @@
+File 0, line 1, col 4 - 5:
+undecidable preprocessor conditional branch: E
+
+Fatal: unrecoverable preprocessor divergence (4)

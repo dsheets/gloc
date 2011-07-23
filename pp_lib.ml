@@ -33,7 +33,10 @@ and macro = { name: string option;
 	      args: string list option;
 	      stream: loc -> stream }
 
-type env = { macros: macro Env.t; extensions: behavior Env.t }
+type env = { macros: macro Env.t;
+	     extensions: behavior Env.t;
+	     openmacros: string pptok list;
+	   }
 
 exception ParserError of string
 exception UnterminatedConditional of unit pptok
@@ -44,18 +47,19 @@ exception InvalidVersionBase of base pptok
 exception InvalidVersionArg of unit pptok
 exception InvalidLineBase of base pptok
 exception InvalidLineArg of unit pptok
-
 exception MacroArgUnclosed of unit pptok
 exception MacroArgInnerParenUnclosed of unit pptok
 exception MacroArgTooFew of unit pptok * int * int
 exception MacroArgTooMany of unit pptok * int * int
 exception ReservedKeyword of string pptok
-exception ReservedMacro of string pptok
+exception RedefineReservedMacro of string pptok
+exception UndefineReservedMacro of string pptok
 exception ErrorDirective of stream pptok
 exception UnsupportedPPOp of Punc.tok pptok
 exception FloatUnsupported of float pptok
+exception PPCondExprParseError of stream pptok
 
-type cond_expr_result = Deferred | Result of Int32.t
+type cond_expr_result = Deferred of string pptok list | Result of Int32.t
 
 type cond_expr =
   | Group of cond_expr pptok
@@ -191,14 +195,19 @@ let scan_of_comments cs start =
 
 let scan_of_string ({a;z}) (prec,postc) s = fun start ->
   let start,pre = match prec with
-    | [] ->
-      if !emit_newline
-	&& (a.file.src <> start.file.src || (a.line.src - start.line.src) < 0)
+    | [] -> if !emit_newline
+      then if a.file.src <> start.file.src
       then {a with col=0},
 	sprintf "\n#line %d %d\n" a.line.src a.file.src
-      else if a.line.src - start.line.src > 0 && !emit_newline
-      then {start with line=a.line; col=0},
-	String.make (a.line.src - start.line.src) '\n'
+      else if (a.line.src - start.line.src) < 0
+      then {a with col=0}, sprintf "\n#line %d\n" a.line.src
+      else if a.line.src - start.line.src > 0
+      then let ld = sprintf "\n#line %d\n" a.line.src in
+	if String.length ld > (a.line.src - start.line.src)
+	then ({start with line=a.line; col=0},
+	      String.make (a.line.src - start.line.src) '\n')
+	else ({start with line=a.line; col=0}, ld)
+      else start,""
       else start,""
     | cs -> scan_of_comments cs start
   in
@@ -212,7 +221,7 @@ let scan_of_string ({a;z}) (prec,postc) s = fun start ->
     | cs -> scan_of_comments cs fin
   in (fin, sprintf "%s%s%s%s" pre cfix s post)
 
-let fuse_pptok ?(nl=true) = function
+let fuse_pptok ?zloc ?(nl=true) = function
   | [] -> raise (ParserError "fusing empty pptok list")
   | (h::_) as tokl ->
       {span=span_of_list tokl;
@@ -224,7 +233,8 @@ let fuse_pptok ?(nl=true) = function
 		    let nloc,nstr = tok.scan loc in
 		      (nloc,str^nstr))
 		 (start,"") tokl
-	       in emit_newline := oenl; (loc,rs)
+	       in emit_newline := oenl;
+		 match zloc with None -> (loc,rs) | Some loc -> (loc,rs)
 	    );
        comments=(fst h.comments,snd (List.hd (List.rev tokl)).comments);
        v=()}

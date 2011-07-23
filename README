@@ -31,10 +31,15 @@ gloc shader libraries include:
 Special thanks to the WebGL working group for making this possible by
 allowing UTF8 in shader comments. This is the PP dance.
 
-Suggestions? Bugs? Features? Comments? Please use the GitHub
-project management features in the top bar to help out the project!
+Suggestions? Bugs? Feature wishes? Comments? Language translations?
+Please use the GitHub project management features in the top bar to help
+out the project!
 
 Do you use gloc in production? Have you published open source shader
 libraries that use gloc? Let us know and we'll add you to this file.
+
+  Get the glitter, glint of gold
+  Gather 'round and let the glo grow!
+   ~ Anonymous
 
 

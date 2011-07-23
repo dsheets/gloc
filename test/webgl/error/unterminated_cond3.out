@@ -1,0 +1,4 @@
+File 0, line 2, col 0 - 6:
+unterminated conditional "#ifdef"
+
+Fatal: unrecoverable parse error (2)

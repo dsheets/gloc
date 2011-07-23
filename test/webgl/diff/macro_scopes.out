@@ -1,0 +1,17 @@
+#define Q(A) foo((A)*2)
+void bar() {
+     Q(6); Q;
+}
+#undef Q
+
+#define Q foo
+void main() {
+     Q(7); Q;
+}
+#undef Q
+
+#define Q foo
+#define Q(A) foo((A)*2)
+void foo() {
+     Q(10); Q (4); Q;
+}

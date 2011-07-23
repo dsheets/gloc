@@ -1,0 +1,62 @@
+
+
+
+
+
+void recurse() {}
+
+
+
+void
+#line 1
+          defined
+
+
+
+
+
+
+
+
+      (int);
+void main() {
+#line 1
+          defined
+#line 12
+      (
+#line 9
+          7
+
+
+        );
+}
+
+
+void defined(int q) {
+                4 +
+#line 9
+          7
+
+
+
+
+
+
+
+
+    ;
+}
+
+void foo() {
+#line 17
+                4 +
+
+
+
+
+            (
+#line 9
+          7
+#line 22
+              );
+}

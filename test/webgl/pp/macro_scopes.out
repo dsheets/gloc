@@ -1,0 +1,46 @@
+
+void bar() {
+#line 1
+             foo((
+
+       6
+#line 1
+                   )*2)
+
+         ; Q;
+}
+
+
+
+void main() {
+#line 7
+          foo
+
+      (7);
+#line 7
+          foo
+
+            ;
+}
+
+
+
+
+void foo() {
+#line 14
+             foo((
+
+       10
+#line 14
+                   )*2)
+
+          ;
+#line 14
+             foo((
+
+               4
+#line 14
+                   )*2)
+
+                 ; Q;
+}

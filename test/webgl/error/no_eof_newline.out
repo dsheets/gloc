@@ -1,0 +1,5 @@
+#if 6 == 6
+#pragma foo always
+#endif
+void main() { }
+#define HA

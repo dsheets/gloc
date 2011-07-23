@@ -1,0 +1,19 @@
+File 0, line 16, col 8 - 16:
+"__FILE__" is a reserved macro and may not be redefined
+
+File 0, line 20, col 8 - 16:
+"__LINE__" is a reserved macro and may not be redefined
+
+File 0, line 27, col 7 - 15:
+"__FILE__" is a reserved macro and may not be undefined
+
+File 0, line 28, col 7 - 15:
+"__LINE__" is a reserved macro and may not be undefined
+
+File 0, line 31, col 8 - 16:
+"__FILE__" is a reserved macro and may not be redefined
+
+File 0, line 35, col 8 - 16:
+"__LINE__" is a reserved macro and may not be redefined
+
+Fatal: unrecoverable preprocessor error (3)

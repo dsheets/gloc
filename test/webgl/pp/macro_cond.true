@@ -1,0 +1,41 @@
+
+#line 102
+void foo() {}
+
+
+
+
+
+void remote_defined() {}
+#line 1006
+int blah() { return
+#line 1004
+          7
+
+                     ; }
+
+
+
+void main() { glPosition =
+#line 1004
+          7
+
+
+
+
+
+                            ; }
+
+
+int baz() { return
+#line 1004
+          7
+
+
+
+
+
+
+
+
+                          ; }

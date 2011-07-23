@@ -1,0 +1,15 @@
+File 0, line 6, col 27 - 36:
+/*  pre-directive comment  */ #error OK
+
+File 0, line 7, col 25 - 34:
+/*  pre-command comment  */ #error OK
+
+File 0, l8 c8 - l10 c11:
+/*    */ #error/*  
+*/OK part of/*
+*/directive
+
+File 0, line 12, col 0 - 9:
+#error OK/*  eol comment*/
+
+Fatal: unrecoverable preprocessor error (3)

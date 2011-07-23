@@ -1,0 +1,22 @@
+#line 1000
+#define L __LINE__
+#define F __FILE__
+
+#line 2000
+void baz() {
+     int line = L;
+     int file = F;
+     line = L;
+     #if 0
+     #line 3000
+     #endif
+     line = L;
+     file = F;
+     #if 1
+     #line 4000
+     #endif
+     line = L;
+     #line 4000
+     line = L;
+     file = F;
+}

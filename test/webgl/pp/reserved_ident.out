@@ -1,0 +1,10 @@
+File 0, line 1, col 8 - 15:
+"__FOO__" is a reserved macro and may not be redefined
+
+File 0, line 2, col 8 - 14:
+"GL_BAR" is a reserved macro and may not be redefined
+
+File 0, line 4, col 5 - 8:
+"asm" is a reserved keyword and may not be used
+
+Fatal: unrecoverable preprocessor error (3)

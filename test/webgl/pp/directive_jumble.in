@@ -1,0 +1,4 @@
+#version 100
+/*comment*/#error foo
+#/*again*/error bar
+#error baz/*third*/

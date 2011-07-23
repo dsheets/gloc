@@ -1,0 +1,13 @@
+File 0, line 3, col 1 - 2:
+unclosed macro argument list
+
+File 0, line 3, col 0 - 1:
+too few macro arguments: expected 2, got 1
+
+File 0, line 11, col 1 - 2:
+unclosed macro argument list
+
+File 0, line 11, col 0 - 1:
+too few macro arguments: expected 2, got 1
+
+Fatal: unrecoverable preprocessor error (3)

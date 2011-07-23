@@ -1,0 +1,19 @@
+/* a header comment
+  more
+   header
+   comments */
+
+/*pre-directive comment */ #pragma OK
+/* pre-command comment */#pragma OK
+/*     */ #pragma/*  
+*/OK part of/*
+*/directive
+
+#pragma OK/*  eol comment*/
+
+/*comment       more comment       more comment*/ /*
+
+   comment trailer
+  more trailer
+   comments
+     final trailer*/

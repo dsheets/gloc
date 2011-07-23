@@ -1,0 +1,153 @@
+void Q(int a,int b){}
+#line 1001
+void foo();
+
+void main() {
+#line 3
+               ((
+#line 1004
+  1
+#line 3
+                  )+(
+#line 1004
+    2
+#line 3
+                      ))
+#line 1004
+      ;
+#line 3
+               ((
+#line 1005
+  3
+#line 3
+                  )+(
+#line 1005
+    4
+#line 3
+                      ))
+#line 1005
+      ;
+#line 3
+               ((
+#line 1006
+  3
+#line 3
+                  )+(
+#line 1006
+    4
+#line 3
+                      ))
+#line 1006
+      ;
+#line 3
+               ((
+
+
+            5
+#line 3
+                  )+(
+#line 1007
+  6
+#line 3
+                      ))
+#line 1007
+    ;
+#line 3
+               ((
+
+
+
+            6
+#line 3
+                  )+(
+#line 1008
+  7
+#line 3
+                      ))
+#line 1008
+    ;
+#line 3
+               ((
+
+
+
+
+            7
+#line 3
+                  )+(
+
+
+
+
+              8
+#line 3
+                      ))
+#line 1009
+  ;
+#line 3
+               ((
+
+
+
+
+
+            9
+#line 3
+                  )+(
+
+
+
+
+
+              10
+#line 3
+                      ))
+#line 1010
+ ;
+#line 4
+          Q
+
+
+
+
+
+           (
+#line 1011
+     -1
+#line 12
+          ,
+#line 1011
+          -2
+#line 11
+           )
+#line 1011
+               ;
+/* Q(-3 C -4); // fails because C doesn't expand fast enough
+   Q(-3 , -4 RP; // fails because RP doesn't expand fast enough*/ }
+#line 2001
+void foo() {
+#line 3
+               ((
+#line 2002
+          6
+#line 3
+                  )+(
+#line 2002
+            7
+#line 3
+                      ))
+#line 2002
+                 ;
+#line 3
+               ((
+#line 1017
+           6
+#line 3
+                  )+(
+#line 1017
+             7
+#line 3
+                      ))
+#line 2003
+         ;
+}
