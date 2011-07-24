@@ -5,16 +5,20 @@ OUTS := $(INS:.in=.out)
 
 %.out : %.in %.true
 	@$(PP) < $*.in &> $@ || true
-	@echo $*
-	@diff $@ $*.true || true
+	@if diff -u $*.true $@ > $*.diff; then \
+	rm $*.diff;\
+	else cat $*.diff;\
+	fi
 
 .PHONY : all test clean
 all :
 	@$(MAKE) clean
 	@$(MAKE) test
 test : $(OUTS)
+	@printf "Test failures: "
+	@ls *.diff 2> /dev/null | wc -l
 clean :
-	@rm *.out || true
+	@rm *.out *.diff 2> /dev/null || true
 %.git : %.in %.out %.true
 	git add $^
 %.new :
