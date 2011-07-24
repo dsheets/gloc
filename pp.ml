@@ -336,18 +336,18 @@ let preprocess_ppexpr env ppexpr =
 	  | _ -> cond
 	in begin match cond_eval env cond with
 	  | Result x when x=Int32.zero ->
-	      (match fb with
-		 | Some fb -> loop env prev (fb::r)
-		 | None -> loop env prev r)
+	    (match fb with
+	      | Some fb -> loop env prev (fb::r)
+	      | None -> loop env prev r)
 	  | Result _ -> loop env prev (tb::r)
 	  | Deferred i ->
-	      let env = { env with openmacros=i@env.openmacros } in
-	      List.append
-		(loop env prev (tb::r))
-		(match fb with
-		   | Some fb -> loop env prev (fb::r)
-		   | None -> [])
-	  end
+	    let env = { env with openmacros=i@env.openmacros } in
+	    List.append
+	      (loop env prev (tb::r))
+	      (match fb with
+		| Some fb -> loop env prev (fb::r)
+		| None -> loop env prev r)
+	end
     | (Def f)::r -> let env = define env (fst f.v).v (snd f.v) in
 	check_reserved_macro_redefine (fst f.v);
 	loop env prev r

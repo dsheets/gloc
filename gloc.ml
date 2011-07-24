@@ -56,6 +56,7 @@ let with_dialect = function
 let set_inlang map = fun () -> exec_state.inlang := (map !(exec_state.inlang))
 let set_outlang map = fun () -> exec_state.outlang := (map !(exec_state.outlang))
 
+(* TODO: add per warning check args *)
 let arguments =
   [(*"-c", A.Set exec_state.compile, "produce glo object";*)
    "-o", A.String (fun o -> exec_state.output := Some o), "output file";
@@ -156,7 +157,7 @@ let string_of_error = function
   | exn -> sprintf "Unknown error:\n%s\n" (Printexc.to_string exn)
 
 let string_pperror_of_string_tok st =
-  sprintf "%s:\nundecidable preprocessor conditional branch: %s\n"
+  sprintf "%s:\nambiguous preprocessor conditional branch: %s\n"
     (string_of_tokpos st)
     st.v
 ;;
@@ -195,7 +196,8 @@ let ppl = preprocess_ppexpr {macros;
     then if List.length ppl > 1
     then let o = List.fold_left
       (fun dl pp -> List.fold_left
-	 (fun dl om -> if List.mem om dl then dl else om::dl)
+	 (fun dl om ->
+	   if List.exists (fun m -> om.v=m.v) dl then dl else om::dl)
 	 dl (fst pp).openmacros)
       [] ppl
     in List.iter (fun st -> eprintf "%s\n" (string_pperror_of_string_tok st))

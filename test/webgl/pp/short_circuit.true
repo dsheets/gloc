@@ -1,0 +1,7 @@
+File 0, line 17, col 9 - 10:
+ambiguous preprocessor conditional branch: F
+
+File 0, line 21, col 9 - 10:
+ambiguous preprocessor conditional branch: G
+
+Fatal: unrecoverable preprocessor divergence (4)

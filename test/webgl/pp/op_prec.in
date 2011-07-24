@@ -1,0 +1,35 @@
+#if -5 * +3 + +3 == -12
+void pos_neg_mul_add() {}
+#endif
+
+#if 3+12/2%5==4
+void add_div_mod() {}
+#endif
+
+#if 3+5<<1 == 2*2*2*2*2>>1
+void add_shift_mul_shift() {}
+#endif
+
+#if 4 + 3 < 8 == 5 > 2*2
+void add_rel_eq_rel_mul() {}
+#endif
+
+#if 4 != 3 == 1
+void neq_eq() {}
+#endif
+
+#if (2 | 4 != 3)==3
+void bitor_neq_paren_eq() {}
+#endif
+
+#if (15 & 11 ^ 31 & 15) == 4
+void bitand_bitxor_bitand() {}
+#endif
+
+#if (4 | 2 ^ 7 & 3) == 5
+void bitor_bitxor_bitand() {}
+#endif
+
+#if 0 || 4 && 0 == 0
+void or_and_eq() {}
+#endif

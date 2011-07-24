@@ -1,0 +1,23 @@
+#if 3 == 3 || W
+void w() {}
+#endif
+
+#if 4 || J
+void j() {}
+#endif
+
+#if 0 && Q
+void q() {}
+#endif
+
+#if 0 && Y
+void y() {}
+#endif
+
+#if 1 && F
+void f() {}
+#endif
+
+#if 0 || G
+void g() {}
+#endif
