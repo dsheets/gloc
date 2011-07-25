@@ -39,27 +39,33 @@ type 'a slexpr =
   | MulSet of 'a slexpr * 'a slexpr (* closed *)
   | DivSet of 'a slexpr * 'a slexpr (* closed *)
   | Seq of slexpr_type list * 'a slexpr
-and 'a slarray = { len: int; vals: 'a slexpr array }
 
-type slexpr_prim =
-    Int of int slexpr
-  | Float of float slexpr
-  | Bool of bool slexpr
-type 'a slexpr_vec2 = 'a * 'a
-type 'a slexpr_vec3 = 'a * 'a * 'a
-type 'a slexpr_vec4 = 'a * 'a * 'a * 'a
-type slexpr_type =
-    Void
-  | Prim of slexpr_prim
-  | Vec2 of slexpr_prim slexpr_vec2
-  | Vec3 of slexpr_prim slexpr_vec3
-  | Vec4 of slexpr_prim slexpr_vec4
-  | Mat2 of slexpr_prim slexpr_vec2 slexpr_vec2
-  | Mat3 of slexpr_prim slexpr_vec3 slexpr_vec3
-  | Mat4 of slexpr_prim slexpr_vec4 slexpr_vec4
-  | Arrow of slexpr_type list * slexpr_type
-  | Struct of slexpr_type SymMap.t
-  | Array of slexpr_type slarray
+type slfloat = [ `float ]
+type slint = [ `int ]
+type slbool = [ `bool ]
+type slprim = [ slfloat | slint | slbool ]
+type sldim = [ slprim
+	     | `vec2 of slprim
+	     | `vec3 of slprim
+	     | `vec4 of slprim
+	     | `mat2
+	     | `mat3
+	     | `mat4
+	     ]
+type slsampler = [ `sampler2d | `sampler3d ]
+type slstruct = [ `record of string * (string * sltype) list ]
+and sltype = [ sldim | `array of int * sltype | slstruct ]
+type sltype = [ `array of int * sltype
+type slfun = [ `lam of sltype list * sltype ]
+type sluniv = [ sltype | slfun ]
+
+type ('a,'b) slexpr =
+    Var of string * 'b
+  | Const
+
+type 'a slvec2 = 'a * 'a
+type 'a slvec3 = 'a * 'a * 'a
+type 'a slvec4 = 'a * 'a * 'a * 'a
 
 type slstmt =
     Assign of 
