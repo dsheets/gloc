@@ -49,6 +49,8 @@ let exec_state = { preprocess=ref false;
 		   inlang=ref default_lang;
 		   outlang=ref default_lang }
 
+let string_of_dialect = function
+  | WebGL -> "webgl"
 let with_bond bond = fun lang -> { lang with bond }
 let with_dialect = function
   | "webgl" -> (fun lang -> { lang with dialect=WebGL })
@@ -57,8 +59,10 @@ let set_inlang map = fun () -> exec_state.inlang := (map !(exec_state.inlang))
 let set_outlang map = fun () -> exec_state.outlang := (map !(exec_state.outlang))
 
 (* TODO: add per warning check args *)
+(* TODO: add partial preprocess (only ambiguous conds with dep macros) *)
+(* TODO: add partial preprocess (maximal preprocess without semantic change) *)
 let arguments =
-  [(*"-c", A.Set exec_state.compile, "produce glo object";*)
+  ["-c", A.Set exec_state.compile, "produce glo object";
    "-o", A.String (fun o -> exec_state.output := Some o), "output file";
    (*"-w", A.Unit (set_inlang (with_bond Ignore)), "inhibit all warning messages";*)
    "-E", A.Set exec_state.preprocess, "preprocess output source";
@@ -186,33 +190,41 @@ let macros = Env.add "__VERSION__" (omacro "__VERSION__" (synth_int (Dec,100)))
 let ppl = preprocess_ppexpr {macros;
 			     extensions=Env.empty;
 			     openmacros=[]} ppexpr in
-  if (List.length !errors) > 0 then
+let () = if (List.length !errors) > 0 then
     (List.iter (fun e -> eprintf "%s\n" (string_of_error e))
        (List.rev !errors);
      eprintf "Fatal: unrecoverable preprocessor error (3)\n";
      exit 3)
-  else
-    let ppexpr = if !(exec_state.preprocess)
-    then if List.length ppl > 1
-    then let o = List.fold_left
-      (fun dl pp -> List.fold_left
-	 (fun dl om ->
-	   if List.exists (fun m -> om.v=m.v) dl then dl else om::dl)
-	 dl (fst pp).openmacros)
-      [] ppl
-    in List.iter (fun st -> eprintf "%s\n" (string_pperror_of_string_tok st))
-	 o;
-      eprintf "Fatal: unrecoverable preprocessor divergence (4)\n";
-      exit 4
-    else match ppl with (_,e)::_ -> e
-      | [] -> Chunk { span={a=start;z=start};
-		      scan=(fun loc -> (loc,""));
-		      comments=([],ref []);
-		      v=[] }
-    else ppexpr
-    in let out = match !(exec_state.output) with
-      | None -> stdout
-      | Some fn -> open_out fn
-    in fprintf out "%s\n" (snd ((proj_pptok_expr ppexpr).scan start))
-
+in
+let slexpr = if !(exec_state.preprocess)
+  then if List.length ppl > 1
+  then let o = List.fold_left
+	 (fun dl pp -> List.fold_left
+	   (fun dl om ->
+	     if List.exists (fun m -> om.v=m.v) dl then dl else om::dl)
+	   dl (fst pp).openmacros)
+	 [] ppl
+       in List.iter (fun st -> eprintf "%s\n" (string_pperror_of_string_tok st))
+       o;
+       eprintf "Fatal: unrecoverable preprocessor divergence (4)\n";
+       exit 4
+  else match ppl with (_,e)::_ -> e
+    | [] -> Chunk { span={a=start;z=start};
+		    scan=(fun loc -> (loc,""));
+		    comments=([],ref []);
+		    v=[] }
+  else ppexpr
+in
+let product = if !(exec_state.compile)
+  then
+    let outlang = !(exec_state.outlang) in
+    let target = (string_of_dialect outlang.dialect,outlang.version) in
+    let glo = Glo.compile target ppexpr (List.map snd ppl) in
+    Json_io.string_of_json ~compact:true (Glo.json_of_glo glo)
+  else string_of_ppexpr start slexpr
+in let out = match !(exec_state.output) with
+  | None -> stdout
+  | Some fn -> open_out fn
+in fprintf out "%s\n" product
+   
 (*printf "%s\n" (string_of_ppexpr_tree ppexpr);*)

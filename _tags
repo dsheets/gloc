@@ -1,4 +1,4 @@
 <esslpp_lex.*>: syntax(camlp4o), package(ulex)
-<gloc.*>: package(menhirLib)
+<gloc.*>: package(menhirLib), package(ulex), package(json-wheel), package(str)
+<glo.*>: syntax(camlp4o), package(json-tc.syntax)
 <ce_lib.*>: package(menhirLib)
-<*.*>: package(ulex), package(str)

@@ -370,6 +370,8 @@ let preprocess_ppexpr env ppexpr =
       else [env, fuse_pptok_expr (List.rev prev)]
   in loop env [] [ppexpr]
 
+let string_of_ppexpr start e = snd ((proj_pptok_expr e).scan start)
+
 let string_of_ppexpr_tree e =
   let rec loop indent p = function
     | (Comments _)::r -> loop indent (p^indent^"comments\n") r
