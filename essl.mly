@@ -1,8 +1,4 @@
 %{
-type 'a slvar = { const: bool;
-		  invariant: bool;
-		  name: string
-		}
 
 type 'a slexpr =
     Variable of 'a slvar
@@ -40,32 +36,43 @@ type 'a slexpr =
   | DivSet of 'a slexpr * 'a slexpr (* closed *)
   | Seq of slexpr_type list * 'a slexpr
 
-type slfloat = [ `float ]
-type slint = [ `int ]
+type slprec = High | Medium | Low
+type slfloat = [ `float of slprec ]
+type slint = [ `int of slprec ]
 type slbool = [ `bool ]
 type slprim = [ slfloat | slint | slbool ]
 type sldim = [ slprim
 	     | `vec2 of slprim
 	     | `vec3 of slprim
 	     | `vec4 of slprim
-	     | `mat2
-	     | `mat3
-	     | `mat4
+	     | `mat2 of slprec
+	     | `mat3 of slprec
+	     | `mat4 of slprec
 	     ]
-type slsampler = [ `sampler2d | `sampler3d ]
+type slsampler = [ `sampler2d | `samplerCube ]
 type slstruct = [ `record of string * (string * sltype) list ]
-and sltype = [ sldim | `array of int * sltype | slstruct ]
-type sltype = [ `array of int * sltype
-type slfun = [ `lam of sltype list * sltype ]
+and slarray = [ `array of int * slnonarray ]
+and slnonarray = [ sldim | slsampler | slstruct ]
+and sltype = [ slarray | slnonarray ]
+type 'a slparam = In of 'a | Out of 'a | Inout of 'a
+type slfun = [ `lam of sltype slparam list * sltype option ]
 type sluniv = [ sltype | slfun ]
-
-type ('a,'b) slexpr =
-    Var of string * 'b
-  | Const
 
 type 'a slvec2 = 'a * 'a
 type 'a slvec3 = 'a * 'a * 'a
 type 'a slvec4 = 'a * 'a * 'a * 'a
+
+type 'a slval = Int of 'a * int
+		| Float of 'a * float
+		| Bool of 'a * bool
+		| Vec2 of 
+
+type ('a,'b) slexpr =
+    Var of string * 'b
+  | Attribute of string * 'b
+  | Uniform of string * 'b
+  | Varying of bool * string * 'b
+  | Constant of 'b slval
 
 type slstmt =
     Assign of 
