@@ -12,13 +12,6 @@ shader systems. gloc 0.8 features:
  - runs as both a native binary and in-the-browser via ocamljs
  - optional emulation of the line continuation character, \
 
-Features planned for 0.9 include:
- - finer-grained name collision management through pragma directives
- - macros across translation unit boundaries
- - comment stripping
- - identifier obfuscation
- - source compression
-
 gloc is licensed under the MIT license and distributed by Ashima
 Arts as a member of the greater WebGL community.
 
@@ -29,7 +22,7 @@ gloc shader libraries include:
  - Ashima Arts' webgl-noise
 
 Special thanks to the WebGL working group for making this possible by
-allowing UTF8 in shader comments. This is the PP dance.
+allowing UTF8 in shader comments.
 
 Suggestions? Bugs? Feature wishes? Comments? Language translations?
 Please use the GitHub project management features in the top bar to help
