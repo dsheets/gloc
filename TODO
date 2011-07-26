@@ -8,6 +8,3 @@ add
  - function cost annotations via cg
  - ternary emulation in conditionals with warning
  - line continuation emulation using lexer lookaside and block comments
- - emulate include directive
- - include path on cmd line
- - emulate ##
