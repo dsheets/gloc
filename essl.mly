@@ -19,6 +19,7 @@ and slnumish = [ slprim | sldim ]
 and sleq = [ slnumish | slstruct ]
 and slnonarray = [ slsampler | sleq ]
 and sltype = [ slarray | slnonarray ]
+type slprecable = [ slnum | slsampler ]
 type 'a slparam = In of 'a | Out of 'a | Inout of 'a
 type slfun = [ `lam of sltype slparam list * sltype option ]
 type sluniv = [ sltype | slfun ]
@@ -36,6 +37,7 @@ type slswizzle =
 
 type 'b slexpr =
     Var of (string * 'b) pptok
+  | Builtin of (bool * string * 'b) pptok
   | Attribute of (string * 'b) pptok
   | Uniform of (string * 'b) pptok
   | Varying of (bool * string * 'b) pptok
@@ -77,20 +79,26 @@ type 'b slexpr =
 type 'a slbind = { const: bool; v: 'a slexpr; name: string option }
 type slstmt =
     Expr of sltype slexpr pptok
-  | Cond of (slbool slexpr * slenv * slenv) pptok
+  | Select of (slbool slexpr pptok
+	       * slstmt list pptok * slstmt list pptok) pptok
   | For of (slstmt * (slbool slexpr option
 		      * sltype slexpr option) pptok * slenv) pptok
-  | While of (slstmt * slenv) pptok
-  | DoWhile of (slstmt list * slbool slexpr) pptok
+  | While of (slstmt * slstmt) pptok
+  | DoWhile of (slstmt list pptok * slbool slexpr) pptok
   | Return of (sltype slexpr option) pptok
   | Discard of unit pptok
   | Break of unit pptok
   | Continue of unit pptok
+  | Scope of slenv
   | Precdecl of slnum pptok
   | Typedecl of slstruct slbind list pptok
   | Vardecl of sltype slbind list pptok
   | Fundecl of (slfun slbind * sltype slbind list * slenv option) pptok
-and slenv = { ctxt : sluniv slbind SymMap.t; stmts : slstmt list }
+and slenv = { ctxt : sluniv slbind SymMap.t;
+	      prec : slprec PrecMap.t;
+	      invariant : bool;
+	      pragmas : string pptok pptok SymMap.t;
+	      stmts : slstmt list pptok }
 %}
 
 %token EOF
@@ -164,13 +172,13 @@ postfix_expression
 | p=postfix_expression; d=DOT; i=IDENTIFIER {
     let t = fuse_pptok [proj_slexpr p; proj d; proj i]
     in begin match typeof ctxt p with
-      | `record (_,tl) ->
-      | `vec2 t ->
-      | `vec3 t ->
-      | `vec4 t ->
-      | `mat2 t ->
-      | `mat3 t ->
-      | `mat4 t ->
+      | `record (_,tl) ->  (* TODO *)
+      | `vec2 t ->  (* TODO *)
+      | `vec3 t ->  (* TODO *)
+      | `vec4 t ->  (* TODO *)
+      | `mat2 t ->  (* TODO *)
+      | `mat3 t ->  (* TODO *)
+      | `mat4 t ->  (* TODO *)
       end
   }
 | p=postfix_expression; i=INC_OP {
@@ -219,160 +227,171 @@ function_call_header_with_parameters
 ;
 function_call_header
 : i=IDENTIFIER; l=LEFT_PAREN {
-
+  (* TODO *)
 }
 | c=constructor_identifier; l=LEFT_PAREN {
-    
-  }
+  (* TODO *)
+}
 ;
 constructor_identifier
 : f=FLOAT {
-
+  (* TODO *)
 }
 | i=INT {
-
+  (* TODO *)
   }
 | b=BOOL {
-
+  (* TODO *)
   }
 | v=VEC2 {
-
+  (* TODO *)
   }
 | v=VEC3 {
-
+  (* TODO *)
   }
 | v=VEC4 {
-
+  (* TODO *)
   }
 | v=BVEC2 {
-
+  (* TODO *)
   }
 | v=BVEC3 {
-
+  (* TODO *)
   }
 | v=BVEC4 {
-
+  (* TODO *)
   }
 | v=IVEC2 {
-
+  (* TODO *)
   }
 | v=IVEC3 {
-
+  (* TODO *)
   }
 | v=IVEC4 {
-
+  (* TODO *)
   }
 | m=MAT2 {
-
+  (* TODO *)
   }
 | m=MAT3 {
-
+  (* TODO *)
   }
 | m=MAT4 {
-
+  (* TODO *)
   }
 ;
 unary_expression
 : p=postfix_expression { p }
 | i=INC_OP; u=unary_expression {
-
+  (* TODO *)
   }
 | d=DEC_OP; u=unary_expression {
-
+  (* TODO *)
   }
 | p=PLUS; u=unary_expression {
-
+  (* TODO *)
   }
 | d=DASH; u=unary_expression {
-
+  (* TODO *)
   }
 | b=BANG; u=unary_expression {
-
+  (* TODO *)
   }
 ;
 multiplicative_expression
 : u=unary_expression { u }
 | m=multiplicative_expression; s=STAR; u=unary_expression {
-
+  (* TODO *)
   }
 | m=multiplicative_expression; s=SLASH; u=unary_expression {
-
+  (* TODO *)
   }
 ;
 additive_expression
 : m=multiplicative_expression { m }
 | a=additive_expression; p=PLUS; m=multiplicative_expression {
-
+  (* TODO *)
   }
 | a=additive_expression; d=DASH; m=multiplicative_expression {
-
+  (* TODO *)
   }
 ;
 relational_expression
 : a=additive_expression { a }
 | r=relational_expression; l=LEFT_ANGLE; a=additive_expression {
-
+  (* TODO *)
   }
 | r=relational_expression; r=RIGHT_ANGLE; a=additive_expression {
-
+  (* TODO *)
   }
 | r=relational_expression; l=LE_OP; a=additive_expression {
-
+  (* TODO *)
   }
 | r=relational_expression; g=GE_OP; a=additive_expression {
-
+  (* TODO *)
   }
 ;
 equality_expression
 : r=relational_expression { r }
 | e=equality_expression; eq=EQ_OP; r=relational_expression {
-
-  }
+  Eq {(fuse_pptok [proj_slexpr e; proj eq; proj_slexpr r])
+      with v=(`bool,e,r)}
+}
 | e=equality_expression; ne=NE_OP; r=relational_expression {
-
-  }
+  Neq {(fuse_pptok [proj_slexpr e; proj ne; proj_slexpr r])
+       with v=(`bool,e,r)}
+}
 ;
 logical_and_expression
 : e=equality_expression { e }
 | l=logical_and_expression; a=AND_OP; e=equality_expression {
-
-  }
+  And {(fuse_pptok [proj_slexpr l; proj a; proj_slexpr e])
+       with v=(`bool,l,e)}
+}
 ;
 logical_xor_expression
 : l=logical_and_expression { l }
 | lx=logical_xor_expression; x=XOR_OP; la=logical_and_expression {
-
-  }
+  Xor {(fuse_pptok [proj_slexpr lx; proj x; proj_slexpr la])
+       with v=(`bool,lx,la)}
+}
 ;
 logical_or_expression
 : l=logical_xor_expression { l }
 | lo=logical_or_expression; o=OR_OP; lx=logical_xor_expression {
-
-  }
+  Or {(fuse_pptok [proj_slexpr lo; proj o; proj_slexpr lx])
+      with v=(`bool,lo,lx)}
+}
 ;
 conditional_expression
-: l=logical_op_expression { l }
+: l=logical_or_expression { l }
 | c=logical_or_expression; q=QUESTION; e=expression;
 c=COLON; a=assignment_expression {
-
+  Sel {(fuse_pptok [proj_slexpr c; proj q; proj_slexpr e;
+		    proj c; proj_slexpr a])
+       with v=(c,e,a)}
 }
 ;
 assignment_expression
 : c=conditional_expression { c }
 | u=unary_expression; o=assignment_operator; a=assignment_expression {
-
-  }
+  (* TODO: mutate *)
+  let t = fuse_pptok [proj_slexpr u; proj o; proj_slexpr a] in
+  begin match o.v with
+    | EQUAL -> Set { t with v=(u,a) }
+    | MUL_ASSIGN -> MulSet { t with v=(u,a) }
+    | DIV_ASSIGN -> DivSet { t with v=(u,a) }
+    | ADD_ASSIGN -> AddSet { t with v=(u,a) }
+    | SUB_ASSIGN -> SubSet { t with v=(u,a) }
+  end
+}
 ;
 assignment_operator
-: e=EQUAL { }
-| m=MUL_ASSIGN { }
-| d=DIV_ASSIGN { }
-| a=ADD_ASSIGN { }
-| s=SUB_ASSIGN { }
+: o=EQUAL | o=MUL_ASSIGN | o=DIV_ASSIGN | o=ADD_ASSIGN | o=SUB_ASSIGN { o }
 ;
 expression
 : a=assignment_expression { a }
-| e=expression; c=COMMA; a=assignment_expression { }
+| e=expression; c=COMMA; a=assignment_expression { } (* TODO *)
 ;
 constant_expression
 : c=conditional_expression { c } (* TODO: check const *)
@@ -385,7 +404,13 @@ declaration
 
   }
 | p=PRECISION; pq=precision_qualifier; t=type_specifier_no_prec; s=SEMICOLON {
-
+   
+  }
+| p=PRECISION; pq=precision_qualifier; t=type_specifier_no_prec; s=SEMICOLON {
+   
+  }
+| p=PRECISION; pq=precision_qualifier; t=type_specifier_no_prec; s=SEMICOLON {
+   
   }
 ;
 function_prototype
@@ -518,64 +543,72 @@ declaration_statement
 : d=declaration { d } (* TODO: ? *)
 ;
 statement_no_new_scope
-: c=compound_statement_with_scope { }
-| s=simple_statement { }
+: s=compound_statement | s=simple_statement { s }
 ;
 simple_statement
-: d=declaration_statement { }
-| e=expression_statement { }
-| s=selection_statement { }
-| i=iteration_statement { }
-| j=jump_statement { }
+: d=declaration_statement { d }
+| e=expression_statement { e }
+| s=selection_statement { s }
+| i=iteration_statement { i }
+| j=jump_statement { j }
 ;
-compound_statement_with_scope
+compound_statement (* TODO: scope sooner? *)
 : l=LEFT_BRACE; sl=list(statement_no_new_scope); r=RIGHT_BRACE {
-
+  let env = push_new_env sl in
+  Scope {env
+	 with stmts={(fuse_pptok (proj l)::(List.map proj_slstmt sl)@[proj r])
+                     with v=sl}}
 }
 ;
-statement_with_scope
-: c=compound_statement_no_new_scope { }
-| s=simple_statement { }
+statement
+: c=compound_statement_no_new_scope { c }
+| s=simple_statement { {(proj_slstmt s) with v=[s]} }
 ;
 compound_statement_no_new_scope
 : l=LEFT_BRACE; sl=list(statement_no_new_scope); r=RIGHT_BRACE {
-
+  {(fuse_pptok (proj l)::(List.map proj_slstmt sl)@[proj r]) with v=sl}
 }
 ;
 expression_statement
-: e=expression?; s=SEMICOLON {
-
+: e=expression; s=SEMICOLON {
+  Expr {(fuse_pptok [proj_slexpr e; proj s]) with v=e}
+}
+| s=SEMICOLON {
+  Expr {s with v=Constant {s with v=Bool (`bool,false)}}
 }
 ;
 selection_statement
-: i=IF; l=LEFT_PAREN; e=expression; r=RIGHT_PAREN; r=selection_rest_statement {
-
+: i=IF; l=LEFT_PAREN; e=expression; r=RIGHT_PAREN; tb=statement {
+  Select {(fuse_pptok [proj i; proj l; proj_slexpr e; proj r;
+		       proj_slstmt tb])
+          with v=(e, tb, [])}
 }
-;
-selection_rest_statement
-: tb=statement_with_scope; e=ELSE; fb=statement_with_scope {
-
+| i=IF; l=LEFT_PAREN; bex=expression; r=RIGHT_PAREN;
+tb=statement; e=ELSE; fb=statement {
+  Select {(fuse_pptok [proj i; proj l; proj_slexpr bex; proj r;
+		       proj_slstmt tb; proj e; proj_slstmt fb])
+          with v=(bex, tb, fb)}
 }
-| tb=statement_with_scope {
-
-  }
 ;
 condition
-: e=expression { e }
+: e=expression { Expr e }
 | t=fully_specified_type; i=IDENTIFIER; e=EQUAL; ini=initializer_ {
     (* TODO *)
   }
 ;
-iteration_statement (* TODO *)
+iteration_statement
 : w=WHILE; l=LEFT_PAREN; c=condition; r=RIGHT_PAREN; s=statement_no_new_scope {
-
+  While {(fuse_pptok [proj w; proj l; proj_slstmt c; proj r; proj_slstmt s])
+         with v=(c,s)}
 }
-| d=DO; s=statement_with_scope; w=WHILE;
+| d=DO; s=statement; w=WHILE;
 l=LEFT_PAREN; e=expression; r=RIGHT_PAREN; s=SEMICOLON {
-
+  DoWhile {(fuse_pptok [proj d; proj s; proj w;
+			proj l; proj_slexpr e; proj r; proj s])
+           with v=(s,e)}
 }
 | f=FOR; l=LEFT_PAREN; i=for_init_statement; r=for_rest_statement; r=RIGHT_PAREN;
-s=statement_no_new_scope {
+s=statement_no_new_scope { (* TODO *)
 
 }
 ;
@@ -604,14 +637,19 @@ jump_statement
   }
 | d=DISCARD; s=SEMICOLON { Discard (fuse_pptok [proj d; proj s]) }
 ;
-translation_unit
+translation_unit (* TODO: expand *)
 : dl=list(external_declaration) { { ctxt; stmts=dl } }
 ;
 external_declaration
 : f=function_definition { f }
 | d=declaration { d }
 ;
-function_definition (* TODO *)
-: p=function_prototype; c=compound_statement_no_new_scope { }
+function_definition (* TODO: scopes? *)
+: p=function_prototype; c=compound_statement_no_new_scope {
+  let rt,al,b = p.v in
+  let env = push_new_env c in (* TODO: sooner? *)
+  Fundecl {(fuse_pptok [proj p; proj c])
+           with v=(rt,al,Some env)}
+}
 ;
 %%
