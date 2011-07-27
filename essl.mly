@@ -1,48 +1,11 @@
 %{
-
-type 'a slexpr =
-    Variable of 'a slvar
-  | Constant of 'a
-  | Group of 'a slexpr
-  | Subscript of 'a slarray * int slexpr
-  | App of string * slexpr_type list
-  | Field of slexpr_type * string
-  | Swizzle of 'a slexpr (* TODO: type *)
-  | PostInc of 'a slexpr (* closed *)
-  | PostDec of 'a slexpr (* closed *)
-  | PreInc of 'a slexpr (* closed *)
-  | PreDec of 'a slexpr (* closed *)
-  | Pos of 'a slexpr (* closed *)
-  | Neg of 'a slexpr (* closed *)
-  | Not of bool slexpr
-  | Mul of 'a slexpr * 'a slexpr (* closed *)
-  | Div of 'a slexpr * 'a slexpr (* closed *)
-  | Add of 'a slexpr * 'a slexpr (* closed *)
-  | Sub of 'a slexpr * 'a slexpr (* closed *)
-  | Lt of slexpr_type * slexpr_type
-  | Gt of slexpr_type * slexpr_type
-  | Lte of slexpr_type * slexpr_type
-  | Gte of slexpr_type * slexpr_type
-  | Eq of slexpr_type * slexpr_type
-  | Neq of slexpr_type * slexpr_type
-  | And of bool slexpr * bool slexpr
-  | Xor of bool slexpr * bool slexpr
-  | Or of bool slexpr * bool slexpr
-  | Sel of bool slexpr * 'a slexpr * 'a slexpr
-  | Set of 'a slexpr * 'a slexpr (* closed *)
-  | AddSet of 'a slexpr * 'a slexpr (* closed *)
-  | SubSet of 'a slexpr * 'a slexpr (* closed *)
-  | MulSet of 'a slexpr * 'a slexpr (* closed *)
-  | DivSet of 'a slexpr * 'a slexpr (* closed *)
-  | Seq of slexpr_type list * 'a slexpr
-
 type slprec = High | Medium | Low
 type slfloat = [ `float of slprec ]
 type slint = [ `int of slprec ]
+type slnum = [ slfloat | slint ]
 type slbool = [ `bool ]
-type slprim = [ slfloat | slint | slbool ]
-type sldim = [ slprim
-	     | `vec2 of slprim
+type slprim = [ slnum | slbool ]
+type sldim = [ `vec2 of slprim
 	     | `vec3 of slprim
 	     | `vec4 of slprim
 	     | `mat2 of slprec
@@ -52,42 +15,87 @@ type sldim = [ slprim
 type slsampler = [ `sampler2d | `samplerCube ]
 type slstruct = [ `record of string * (string * sltype) list ]
 and slarray = [ `array of int * slnonarray ]
-and slnonarray = [ sldim | slsampler | slstruct ]
+and slnumish = [ slprim | sldim ]
+and sleq = [ slnumish | slstruct ]
+and slnonarray = [ slsampler | sleq ]
 and sltype = [ slarray | slnonarray ]
 type 'a slparam = In of 'a | Out of 'a | Inout of 'a
 type slfun = [ `lam of sltype slparam list * sltype option ]
 type sluniv = [ sltype | slfun ]
 
-type 'a slvec2 = 'a * 'a
-type 'a slvec3 = 'a * 'a * 'a
-type 'a slvec4 = 'a * 'a * 'a * 'a
-
 type 'a slval = Int of 'a * int
 		| Float of 'a * float
 		| Bool of 'a * bool
-		| Vec2 of 
 
-type ('a,'b) slexpr =
-    Var of string * 'b
-  | Attribute of string * 'b
-  | Uniform of string * 'b
-  | Varying of bool * string * 'b
-  | Constant of 'b slval
+type slel = X | Y | Z | W
+type slswizzle =
+    Sub1 of slel
+  | Sub2 of slel * slel
+  | Sub3 of slel * slel * slel
+  | Sub4 of slel * slel * slel * slel
 
+type 'b slexpr =
+    Var of (string * 'b) pptok
+  | Attribute of (string * 'b) pptok
+  | Uniform of (string * 'b) pptok
+  | Varying of (bool * string * 'b) pptok
+  | Constant of 'b slval pptok
+  | Construct of ('b * string * slnonarray slexpr list) pptok
+  | Group of 'b slexpr pptok
+  | Subscript of ('b * slarray slexpr * slint slexpr) pptok
+  | App of ('b * string * sltype slexpr list) pptok
+  | Field of ('b * slstruct slexpr * string) pptok
+  | Swizzle of ('b * sldim slexpr * slswizzle) pptok
+  | PostInc of (slnumish as 'b) slexpr pptok
+  | PostDec of (slnumish as 'b) slexpr pptok
+  | PreInc of (slnumish as 'b) slexpr pptok
+  | PreDec of (slnumish as 'b) slexpr pptok
+  | Pos of (slnumish as 'b) slexpr pptok
+  | Neg of (slnumish as 'b) slexpr pptok
+  | Not of (slbool as 'b) slexpr pptok
+  | Mul of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
+  | Div of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
+  | Add of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
+  | Sub of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
+  | Lt of ((slbool as 'b) * slnum slexpr * slnum slexpr) pptok
+  | Gt of ((slbool as 'b) * slnum slexpr * slnum slexpr) pptok
+  | Lte of ((slbool as 'b) * slnum slexpr * slnum slexpr) pptok
+  | Gte of ((slbool as 'b) * slnum slexpr * slnum slexpr) pptok
+  | Eq of ((slbool as 'b) * sleq slexpr * sleq slexpr) pptok
+  | Neq of ((slbool as 'b) * sleq slexpr * sleq slexpr) pptok
+  | And of ((slbool as 'b) * slbool slexpr * slbool slexpr) pptok
+  | Xor of ((slbool as 'b) * slbool slexpr * slbool slexpr) pptok
+  | Or of ((slbool as 'b) * slbool slexpr * slbool slexpr) pptok
+  | Sel of (slbool slexpr * 'b slexpr * 'b slexpr) pptok
+  | Set of ('b slexpr * 'b slexpr) pptok
+  | AddSet of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
+  | SubSet of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
+  | MulSet of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
+  | DivSet of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
+  | Seq of (slnonarray slexpr list * 'b slexpr) pptok
+
+type 'a slbind = { const: bool; v: 'a slexpr; name: string option }
 type slstmt =
-    Assign of 
-
-type sldecl =
-    Function of slexpr_type list * slexpr_type
-  | 
-
-type translation_unit = {prog:global list; env:env}
+    Expr of sltype slexpr pptok
+  | Cond of (slbool slexpr * slenv * slenv) pptok
+  | For of (slstmt * (slbool slexpr option
+		      * sltype slexpr option) pptok * slenv) pptok
+  | While of (slstmt * slenv) pptok
+  | DoWhile of (slstmt list * slbool slexpr) pptok
+  | Return of (sltype slexpr option) pptok
+  | Discard of unit pptok
+  | Break of unit pptok
+  | Continue of unit pptok
+  | Precdecl of slnum pptok
+  | Typedecl of slstruct slbind list pptok
+  | Vardecl of sltype slbind list pptok
+  | Fundecl of (slfun slbind * sltype slbind list * slenv option) pptok
+and slenv = { ctxt : sluniv slbind SymMap.t; stmts : slstmt list }
 %}
 
 %token EOF
 
 %token <string Pp_lib.pptok> IDENTIFIER
-%token <string Pp_lib.pptok> TYPE_NAME FIELD_SELECTION
 
 %token <float Pp_lib.pptok> FLOATCONSTANT
 %token <int Pp_lib.pptok> INTCONSTANT
@@ -112,32 +120,498 @@ type translation_unit = {prog:global list; env:env}
 %token <Punc.tok Pp_lib.pptok> LEFT_ANGLE RIGHT_ANGLE VERTICAL_BAR CARET
 %token <Punc.tok Pp_lib.pptok> AMPERSAND QUESTION
 
-%type <Essl_lib.translation_unit> translation_unit
+%type <slenv> translation_unit
 
 %start translation_unit
 
 %%
 
 variable_identifier
-: IDENTIFIER { 
-  try match SymMap.find (fst $1.v) (snd $1.v) with
-    | {symType=Var; symQual} as symbol ->
-      if List.mem Const symQual then Constant {symbol}
-      else Variable {symbol}
-    | symbol -> (error (UnexpectedNamespace ($1,Var));
-		 Variable {symbol})
-  with Not_found -> (error (UndeclaredIdentifier $1);
-		     Variable {symbol={symType=Var; symQual=[]}})
+: i=IDENTIFIER { 
+  Var { i with v = (i.v,typeof ctxt i.v)}
 }
 ;
 primary_expression
-  : variable_identifier { $1 }
-  | INTCONSTANT {
-    (if abs $1.v >= (1 lsl 16) (* TODO: VS only, FS is 10-bit *)
-     then error (IntegerOverflow ($1,1 lsl 16)));
-    Constant {symbol={symType=Int; symQual=[Const]}}
+: v=variable_identifier { v }
+| i=INTCONSTANT { Constant { i with v = Int (`int (lookup_prec ctxt),i.v) } }
+| f=FLOATCONSTANT { Constant { f with v = Float (`float (lookup_prec ctxt),f.v) } }
+| b=BOOLCONSTANT { Constant { b with v = Bool (`bool,b.v) } }
+| l=LEFT_PAREN; e=expression; r=RIGHT_PAREN {
+    Group {(fuse_pptok [proj l; proj_slexpr e; proj r]) with v=e}
+}
+;
+postfix_expression
+: p=primary_expression { p }
+| p=postfix_expression; l=LEFT_BRACKET; i=integer_expression; r=RIGHT_BRACKET {
+    let t = fuse_pptok [proj_slexpr p; proj l; proj_slexpr i; proj r]
+    in begin match typeof ctxt p with
+      | `array (_,el) ->
+	  Subscript {t with v = (el, p, i)}
+      | `vec2 el | `vec3 el | `vec4 el ->
+	  Swizzle {t with v = (el, p, Sub1 (swizzle_of_int i))}
+      | `mat2 _ ->
+	  Swizzle {t with v = (`vec2 `float (lookup_prec ctxt), p,
+			       Sub1 (swizzle_of_int i))}
+      | `mat3 _ ->
+	  Swizzle {t with v = (`vec3 `float (lookup_prec ctxt), p,
+			       Sub1 (swizzle_of_int i))}
+      | `mat4 _ ->
+	  Swizzle {t with v = (`vec4 `float (lookup_prec ctxt), p,
+			       Sub1 (swizzle_of_int i))}
+      end
   }
-  | FLOATCONSTANT {
-    Constant {symbol={symType=Float; symQual=[Const]}}
+| f=function_call { f }
+| p=postfix_expression; d=DOT; i=IDENTIFIER {
+    let t = fuse_pptok [proj_slexpr p; proj d; proj i]
+    in begin match typeof ctxt p with
+      | `record (_,tl) ->
+      | `vec2 t ->
+      | `vec3 t ->
+      | `vec4 t ->
+      | `mat2 t ->
+      | `mat3 t ->
+      | `mat4 t ->
+      end
   }
+| p=postfix_expression; i=INC_OP {
+    let t = fuse_pptok [proj_slexpr p; proj i]
+    in PostInc {t with v=p}
+  }
+| p=postfix_expression; d=DEC_OP {
+    let t = fuse_pptok [proj_slexpr p; proj d]
+    in PostDec {t with v=p}
+  }
+;
+integer_expression
+: e=expression { e } (* TODO: check type is slint *)
+;
+(* TODO: rework function call productions *)
+function_call
+: f=function_call_generic { f }
+| p=postfix_expression; d=DOT; f=function_call_generic {
+    let t = fuse_pptok [proj_slexpr p; proj d; proj_slexpr f]
+    in error (MethodsUnsupported t) (* TODO: dummy *)
+}
+;
+function_call_generic
+: f=function_call_header_with_parameters; r=RIGHT_PAREN {
+  let t = fuse_pptok [proj_slexpr ] in g
+}
+| f=function_call_header_no_parameters; r=RIGHT_PAREN {
+    
+  }
+;
+function_call_header_no_parameters
+: f=function_call_header; v=VOID {
+  
+}
+| f=function_call_header {
+    
+  }
+;
+function_call_header_with_parameters
+: f=function_call_header; a=assignment_expression {
+
+}
+| f=function_call_header_with_parameters; c=COMMA; a=assignment_expression {
+    (* TODO: higher order *)
+  }
+;
+function_call_header
+: i=IDENTIFIER; l=LEFT_PAREN {
+
+}
+| c=constructor_identifier; l=LEFT_PAREN {
+    
+  }
+;
+constructor_identifier
+: f=FLOAT {
+
+}
+| i=INT {
+
+  }
+| b=BOOL {
+
+  }
+| v=VEC2 {
+
+  }
+| v=VEC3 {
+
+  }
+| v=VEC4 {
+
+  }
+| v=BVEC2 {
+
+  }
+| v=BVEC3 {
+
+  }
+| v=BVEC4 {
+
+  }
+| v=IVEC2 {
+
+  }
+| v=IVEC3 {
+
+  }
+| v=IVEC4 {
+
+  }
+| m=MAT2 {
+
+  }
+| m=MAT3 {
+
+  }
+| m=MAT4 {
+
+  }
+;
+unary_expression
+: p=postfix_expression { p }
+| i=INC_OP; u=unary_expression {
+
+  }
+| d=DEC_OP; u=unary_expression {
+
+  }
+| p=PLUS; u=unary_expression {
+
+  }
+| d=DASH; u=unary_expression {
+
+  }
+| b=BANG; u=unary_expression {
+
+  }
+;
+multiplicative_expression
+: u=unary_expression { u }
+| m=multiplicative_expression; s=STAR; u=unary_expression {
+
+  }
+| m=multiplicative_expression; s=SLASH; u=unary_expression {
+
+  }
+;
+additive_expression
+: m=multiplicative_expression { m }
+| a=additive_expression; p=PLUS; m=multiplicative_expression {
+
+  }
+| a=additive_expression; d=DASH; m=multiplicative_expression {
+
+  }
+;
+relational_expression
+: a=additive_expression { a }
+| r=relational_expression; l=LEFT_ANGLE; a=additive_expression {
+
+  }
+| r=relational_expression; r=RIGHT_ANGLE; a=additive_expression {
+
+  }
+| r=relational_expression; l=LE_OP; a=additive_expression {
+
+  }
+| r=relational_expression; g=GE_OP; a=additive_expression {
+
+  }
+;
+equality_expression
+: r=relational_expression { r }
+| e=equality_expression; eq=EQ_OP; r=relational_expression {
+
+  }
+| e=equality_expression; ne=NE_OP; r=relational_expression {
+
+  }
+;
+logical_and_expression
+: e=equality_expression { e }
+| l=logical_and_expression; a=AND_OP; e=equality_expression {
+
+  }
+;
+logical_xor_expression
+: l=logical_and_expression { l }
+| lx=logical_xor_expression; x=XOR_OP; la=logical_and_expression {
+
+  }
+;
+logical_or_expression
+: l=logical_xor_expression { l }
+| lo=logical_or_expression; o=OR_OP; lx=logical_xor_expression {
+
+  }
+;
+conditional_expression
+: l=logical_op_expression { l }
+| c=logical_or_expression; q=QUESTION; e=expression;
+c=COLON; a=assignment_expression {
+
+}
+;
+assignment_expression
+: c=conditional_expression { c }
+| u=unary_expression; o=assignment_operator; a=assignment_expression {
+
+  }
+;
+assignment_operator
+: e=EQUAL { }
+| m=MUL_ASSIGN { }
+| d=DIV_ASSIGN { }
+| a=ADD_ASSIGN { }
+| s=SUB_ASSIGN { }
+;
+expression
+: a=assignment_expression { a }
+| e=expression; c=COMMA; a=assignment_expression { }
+;
+constant_expression
+: c=conditional_expression { c } (* TODO: check const *)
+;
+declaration
+: f=function_prototype; s=SEMICOLON {
+
+}
+| i=init_declarator_list; s=SEMICOLON {
+
+  }
+| p=PRECISION; pq=precision_qualifier; t=type_specifier_no_prec; s=SEMICOLON {
+
+  }
+;
+function_prototype
+: t=fully_specified_type; i=IDENTIFIER;
+l=LEFT_PAREN; param_decl_list; r=RIGHT_PAREN {
+
+} t=fully_specific_type; i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
+
+}
+;
+parameter_declarator
+: t=type_specifier; i=IDENTIFIER {
+
+}
+| t=type_specifier; i=IDENTIFIER;
+l=LEFT_BRACKET; c=constant_expression; r=RIGHT_BRACKET {
+
+}
+;
+parameter_declaration
+: t=type_qualifier?; q=parameter_qualifier?; d=parameter_declarator {
+
+}
+| t=type_qualifier?; q=parameter_qualifier?; s=parameter_type_specifier {
+
+  }
+;
+parameter_qualifier
+: i=IN { }
+| o=OUT { }
+| io=INOUT { }
+;
+parameter_type_specifier
+: t=type_specifier { }
+| t=type_specifier; l=LEFT_BRACKET; c=constant_expression; r=RIGHT_BRACKET {
+
+  }
+;
+init_declarator_list
+: s=single_declaration { }
+| i=init_declarator_list; c=COMMA; i=IDENTIFIER { }
+| i=init_declarator_list; c=COMMA; i=IDENTIFIER;
+l=LEFT_BRACKET; c=constant_expression; r=RIGHT_BRACKET {
+
+}
+| idl=init_declarator_list; c=COMMA; i=IDENTIFIER; e=EQUAL; i=initializer_ {
+
+  }
+;
+single_declaration
+: t=fully_specified_type { }
+| t=fully_specified_type; i=IDENTIFIER { }
+| t=fully_specified_type; i=IDENTIFIER;
+l=LEFT_BRACKET; c=constant_expression; r=RIGHT_BRACKET {
+
+}
+| t=fully_specified_type; i=IDENTIFIER; e=EQUAL; ini=initializer_ {
+
+  }
+| i=INVARIANT; id=IDENTIFIER {
+
+  }
+;
+fully_specified_type (* TODO *)
+: q=type_qualifier?; t=type_specifier {
+
+}
+;
+type_qualifier (* TODO *)
+: c=CONST { }
+| a=ATTRIBUTE { }
+| i=INVARIANT?; v=VARYING { }
+| u=UNIFORM { }
+;
+type_specifier (* TODO *)
+: p=precision_qualifier?; t=type_specifier_no_prec {
+
+}
+;
+type_specifier_no_prec
+: v=VOID { }
+| f=FLOAT { }
+| i=INT { }
+| b=BOOL { }
+| v=VEC2 { }
+| v=VEC3 { }
+| v=VEC4 { }
+| v=BVEC2 { }
+| v=BVEC3 { }
+| v=BVEC4 { }
+| v=IVEC2 { }
+| v=IVEC3 { }
+| v=IVEC4 { }
+| m=MAT2 { }
+| m=MAT3 { }
+| m=MAT4 { }
+| s=SAMPLER2D { }
+| s=SAMPLERCUBE { }
+| s=struct_specifier { }
+| i=IDENTIFIER { }
+;
+precision_qualifier
+: h=HIGH_PRECISION { High }
+| m=MEDIUM_PRECISION { Medium }
+| l=LOW_PRECISION { Low }
+;
+struct_specifier
+: s=STRUCT; i=IDENTIFIER?;
+l=LEFT_BRACE; dl=list(struct_declaration); r=RIGHT_BRACE {
+  
+}
+;
+struct_declaration
+: t=type_specifier; dl=list(struct_declarator); s=SEMICOLON { (* TODO: COMMA *)
+
+}
+;
+struct_declarator
+: i=IDENTIFIER {
+
+}
+| i=IDENTIFIER; l=LEFT_BRACKET; c=constant_expression; r=RIGHT_BRACKET {
+
+  }
+;
+initializer_
+: a=assignment_expression { a } (* TODO: ? *)
+;
+declaration_statement
+: d=declaration { d } (* TODO: ? *)
+;
+statement_no_new_scope
+: c=compound_statement_with_scope { }
+| s=simple_statement { }
+;
+simple_statement
+: d=declaration_statement { }
+| e=expression_statement { }
+| s=selection_statement { }
+| i=iteration_statement { }
+| j=jump_statement { }
+;
+compound_statement_with_scope
+: l=LEFT_BRACE; sl=list(statement_no_new_scope); r=RIGHT_BRACE {
+
+}
+;
+statement_with_scope
+: c=compound_statement_no_new_scope { }
+| s=simple_statement { }
+;
+compound_statement_no_new_scope
+: l=LEFT_BRACE; sl=list(statement_no_new_scope); r=RIGHT_BRACE {
+
+}
+;
+expression_statement
+: e=expression?; s=SEMICOLON {
+
+}
+;
+selection_statement
+: i=IF; l=LEFT_PAREN; e=expression; r=RIGHT_PAREN; r=selection_rest_statement {
+
+}
+;
+selection_rest_statement
+: tb=statement_with_scope; e=ELSE; fb=statement_with_scope {
+
+}
+| tb=statement_with_scope {
+
+  }
+;
+condition
+: e=expression { e }
+| t=fully_specified_type; i=IDENTIFIER; e=EQUAL; ini=initializer_ {
+    (* TODO *)
+  }
+;
+iteration_statement (* TODO *)
+: w=WHILE; l=LEFT_PAREN; c=condition; r=RIGHT_PAREN; s=statement_no_new_scope {
+
+}
+| d=DO; s=statement_with_scope; w=WHILE;
+l=LEFT_PAREN; e=expression; r=RIGHT_PAREN; s=SEMICOLON {
+
+}
+| f=FOR; l=LEFT_PAREN; i=for_init_statement; r=for_rest_statement; r=RIGHT_PAREN;
+s=statement_no_new_scope {
+
+}
+;
+for_init_statement
+: s=expression_statement | s=declaration_statement { s }
+;
+for_rest_statement
+: c=condition; s=SEMICOLON; e=expression {
+  {(fuse_pptok [proj_slexpr c; proj s; proj_slexpr e]) with v=(Some c, Some e)}
+}
+| c=condition; s=SEMICOLON {
+    {(fuse_pptok [proj_slexpr c; proj s]) with v=(Some c, None)}
+  }
+| s=SEMICOLON; e=expression {
+    {(fuse_pptok [proj s; proj_slexpr e]) with v=(None, Some e)}
+  }
+| s=SEMICOLON {
+    { s with v=(None, None) }
+  }
+;
+jump_statement
+: c=CONTINUE; s=SEMICOLON { Continue (fuse_pptok [proj c; proj s]) }
+| b=BREAK; s=SEMICOLON { Break (fuse_pptok [proj b; proj s]) }
+| r=RETURN; e=expression?; s=SEMICOLON {
+    Return {(fuse_pptok [proj r; proj_slexpr e; proj s]) with v=e}
+  }
+| d=DISCARD; s=SEMICOLON { Discard (fuse_pptok [proj d; proj s]) }
+;
+translation_unit
+: dl=list(external_declaration) { { ctxt; stmts=dl } }
+;
+external_declaration
+: f=function_definition { f }
+| d=declaration { d }
+;
+function_definition (* TODO *)
+: p=function_prototype; c=compound_statement_no_new_scope { }
+;
 %%
