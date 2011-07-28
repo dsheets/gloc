@@ -1,19 +1,19 @@
 %{
 type slprec = High | Medium | Low
-type slfloat = [ `float of slprec ]
-type slint = [ `int of slprec ]
+type slfloat = [ `float ]
+type slint = [ `int ]
 type slnum = [ slfloat | slint ]
 type slbool = [ `bool ]
 type slprim = [ slnum | slbool ]
 type sldim = [ `vec2 of slprim
 	     | `vec3 of slprim
 	     | `vec4 of slprim
-	     | `mat2 of slprec
-	     | `mat3 of slprec
-	     | `mat4 of slprec
+	     | `mat2
+	     | `mat3
+	     | `mat4
 	     ]
 type slsampler = [ `sampler2d | `samplerCube ]
-type slstruct = [ `record of string * (string * sltype) list ]
+type slstruct = [ `record of (string * sltype) list ]
 and slarray = [ `array of int * slnonarray ]
 and slnumish = [ slprim | sldim ]
 and sleq = [ slnumish | slstruct ]
@@ -21,8 +21,11 @@ and slnonarray = [ slsampler | sleq ]
 and sltype = [ slarray | slnonarray ]
 type slprecable = [ slnum | slsampler ]
 type 'a slparam = In of 'a | Out of 'a | Inout of 'a
-type slfun = [ `lam of sltype slparam list * sltype option ]
-type sluniv = [ sltype | slfun ]
+type slvoid = [ `void ] (* Not a real type -- more like bottom/unit/falsity *)
+type slreturn = [ slvoid | sltype ]
+type slfun = [ `lam of sltype slparam list * slreturn ]
+type sldecl = [ `custom of slstruct ]
+type sluniv = [ sltype | slfun | sldecl ]
 
 type 'a slval = Int of 'a * int
 		| Float of 'a * float
@@ -76,13 +79,14 @@ type 'b slexpr =
   | DivSet of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
   | Seq of (slnonarray slexpr list * 'b slexpr) pptok
 
-type 'a slbind = { const: bool; v: 'a slexpr; name: string option }
+type 'a slbind =
+    { const: bool; v: 'a slexpr; name: string option; prec: slprec }
 type slstmt =
     Expr of sltype slexpr pptok
   | Select of (slbool slexpr pptok
 	       * slstmt list pptok * slstmt list pptok) pptok
   | For of (slstmt * (slbool slexpr option
-		      * sltype slexpr option) pptok * slenv) pptok
+		      * sltype slexpr option) pptok * slstmt) pptok
   | While of (slstmt * slstmt) pptok
   | DoWhile of (slstmt list pptok * slbool slexpr) pptok
   | Return of (sltype slexpr option) pptok
@@ -90,7 +94,7 @@ type slstmt =
   | Break of unit pptok
   | Continue of unit pptok
   | Scope of slenv
-  | Precdecl of slnum pptok
+  | Precdecl of (slprec * slprecable) pptok
   | Typedecl of slstruct slbind list pptok
   | Vardecl of sltype slbind list pptok
   | Fundecl of (slfun slbind * sltype slbind list * slenv option) pptok
@@ -136,13 +140,13 @@ and slenv = { ctxt : sluniv slbind SymMap.t;
 
 variable_identifier
 : i=IDENTIFIER { 
-  Var { i with v = (i.v,typeof ctxt i.v)}
+  Var { i with v = (i.v,lookup_type ctxt i.v)}
 }
 ;
 primary_expression
 : v=variable_identifier { v }
-| i=INTCONSTANT { Constant { i with v = Int (`int (lookup_prec ctxt),i.v) } }
-| f=FLOATCONSTANT { Constant { f with v = Float (`float (lookup_prec ctxt),f.v) } }
+| i=INTCONSTANT { Constant { i with v = Int (`int,i.v) } }
+| f=FLOATCONSTANT { Constant { f with v = Float (`float,f.v) } }
 | b=BOOLCONSTANT { Constant { b with v = Bool (`bool,b.v) } }
 | l=LEFT_PAREN; e=expression; r=RIGHT_PAREN {
     Group {(fuse_pptok [proj l; proj_slexpr e; proj r]) with v=e}
@@ -158,27 +162,23 @@ postfix_expression
       | `vec2 el | `vec3 el | `vec4 el ->
 	  Swizzle {t with v = (el, p, Sub1 (swizzle_of_int i))}
       | `mat2 _ ->
-	  Swizzle {t with v = (`vec2 `float (lookup_prec ctxt), p,
-			       Sub1 (swizzle_of_int i))}
+	  Swizzle {t with v = (`vec2 `float, p, Sub1 (swizzle_of_int i))}
       | `mat3 _ ->
-	  Swizzle {t with v = (`vec3 `float (lookup_prec ctxt), p,
-			       Sub1 (swizzle_of_int i))}
+	  Swizzle {t with v = (`vec3 `float, p, Sub1 (swizzle_of_int i))}
       | `mat4 _ ->
-	  Swizzle {t with v = (`vec4 `float (lookup_prec ctxt), p,
-			       Sub1 (swizzle_of_int i))}
+	  Swizzle {t with v = (`vec4 `float, p, Sub1 (swizzle_of_int i))}
       end
   }
 | f=function_call { f }
 | p=postfix_expression; d=DOT; i=IDENTIFIER {
     let t = fuse_pptok [proj_slexpr p; proj d; proj i]
     in begin match typeof ctxt p with
-      | `record (_,tl) ->  (* TODO *)
-      | `vec2 t ->  (* TODO *)
-      | `vec3 t ->  (* TODO *)
-      | `vec4 t ->  (* TODO *)
-      | `mat2 t ->  (* TODO *)
-      | `mat3 t ->  (* TODO *)
-      | `mat4 t ->  (* TODO *)
+      | `record (_,tl) ->
+	  Field { t with v=(List.assoc i.v tl,p,i.v)} (* TODO: missing field *)
+      | `vec2 t | `vec3 t | `vec4 t ->
+	  let s = swizzle_of_string i.v in
+	  let st = typeof_swizzle ctxt t s in
+	    Swizzle { t with v=(st, p, s) } (* TODO: check widths *)
       end
   }
 | p=postfix_expression; i=INC_OP {
@@ -193,7 +193,6 @@ postfix_expression
 integer_expression
 : e=expression { e } (* TODO: check type is slint *)
 ;
-(* TODO: rework function call productions *)
 function_call
 : f=function_call_generic { f }
 | p=postfix_expression; d=DOT; f=function_call_generic {
@@ -202,133 +201,105 @@ function_call
 }
 ;
 function_call_generic
-: f=function_call_header_with_parameters; r=RIGHT_PAREN {
-  let t = fuse_pptok [proj_slexpr ] in g
+: i=IDENTIFIER; l=LEFT_PAREN; p=function_call_parameters; r=RIGHT_PAREN {
+  let t = fuse_pptok [proj i; proj l; proj p; proj r]
+  in begin match lookup_type ctxt i.v with
+    | `lam (pl,rt) -> App {t with v=(rt,i.v,List.rev p.v)}
+    | ctype -> Construct {t with v=(ctype,i.v,List.rev p.v)}
+    end
 }
-| f=function_call_header_no_parameters; r=RIGHT_PAREN {
-    
+| c=constructor; l=LEFT_PAREN; p=function_call_parameters; r=RIGHT_PAREN {
+    Construct {(fuse_pptok [proj c; proj l; proj p; proj r])
+	       with v=(fst c.v,snd c.v,List.rev p.v)}
+  }
+| i=IDENTIFIER; l=LEFT_PAREN; v=VOID?; r=RIGHT_PAREN {
+    let t = fuse_pptok ([proj i; proj l]
+			@(match v with Some t -> [proj t] | None -> [])
+			@[proj r])
+    in begin match lookup_type ctxt i.v with
+      | `lam (pl,rt) -> App {t with v=(rt,i.v,[])}
+      | ctype -> Construct {t with v=(ctype,i.v,[])}
+      end
+  }
+| c=constructor; l=LEFT_PAREN; v=VOID?; r=RIGHT_PAREN {
+    let t = fuse_pptok ([proj c; proj l]
+			@(match v with Some t -> [proj t] | None -> [])
+			@[proj r]) in
+      Construct { t with v=(fst c.v,snd c.v,[]) }
   }
 ;
-function_call_header_no_parameters
-: f=function_call_header; v=VOID {
-  
-}
-| f=function_call_header {
-    
+function_call_parameters
+: a=assignment_expression { {(proj_slexpr a) with v=[a]} }
+| f=function_call_parameters; c=COMMA; a=assignment_expression {
+    {(fuse_pptok [proj f; proj c; proj_slexpr a]) with v=a::f.v}
   }
 ;
-function_call_header_with_parameters
-: f=function_call_header; a=assignment_expression {
-
-}
-| f=function_call_header_with_parameters; c=COMMA; a=assignment_expression {
-    (* TODO: higher order *)
-  }
-;
-function_call_header
-: i=IDENTIFIER; l=LEFT_PAREN {
-  (* TODO *)
-}
-| c=constructor_identifier; l=LEFT_PAREN {
-  (* TODO *)
-}
-;
-constructor_identifier
-: f=FLOAT {
-  (* TODO *)
-}
-| i=INT {
-  (* TODO *)
-  }
-| b=BOOL {
-  (* TODO *)
-  }
-| v=VEC2 {
-  (* TODO *)
-  }
-| v=VEC3 {
-  (* TODO *)
-  }
-| v=VEC4 {
-  (* TODO *)
-  }
-| v=BVEC2 {
-  (* TODO *)
-  }
-| v=BVEC3 {
-  (* TODO *)
-  }
-| v=BVEC4 {
-  (* TODO *)
-  }
-| v=IVEC2 {
-  (* TODO *)
-  }
-| v=IVEC3 {
-  (* TODO *)
-  }
-| v=IVEC4 {
-  (* TODO *)
-  }
-| m=MAT2 {
-  (* TODO *)
-  }
-| m=MAT3 {
-  (* TODO *)
-  }
-| m=MAT4 {
-  (* TODO *)
-  }
+constructor
+: f=FLOAT { {f with v=(`float,"float")} }
+| i=INT { {i with v=(`int,"int")} }
+| b=BOOL { {b with v=(`bool,"bool")} }
+| v=VEC2 { {v with v=(`vec2 `float,"vec2")} }
+| v=VEC3 { {v with v=(`vec3 `float,"vec3")} }
+| v=VEC4 { {v with v=(`vec4 `float,"vec4")} }
+| v=BVEC2 { {v with v=(`vec2 `bool,"bvec2")} }
+| v=BVEC3 { {v with v=(`vec3 `bool,"bvec3")} }
+| v=BVEC4 { {v with v=(`vec4 `bool,"bvec4")} }
+| v=IVEC2 { {v with v=(`vec2 `int,"ivec2")} }
+| v=IVEC3 { {v with v=(`vec3 `int,"ivec3")} }
+| v=IVEC4 { {v with v=(`vec4 `int,"ivec4")} }
+| m=MAT2 { {m with v=(`mat2,"mat2")} }
+| m=MAT3 { {m with v=(`mat3,"mat3")} }
+| m=MAT4 { {m with v=(`mat4,"mat4")} }
 ;
 unary_expression
 : p=postfix_expression { p }
 | i=INC_OP; u=unary_expression {
-  (* TODO *)
+  PreInc {(fuse_pptok [proj i; proj_slexpr u]) with v=u}
   }
 | d=DEC_OP; u=unary_expression {
-  (* TODO *)
+  PreDec {(fuse_pptok [proj d; proj_slexpr u]) with v=u}
   }
 | p=PLUS; u=unary_expression {
-  (* TODO *)
+  Pos {(fuse_pptok [proj p; proj_slexpr u]) with v=u}
   }
 | d=DASH; u=unary_expression {
-  (* TODO *)
+  Neg {(fuse_pptok [proj d; proj_slexpr u]) with v=u}
   }
 | b=BANG; u=unary_expression {
-  (* TODO *)
+  Not {(fuse_pptok [proj b; proj_slexpr u]) with v=u}
   }
 ;
 multiplicative_expression
 : u=unary_expression { u }
 | m=multiplicative_expression; s=STAR; u=unary_expression {
-  (* TODO *)
+    Mul {(fuse_pptok [proj_slexpr m; proj s; proj_slexpr u]) with v=(m,u)}
   }
 | m=multiplicative_expression; s=SLASH; u=unary_expression {
-  (* TODO *)
+    Div {(fuse_pptok [proj_slexpr m; proj s; proj_slexpr u]) with v=(m,u)}
   }
 ;
 additive_expression
 : m=multiplicative_expression { m }
 | a=additive_expression; p=PLUS; m=multiplicative_expression {
-  (* TODO *)
+    Add {(fuse_pptok [proj_slexpr a; proj p; proj_slexpr m]) with v=(a,m)}
   }
 | a=additive_expression; d=DASH; m=multiplicative_expression {
-  (* TODO *)
+    Sub {(fuse_pptok [proj_slexpr a; proj d; proj_slexpr m]) with v=(a,m)}
   }
 ;
 relational_expression
 : a=additive_expression { a }
 | r=relational_expression; l=LEFT_ANGLE; a=additive_expression {
-  (* TODO *)
+    Lt {(fuse_pptok [proj_slexpr r; proj l; proj_slexpr a]) with v=(r,a)}
   }
-| r=relational_expression; r=RIGHT_ANGLE; a=additive_expression {
-  (* TODO *)
+| r=relational_expression; g=RIGHT_ANGLE; a=additive_expression {
+    Gt {(fuse_pptok [proj_slexpr r; proj g; proj_slexpr a]) with v=(r,a)}
   }
 | r=relational_expression; l=LE_OP; a=additive_expression {
-  (* TODO *)
+    Lte {(fuse_pptok [proj_slexpr r; proj l; proj_slexpr a]) with v=(r,a)}
   }
 | r=relational_expression; g=GE_OP; a=additive_expression {
-  (* TODO *)
+    Gte {(fuse_pptok [proj_slexpr r; proj g; proj_slexpr a]) with v=(r,a)}
   }
 ;
 equality_expression
@@ -398,28 +369,36 @@ constant_expression
 ;
 declaration
 : f=function_prototype; s=SEMICOLON {
-
+  (* TODO *)
 }
 | i=init_declarator_list; s=SEMICOLON {
-
+    (* TODO *)
   }
-| p=PRECISION; pq=precision_qualifier; t=type_specifier_no_prec; s=SEMICOLON {
-   
+| p=PRECISION; pq=precision_qualifier; t=precision_type; s=SEMICOLON {
+   Precdecl {(fuse_pptok [proj p; proj pq; proj t; proj s])
+	     with v=(pq.v,t.v)}
   }
-| p=PRECISION; pq=precision_qualifier; t=type_specifier_no_prec; s=SEMICOLON {
-   
-  }
-| p=PRECISION; pq=precision_qualifier; t=type_specifier_no_prec; s=SEMICOLON {
-   
-  }
+(* TODO: catch bad precision type *)
 ;
+precision_type
+: f=FLOAT { {f with v=`float} }
+| i=INT { {i with v=`int} }
+| s=SAMPLER2D { {s with v=`sampler2d} }
+| s=SAMPLERCUBE { {s with v=`samplerCube} }
 function_prototype
 : t=fully_specified_type; i=IDENTIFIER;
-l=LEFT_PAREN; param_decl_list; r=RIGHT_PAREN {
-
-} t=fully_specific_type; i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
-
+l=LEFT_PAREN; p=list(param_declaration); r=RIGHT_PAREN {
+  
 }
+| t=fully_specified_type; i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
+    
+  }
+| v=VOID; i=IDENTIFIER; l=LEFT_PAREN; p=list(param_declaration); r=RIGHT_PAREN {
+    
+  }
+| n=VOID; i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
+    
+  }
 ;
 parameter_declarator
 : t=type_specifier; i=IDENTIFIER {
@@ -431,22 +410,36 @@ l=LEFT_BRACKET; c=constant_expression; r=RIGHT_BRACKET {
 }
 ;
 parameter_declaration
-: t=type_qualifier?; q=parameter_qualifier?; d=parameter_declarator {
+: t=type_qualifier?; d=parameter_declarator {
 
 }
-| t=type_qualifier?; q=parameter_qualifier?; s=parameter_type_specifier {
+| t=type_qualifier?; s=parameter_type_specifier {
+
+  }
+| t=type_qualifier?; i=IN; d=parameter_declarator {
+
+  }
+| t=type_qualifier?; i=IN; s=parameter_type_specifier {
+    
+  }
+| t=type_qualifier?; o=OUT; d=parameter_declarator {
+
+  }
+| t=type_qualifier?; o=OUT; s=parameter_type_specifier {
+    
+  }
+| t=type_qualifier?; io=INOUT; d=parameter_declarator {
+
+  }
+| t=type_qualifier?; io=INOUT; s=parameter_type_specifier {
 
   }
 ;
-parameter_qualifier
-: i=IN { }
-| o=OUT { }
-| io=INOUT { }
-;
 parameter_type_specifier
-: t=type_specifier { }
+: t=type_specifier { t }
 | t=type_specifier; l=LEFT_BRACKET; c=constant_expression; r=RIGHT_BRACKET {
-
+    {(fuse_pptok [proj t; proj l; proj c; proj r])
+     with v=`array (int_of_constant_slexpr c.v,t.v)}
   }
 ;
 init_declarator_list
@@ -491,31 +484,30 @@ type_specifier (* TODO *)
 }
 ;
 type_specifier_no_prec
-: v=VOID { }
-| f=FLOAT { }
-| i=INT { }
-| b=BOOL { }
-| v=VEC2 { }
-| v=VEC3 { }
-| v=VEC4 { }
-| v=BVEC2 { }
-| v=BVEC3 { }
-| v=BVEC4 { }
-| v=IVEC2 { }
-| v=IVEC3 { }
-| v=IVEC4 { }
-| m=MAT2 { }
-| m=MAT3 { }
-| m=MAT4 { }
-| s=SAMPLER2D { }
-| s=SAMPLERCUBE { }
-| s=struct_specifier { }
-| i=IDENTIFIER { }
+: f=FLOAT { {f with v=`float} }
+| i=INT { {i with v=`int} }
+| b=BOOL { {b with v=`bool} }
+| v=VEC2 { {v with v=`vec2 `float} }
+| v=VEC3 { {v with v=`vec3 `float} }
+| v=VEC4 { {v with v=`vec4 `float} }
+| v=BVEC2 { {v with v=`vec2 `bool} }
+| v=BVEC3 { {v with v=`vec3 `bool} }
+| v=BVEC4 { {v with v=`vec4 `bool} }
+| v=IVEC2 { {v with v=`vec2 `int} }
+| v=IVEC3 { {v with v=`vec3 `int} }
+| v=IVEC4 { {v with v=`vec4 `int} }
+| m=MAT2 { {m with v=`mat2} }
+| m=MAT3 { {m with v=`mat3} }
+| m=MAT4 { {m with v=`mat4} }
+| s=SAMPLER2D { {s with v=`sampler2d} }
+| s=SAMPLERCUBE { {s with v=`samplercube} }
+| s=struct_specifier { s }
+| i=IDENTIFIER { {i with v=lookup_type ctxt i.v} }
 ;
 precision_qualifier
-: h=HIGH_PRECISION { High }
-| m=MEDIUM_PRECISION { Medium }
-| l=LOW_PRECISION { Low }
+: h=HIGH_PRECISION { {h with v=High} }
+| m=MEDIUM_PRECISION { {m with v=Medium} }
+| l=LOW_PRECISION { {l with v=Low} }
 ;
 struct_specifier
 : s=STRUCT; i=IDENTIFIER?;
@@ -591,9 +583,9 @@ tb=statement; e=ELSE; fb=statement {
 }
 ;
 condition
-: e=expression { Expr e }
+: e=expression { Expr e } (* TODO: check bool *)
 | t=fully_specified_type; i=IDENTIFIER; e=EQUAL; ini=initializer_ {
-    (* TODO *)
+    
   }
 ;
 iteration_statement
@@ -607,18 +599,20 @@ l=LEFT_PAREN; e=expression; r=RIGHT_PAREN; s=SEMICOLON {
 			proj l; proj_slexpr e; proj r; proj s])
            with v=(s,e)}
 }
-| f=FOR; l=LEFT_PAREN; i=for_init_statement; r=for_rest_statement; r=RIGHT_PAREN;
-s=statement_no_new_scope { (* TODO *)
-
+| f=FOR; l=LEFT_PAREN; i=for_init_statement; j=for_rest_statement; r=RIGHT_PAREN;
+s=statement_no_new_scope {
+  For {(fuse_pptok [proj f; proj l; proj_slstmt i; proj j; proj r;
+		    proj_slstmt s])
+       with v=(i,j,s)}
 }
 ;
 for_init_statement
 : s=expression_statement | s=declaration_statement { s }
 ;
 for_rest_statement
-: c=condition; s=SEMICOLON; e=expression {
-  {(fuse_pptok [proj_slexpr c; proj s; proj_slexpr e]) with v=(Some c, Some e)}
-}
+  : c=condition; s=SEMICOLON; e=expression {
+    {(fuse_pptok [proj_slexpr c; proj s; proj_slexpr e]) with v=(Some c, Some e)}
+  }
 | c=condition; s=SEMICOLON {
     {(fuse_pptok [proj_slexpr c; proj s]) with v=(Some c, None)}
   }
