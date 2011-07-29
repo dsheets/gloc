@@ -36,8 +36,8 @@ and sleq = [ slnumish | slstruct ]
 and slnonarray = [ slsampler | sleq ]
 and sltype = [ slarray | slnonarray ]
 and slreturn = [ slvoid | sltype ]
-and slfun = [ `lam of sltype slparam list * slreturn ]
-and sldecl = [ `custom of slstruct ]
+and slfun = [ `lam of sltype slparam slbind list * slreturn ]
+and sldecl = [ `custom of string * slstruct ]
 and sluniv = [ sltype | slfun | sldecl ]
 and 'b slexpr =
     Var of (string * slenv * 'b) pptok
@@ -88,14 +88,14 @@ and slstmt =
   | Break of unit pptok
   | Continue of unit pptok
   | Scope of slstmt list pptok
-  | Invariant of (string * sltype) list pptok
+  | Invariant of string list pptok
   | Attribute of (string * sltype) list pptok
   | Uniform of (string * sltype) list pptok
   | Varying of (bool * string * sltype) list pptok
   | Precdecl of slprecable pptok
-  | Typedecl of slstruct slbind list pptok
+  | Typedecl of (sldecl * slstruct slexpr option) slbind list pptok
   | Vardecl of (sltype * sltype slexpr option) slbind list pptok
-  | Fundecl of (slfun slbind * sltype slbind list * slstmt list pptok option) pptok
+  | Fundecl of (slfun slbind * slstmt list pptok option) pptok
 and slenv = { ctxt : slstmt list slbind SymMap.t list; (* scope stack *)
 	      opensyms : sluniv slbind list;
 	      prec : slprec PrecMap.t list; (* precision stack *)
@@ -120,16 +120,19 @@ and slenv = { ctxt : slstmt list slbind SymMap.t list; (* scope stack *)
 %token <unit Pp_lib.pptok> VEC3 VEC4 MAT2 MAT3 MAT4 IN OUT INOUT UNIFORM
 %token <unit Pp_lib.pptok> VARYING STRUCT VOID WHILE SAMPLER2D
 %token <unit Pp_lib.pptok> SAMPLERCUBE
-%token <Punc.tok Pp_lib.pptok> LEFT_OP RIGHT_OP INC_OP DEC_OP LE_OP GE_OP
+%token <Punc.tok Pp_lib.pptok> INC_OP DEC_OP LE_OP GE_OP
 %token <Punc.tok Pp_lib.pptok> EQ_OP NE_OP AND_OP OR_OP XOR_OP MUL_ASSIGN
-%token <Punc.tok Pp_lib.pptok> DIV_ASSIGN ADD_ASSIGN MOD_ASSIGN
-%token <Punc.tok Pp_lib.pptok> LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN XOR_ASSIGN
-%token <Punc.tok Pp_lib.pptok> OR_ASSIGN SUB_ASSIGN LEFT_PAREN RIGHT_PAREN
+%token <Punc.tok Pp_lib.pptok> DIV_ASSIGN ADD_ASSIGN
+%token <Punc.tok Pp_lib.pptok> SUB_ASSIGN LEFT_PAREN RIGHT_PAREN
 %token <Punc.tok Pp_lib.pptok> LEFT_BRACKET RIGHT_BRACKET LEFT_BRACE
 %token <Punc.tok Pp_lib.pptok> RIGHT_BRACE DOT COMMA COLON EQUAL SEMICOLON
-%token <Punc.tok Pp_lib.pptok> BANG DASH TILDE PLUS STAR SLASH PERCENT
-%token <Punc.tok Pp_lib.pptok> LEFT_ANGLE RIGHT_ANGLE VERTICAL_BAR CARET
-%token <Punc.tok Pp_lib.pptok> AMPERSAND QUESTION
+%token <Punc.tok Pp_lib.pptok> BANG DASH PLUS STAR SLASH
+%token <Punc.tok Pp_lib.pptok> LEFT_ANGLE RIGHT_ANGLE
+%token <Punc.tok Pp_lib.pptok> QUESTION
+
+(* AMPERSAND AND_ASSIGN CARET LEFT_ASSIGN LEFT_OP MOD_ASSIGN OR_ASSIGN
+ * PERCENT RIGHT_ASSIGN RIGHT_OP TILDE VERTICAL_BAR XOR_ASSIGN
+ *)
 
 %type <slenv> translation_unit
 
@@ -324,9 +327,9 @@ logical_or_expression
 ;
 conditional_expression
 : l=logical_or_expression { l }
-| c=logical_or_expression; q=QUESTION; e=expression;
+| o=logical_or_expression; q=QUESTION; e=expression;
 c=COLON; a=assignment_expression {
-  Sel {(fuse_pptok [proj_slexpr c; proj q; proj_slexpr e;
+  Sel {(fuse_pptok [proj_slexpr o; proj q; proj_slexpr e;
 		    proj c; proj_slexpr a])
        with v=(c,e,a)}
 }
@@ -361,6 +364,9 @@ declaration
 : f=function_prototype; s=SEMICOLON {
   Fundecl {(fuse_pptok [proj f; proj s]) with v=f.v}
 }
+| t=type_specifier; s=SEMICOLON {
+  Typedecl {(fuse_pptok [proj t; proj s]) with v=()}
+}
 | t=type_specifier; dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
     let v = List.map
       (fun d -> match d.v with
@@ -388,26 +394,49 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
 }
 | a=ATTRIBUTE; t=type_specifier;
 dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-  Attribute {(fuse_pptok [proj a; proj t; proj dl; proj s])
-	     with v=(List.map
-		       (fun d -> match d.v with
-			  | n,None,None -> (,)
+  let v = List.map
+    (fun d -> match d.v with
+      | n,None,None -> (n,t.v)
+      | n,Some ie,None -> (n,`array (ie,t.v))
+      | n,None,Some _ -> error (CannotInitializeAttribute (proj d));
+	(n,t.v)
+      | n,Some ie,Some _ -> error (CannotInitializeAttribute (proj d));
+	(n,`array (ie,t.v))
+    ) dl
+  in
+  Attribute {(fuse_pptok [proj a; proj t; proj dl; proj s]) with v}
 }
-| v=VARYING; t=type_specifier;
+| i=INVARIANT?; q=VARYING; t=type_specifier;
 dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-    
-  }
-| i=INVARIANT; v=VARYING; t=type_specifier;
-dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-  
+  let inv,i = match i with Some t -> true,[t] | None -> false,[] in
+  let v = List.map
+    (fun d -> match d.v with
+      | n,None,None -> (inv,n,t.v)
+      | n,Some ie,None -> (inv,n,`array (ie,t.v))
+      | n,None,Some _ -> error (CannotInitializeVarying (proj d));
+	(inv,n,t.v)
+      | n,Some ie,Some _ -> error (CannotInitializeVarying (proj d));
+	(inv,n,`array (ie,t.v))
+    ) dl
+  in Varying {(fuse_pptok (i@[proj q; proj t; proj dl; proj s])) with v}
   }
 | u=UNIFORM; t=type_specifier;
 dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-    
+  let v = List.map
+    (fun d -> match d.v with
+      | n,None,None -> (n,t.v)
+      | n,Some ie,None -> (n,`array (ie,t.v))
+      | n,None,Some _ -> error (CannotInitializeUniform (proj d));
+	(n,t.v)
+      | n,Some ie,Some _ -> error (CannotInitializeUniform (projd));
+	(n,`array (ie,t.v))
+    ) dl
+  in Uniform {(fuse_pptok [proj u; proj t; proj dl; proj s]) with v}
   }
 | inv=INVARIANT; dl=fuse_sep_nonempty_list(IDENTIFIER,COMMA); s=SEMICOLON {
-    (* TODO *)
-  }
+  let v = List.map (fun d -> d.v) dl in
+  Invariant {(fuse_pptok [proj inv; proj dl; proj s]) with v}
+}
 | p=PRECISION; t=precision_type; s=SEMICOLON {
    Precdecl {(fuse_pptok [proj p; proj t; proj s]) with v=t.v}
   }
@@ -442,17 +471,29 @@ precision_type
 function_prototype
 : t=type_specifier; i=IDENTIFIER;
 p=fuse_sep_list(LEFT_PAREN,param_declaration,COMMA,RIGHT_PAREN) {
-  
+  {(fuse_pptok [proj t; proj i; proj p])
+   with v=({const=false; name=Some i.v;
+	    b=`lam (p.v, t.v)
+	   }, None)}
 }
 | t=type_specifier; i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
-    
+    {(fuse_pptok [proj t; proj i; proj l; proj v; proj r])
+     with v=({const=false; name=Some i.v;
+	      b=`lam ([],t.v)
+	     }, None)}
   }
 | v=VOID; i=IDENTIFIER;
 p=fuse_sep_list(LEFT_PAREN,param_declaration,COMMA,RIGHT_PAREN) {
-    
+    {(fuse_pptok [proj v; proj i; proj p])
+     with v=({const=false; name=Some i.v;
+	      b=`lam (p.v,`slvoid)
+	     }, None)}
   }
 | n=VOID; i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
-    
+    {(fuse_pptok [proj v; proj i; proj l; proj v; proj r])
+     with v=({const=false; name=Some i.v;
+	      b=`lam ([],`slvoid)
+	     }, None)}
   }
 ;
 param_declarator
@@ -464,35 +505,35 @@ param_declarator
   }
 ;
 param_declaration
-: t=CONST?; d=param_declarator {
-
+: t=CONST?; d=param_declarator
+| t=CONST?; d=param_type_specifier {
+  let ct,const = match t with Some t -> [t],true | None -> [],false in
+  {(fuse_pptok (ct@[proj d]))
+   with v={const; name=(snd d.v); b=In (fst d.v)}}
+  }
+| t=CONST?; i=IN; d=param_declarator
+| t=CONST?; i=IN; d=param_type_specifier {
+  let ct,const = match t with Some t -> [t],true | None -> [],false in
+  {(fuse_pptok (ct@[proj i; proj d]))
+   with v={const; name=(snd d.v); b=In (fst d.v)}}
 }
-| t=CONST?; s=param_type_specifier {
-
-  }
-| t=CONST?; i=IN; d=param_declarator {
-
-  }
-| t=CONST?; i=IN; s=param_type_specifier {
-    
-  }
-| t=CONST?; o=OUT; d=param_declarator {
-
-  }
-| t=CONST?; o=OUT; s=param_type_specifier {
-    
-  }
-| t=CONST?; io=INOUT; d=param_declarator {
-
-  }
-| t=CONST?; io=INOUT; s=param_type_specifier {
-
+| t=CONST?; o=OUT; d=param_declarator
+| t=CONST?; o=OUT; d=param_type_specifier {
+  let ct,const = match t with Some t -> [t],true | None -> [],false in
+  {(fuse_pptok (ct@[proj o; proj d]))
+   with v={const; name=(snd d.v); b=Out (fst d.v)}}
+}
+| t=CONST?; io=INOUT; d=param_declarator
+| t=CONST?; io=INOUT; d=param_type_specifier {
+  let ct,const = match t with Some t -> [t],true | None -> [],false in
+  {(fuse_pptok (ct@[proj io; proj d]))
+   with v={const; name=(snd d.v); b=Inout (fst d.v)}}
   }
 ;
 param_type_specifier
-: t=type_specifier { t }
+: t=type_specifier { { t with v=(t.v,None) } }
 | t=type_specifier; a=array_type_annot {
-    {(fuse_pptok [proj t; proj a]) with v=`array (a.v,t.v)}
+    {(fuse_pptok [proj t; proj a]) with v=(`array (a.v,t.v),None)}
   }
 ;
 type_specifier
@@ -500,15 +541,15 @@ type_specifier
 | f=FLOAT { {f with v=`float (lookup_prec ctxt Float)} }
 | i=INT { {i with v=`int (lookup_prec ctxt Int)} }
 | b=BOOL { {b with v=`bool} }
-| v=VEC2 { {v with v=`vec2 `float (lookup_prec ctxt Float)} }
-| v=VEC3 { {v with v=`vec3 `float (lookup_prec ctxt Float)} }
-| v=VEC4 { {v with v=`vec4 `float (lookup_prec ctxt Float)} }
+| v=VEC2 { {v with v=`vec2 (`float (lookup_prec ctxt Float))} }
+| v=VEC3 { {v with v=`vec3 (`float (lookup_prec ctxt Float))} }
+| v=VEC4 { {v with v=`vec4 (`float (lookup_prec ctxt Float))} }
 | v=BVEC2 { {v with v=`vec2 `bool} }
 | v=BVEC3 { {v with v=`vec3 `bool} }
 | v=BVEC4 { {v with v=`vec4 `bool} }
-| v=IVEC2 { {v with v=`vec2 `int (lookup_prec ctxt Int)} }
-| v=IVEC3 { {v with v=`vec3 `int (lookup_prec ctxt Int)} }
-| v=IVEC4 { {v with v=`vec4 `int (lookup_prec ctxt Int)} }
+| v=IVEC2 { {v with v=`vec2 (`int (lookup_prec ctxt Int))} }
+| v=IVEC3 { {v with v=`vec3 (`int (lookup_prec ctxt Int))} }
+| v=IVEC4 { {v with v=`vec4 (`int (lookup_prec ctxt Int))} }
 | m=MAT2 { {m with v=`mat2 (lookup_prec ctxt Float)} }
 | m=MAT3 { {m with v=`mat3 (lookup_prec ctxt Float)} }
 | m=MAT4 { {m with v=`mat4 (lookup_prec ctxt Float)} }
@@ -525,12 +566,23 @@ precision_qualifier
 struct_specifier
 : s=STRUCT; i=IDENTIFIER?;
 l=LEFT_BRACE; dl=list(struct_declaration); r=RIGHT_BRACE {
-  
+  match i with
+    | None ->
+      {(fuse_pptok [proj s; proj l; proj dl; proj r])
+       with v=`record (List.flatten dl)}
+    | Some i ->
+      {(fuse_pptok [proj s; proj i; proj l proj dl; proj r])
+       with v=`custom (i.v,List.flatten dl)}
 }
 ;
 struct_declaration
 : t=type_specifier; dl=fuse_sep_nonempty_list(struct_declarator,COMMA); s=SEMICOLON {
-
+  let v = List.map
+    (fun d -> match d.v with
+      | None,n -> (n,t.v)
+      | Some ie,n -> (n,`array (ie,t.v))
+    ) dl
+  in {(fuse_pptok [proj t; proj dl; proj s]) with v}
 }
 ;
 struct_declarator
@@ -596,7 +648,9 @@ tb=statement; e=ELSE; fb=statement {
 condition
 : e=expression { Expr e } (* TODO: check bool *)
 | t=type_specifier; i=IDENTIFIER; e=EQUAL; ini=initializer_ {
-    
+    Vardecl {(fuse_pptok [proj t; proj i; proj e; proj_slexpr ini])
+             with v=[{const=false; name=Some i.v;
+		      b=(t.v,Some ini)}]}
   }
 ;
 iteration_statement
@@ -604,11 +658,11 @@ iteration_statement
   While {(fuse_pptok [proj w; proj l; proj_slstmt c; proj r; proj_slstmt s])
          with v=(c,s)}
 }
-| d=DO; s=statement; w=WHILE;
+| d=DO; st=statement; w=WHILE;
 l=LEFT_PAREN; e=expression; r=RIGHT_PAREN; s=SEMICOLON {
-  DoWhile {(fuse_pptok [proj d; proj s; proj w;
+  DoWhile {(fuse_pptok [proj d; proj st; proj w;
 			proj l; proj_slexpr e; proj r; proj s])
-           with v=(s,e)}
+           with v=(st,e)}
 }
 | f=FOR; l=LEFT_PAREN; i=for_init_statement; j=for_rest_statement; r=RIGHT_PAREN;
 s=statement_no_new_scope {
@@ -643,7 +697,7 @@ jump_statement
 | d=DISCARD; s=SEMICOLON { Discard (fuse_pptok [proj d; proj s]) }
 ;
 translation_unit (* TODO: expand *)
-: dl=list(external_declaration) { { ctxt; stmts=dl } }
+: dl=list(external_declaration); EOF { { ctxt; stmts=dl } }
 ;
 external_declaration
 : f=function_definition { f }
