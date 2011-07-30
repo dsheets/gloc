@@ -1,4 +1,7 @@
 %{
+open Pp_lib
+module SymMap = Map.Make(struct type t=string let compare = compare end)
+
 type 'a slval = Int of 'a * int
 		| Float of 'a * float
 		| Bool of 'a * bool
@@ -13,6 +16,8 @@ type 'a slbind = { const: bool; name: string option; b: 'a }
 
 type slprec = High | Medium | Low
 type slprectype = Float | Int | Sampler2d | SamplerCube
+module PrecMap = Map.Make(struct type t=slprectype let compare = compare end)
+
 type slfloat = [ `float of slprec ]
 type slint = [ `int of slprec ]
 type slnum = [ slfloat | slint ]
@@ -25,20 +30,35 @@ type sldim = [ `vec2 of slprim
 	     | `mat3 of slprec
 	     | `mat4 of slprec
 	     ]
+type slnumish = [ slprim | sldim ]
+
 type slsampler = [ `sampler2d of slprec | `samplerCube of slprec ]
 type slprecable = [ slnum | slsampler ]
 type 'a slparam = In of 'a | Out of 'a | Inout of 'a
 type slvoid = [ `void ] (* Not a real type -- more like bottom/unit/falsity *)
-type slstruct = [ `record of (string * sltype) list ]
+type slstruct = [ `record of (string * sltype) list ] (* see sleq *)
 and slarray = [ `array of slint slexpr * slnonarray ]
-and slnumish = [ slprim | sldim ]
-and sleq = [ slnumish | slstruct ]
-and slnonarray = [ slsampler | sleq ]
-and sltype = [ slarray | slnonarray ]
-and slreturn = [ slvoid | sltype ]
+and sleq = [ slnumish | `record of (string * sltype) list ] (* slstruct *)
+and slnonarray = [ slsampler | slnumish
+                 | `record of (string * sltype) list ] (* sleq *)
+and sltype = [ `array of slint slexpr * slnonarray (* slarray *)
+             | slsampler | slnumish
+	     | `record of (string * sltype) list (* slnonarray *)
+	     | `univ ]
+and slreturn = [ slvoid (* sltype *)
+	       | `array of slint slexpr * slnonarray (* slarray *)
+	       | slsampler | slnumish
+	       | `record of (string * sltype) list ] (* slnonarray *)
 and slfun = [ `lam of sltype slparam slbind list * slreturn ]
 and sldecl = [ `custom of string * slstruct ]
-and sluniv = [ sltype | slfun | sldecl ]
+and sluniv = [ `lam of sltype slparam slbind list * slreturn (* slfun *)
+             | `custom of string * slstruct (* sldecl *)
+		   (* sltype *)
+             | `array of slint slexpr * slnonarray (* slarray *)
+	     | slsampler | slnumish
+	     | `record of (string * sltype) list (* slnonarray *)
+	     | `univ
+	     ]
 and 'b slexpr =
     Var of (string * slenv * 'b) pptok
   | Constant of 'b slval pptok
@@ -48,32 +68,32 @@ and 'b slexpr =
   | App of ('b * string * slenv * sltype slexpr list) pptok
   | Field of ('b * slstruct slexpr * string) pptok
   | Swizzle of ('b * sldim slexpr * slswizzle) pptok
-  | PostInc of (slnumish as 'b) slexpr pptok
-  | PostDec of (slnumish as 'b) slexpr pptok
-  | PreInc of (slnumish as 'b) slexpr pptok
-  | PreDec of (slnumish as 'b) slexpr pptok
-  | Pos of (slnumish as 'b) slexpr pptok
-  | Neg of (slnumish as 'b) slexpr pptok
-  | Not of (slbool as 'b) slexpr pptok
-  | Mul of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
-  | Div of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
-  | Add of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
-  | Sub of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
-  | Lt of ((slbool as 'b) * slnum slexpr * slnum slexpr) pptok
-  | Gt of ((slbool as 'b) * slnum slexpr * slnum slexpr) pptok
-  | Lte of ((slbool as 'b) * slnum slexpr * slnum slexpr) pptok
-  | Gte of ((slbool as 'b) * slnum slexpr * slnum slexpr) pptok
-  | Eq of ((slbool as 'b) * sleq slexpr * sleq slexpr) pptok
-  | Neq of ((slbool as 'b) * sleq slexpr * sleq slexpr) pptok
-  | And of ((slbool as 'b) * slbool slexpr * slbool slexpr) pptok
-  | Xor of ((slbool as 'b) * slbool slexpr * slbool slexpr) pptok
-  | Or of ((slbool as 'b) * slbool slexpr * slbool slexpr) pptok
+  | PostInc of 'b slexpr pptok (* slnumish -> slnumish *)
+  | PostDec of 'b slexpr pptok (* slnumish -> slnumish *)
+  | PreInc of 'b slexpr pptok (* slnumish -> slnumish *)
+  | PreDec of 'b slexpr pptok (* slnumish -> slnumish *)
+  | Pos of 'b slexpr pptok (* slnumish -> slnumish *)
+  | Neg of 'b slexpr pptok (* slnumish -> slnumish *)
+  | Not of 'b slexpr pptok (* slbool -> slbool *)
+  | Mul of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
+  | Div of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
+  | Add of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
+  | Sub of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
+  | Lt of ('b * slnum slexpr * slnum slexpr) pptok (* -> slbool *)
+  | Gt of ('b * slnum slexpr * slnum slexpr) pptok (* -> slbool *)
+  | Lte of ('b * slnum slexpr * slnum slexpr) pptok (* -> slbool *)
+  | Gte of ('b * slnum slexpr * slnum slexpr) pptok (* -> slbool *)
+  | Eq of ('b * sleq slexpr * sleq slexpr) pptok (* -> slbool *)
+  | Neq of ('b * sleq slexpr * sleq slexpr) pptok (* -> slbool *)
+  | And of ('b * slbool slexpr * slbool slexpr) pptok (* -> slbool *)
+  | Xor of ('b * slbool slexpr * slbool slexpr) pptok (* -> slbool *)
+  | Or of ('b * slbool slexpr * slbool slexpr) pptok (* -> slbool *)
   | Sel of (slbool slexpr * 'b slexpr * 'b slexpr) pptok
   | Set of ('b slexpr * 'b slexpr) pptok
-  | AddSet of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
-  | SubSet of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
-  | MulSet of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
-  | DivSet of ((slnumish as 'b) slexpr * (slnumish as 'b) slexpr) pptok
+  | AddSet of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
+  | SubSet of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
+  | MulSet of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
+  | DivSet of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
   | Seq of (slnonarray slexpr * 'b slexpr) pptok
 and slstmt =
     Expr of sltype slexpr pptok
@@ -102,6 +122,41 @@ and slenv = { ctxt : slstmt list slbind SymMap.t list; (* scope stack *)
 	      invariant : bool;
 	      pragmas : string pptok pptok SymMap.t;
 	      stmts : slstmt list }
+
+exception BadDeclStatement of unit pptok
+let ctxt = ref { ctxt=[SymMap.empty]; opensyms=[]; prec=[PrecMap.empty];
+		 invariant=false; pragmas=SymMap.empty; stmts=[] }
+(*let typeof_stmt ctxt = function
+  | Expr t -> error (BadDeclStatement (proj t)); `univ
+  | Select t -> error (BadDeclStatement (proj t)); `univ
+  | For t -> error (BadDeclStatement (proj t)); `univ
+  | While t -> error (BadDeclStatement (proj t)); `univ
+  | DoWhile t -> error (BadDeclStatement (proj t)); `univ
+  | Invariant t -> error (BadDeclStatement (proj t)); `univ
+  | Discard t -> error (BadDeclStatement (proj t)); `univ
+  | Break t -> error (BadDeclStatement (proj t)); `univ
+  | Continue t -> error (BadDeclStatement (proj t)); `univ
+  | Return t -> error (BadDeclStatement (proj t)); `univ
+  | Scope t -> error (BadDeclStatement (proj t)); `univ
+  | Attribute ({v=[]} as t) -> error (BadDeclStatement (proj t)); `univ
+  | Uniform ({v=[]} as t) -> error (BadDeclStatement (proj t)); `univ
+  | Varying ({v=[]} as t) -> error (BadDeclStatement (proj t)); `univ
+  | Precdecl t -> error (BadDeclStatement (proj t)); `univ
+  | Typedecl ({v=[]} as t) -> error (BadDeclStatement (proj t)); `univ
+  | Vardecl ({v=[]} as t) -> error (BadDeclStatement (proj t)); `univ
+  | Attribute {v=(_,t)::_} -> t
+  | Uniform {v=(_,t)::_} -> t
+  | Varying {v=(_,_,t)::_} -> t
+  | Typedecl {v={b=(`custom (_,r),_)}::_} -> r
+  | Vardecl {v={b=(t,_)}::_} -> t
+  | Fundecl {v=({b},_)} -> b*)
+let lookup_type envr sym = let env = !envr in (* TODO: overloads *)
+  try let h = List.hd (SymMap.find sym (List.hd env.ctxt)).b in
+    (*typeof_stmt env h*) `univ (* TODO: type propagation *)
+  with Not_found ->
+    envr := {env with opensyms={const=false;
+				name=Some sym; b=`univ}::env.opensyms};
+    `univ
 %}
 
 %token EOF
@@ -141,8 +196,9 @@ and slenv = { ctxt : slstmt list slbind SymMap.t list; (* scope stack *)
 %%
 
 variable_identifier
-: i=IDENTIFIER { 
-  Var { i with v = (i.v,lookup_type ctxt i.v)}
+: i=IDENTIFIER {
+  let t = lookup_type ctxt i.v in
+    Var { i with v = (i.v,!ctxt,t)}
 }
 ;
 primary_expression
