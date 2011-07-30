@@ -36,37 +36,36 @@ type slsampler = [ `sampler2d of slprec | `samplerCube of slprec ]
 type slprecable = [ slnum | slsampler ]
 type 'a slparam = In of 'a | Out of 'a | Inout of 'a
 type slvoid = [ `void ] (* Not a real type -- more like bottom/unit/falsity *)
-type slstruct = [ `record of (string * sltype) list ] (* see sleq *)
-and slarray = [ `array of slint slexpr * slnonarray ]
-and sleq = [ slnumish | `record of (string * sltype) list ] (* slstruct *)
-and slnonarray = [ slsampler | slnumish
-                 | `record of (string * sltype) list ] (* sleq *)
-and sltype = [ `array of slint slexpr * slnonarray (* slarray *)
-             | slsampler | slnumish
-	     | `record of (string * sltype) list (* slnonarray *)
-	     | `univ ]
-and slreturn = [ slvoid (* sltype *)
-	       | `array of slint slexpr * slnonarray (* slarray *)
+type 'a slstruct = [ `record of (string * 'a) list ]
+type 'a sldecl = [ `custom of string * 'a slstruct ]
+type ('a,'b) slfun = [ `lam of 'a slparam slbind list * 'b ]
+type ('a,'b) slarray = [ `array of 'a * 'b ]
+type sltop = [ `univ ]
+type sltype = [ (slint slexpr, sltype) slarray
+	      | slsampler | slnumish
+	      | sltype slstruct
+	      | sltop ]
+and slreturn = [ slvoid
+	       | (slint slexpr, sltype) slarray
 	       | slsampler | slnumish
-	       | `record of (string * sltype) list ] (* slnonarray *)
-and slfun = [ `lam of sltype slparam slbind list * slreturn ]
-and sldecl = [ `custom of string * slstruct ]
-and sluniv = [ `lam of sltype slparam slbind list * slreturn (* slfun *)
-             | `custom of string * slstruct (* sldecl *)
-		   (* sltype *)
-             | `array of slint slexpr * slnonarray (* slarray *)
+	       | sltype slstruct ]
+and sluniv = [ (sltype, slreturn) slfun
+             | sltype sldecl
+             | (slint slexpr, sltype) slarray
 	     | slsampler | slnumish
-	     | `record of (string * sltype) list (* slnonarray *)
-	     | `univ
+	     | sltype slstruct
+	     | sltop
 	     ]
 and 'b slexpr =
     Var of (string * slenv * 'b) pptok
   | Constant of 'b slval pptok
-  | Construct of ('b * string * slenv * slnonarray slexpr list) pptok
+      (* TODO: restrict constructor args to nonarrays *)
+  | Construct of ('b * string * slenv * sltype slexpr list) pptok
   | Group of 'b slexpr pptok
-  | Subscript of ('b * slarray slexpr * slint slexpr) pptok
+  | Subscript of ('b * (slint slexpr, sltype) slarray slexpr
+		  * slint slexpr) pptok
   | App of ('b * string * slenv * sltype slexpr list) pptok
-  | Field of ('b * slstruct slexpr * string) pptok
+  | Field of ('b * sltype slstruct slexpr * string) pptok
   | Swizzle of ('b * sldim slexpr * slswizzle) pptok
   | PostInc of 'b slexpr pptok (* slnumish -> slnumish *)
   | PostDec of 'b slexpr pptok (* slnumish -> slnumish *)
@@ -83,8 +82,9 @@ and 'b slexpr =
   | Gt of ('b * slnum slexpr * slnum slexpr) pptok (* -> slbool *)
   | Lte of ('b * slnum slexpr * slnum slexpr) pptok (* -> slbool *)
   | Gte of ('b * slnum slexpr * slnum slexpr) pptok (* -> slbool *)
-  | Eq of ('b * sleq slexpr * sleq slexpr) pptok (* -> slbool *)
-  | Neq of ('b * sleq slexpr * sleq slexpr) pptok (* -> slbool *)
+      (* TODO: no samplers, no arrays in equality tests *)
+  | Eq of ('b * sltype slexpr * sltype slexpr) pptok (* -> slbool *)
+  | Neq of ('b * sltype slexpr * sltype slexpr) pptok (* -> slbool *)
   | And of ('b * slbool slexpr * slbool slexpr) pptok (* -> slbool *)
   | Xor of ('b * slbool slexpr * slbool slexpr) pptok (* -> slbool *)
   | Or of ('b * slbool slexpr * slbool slexpr) pptok (* -> slbool *)
@@ -94,7 +94,7 @@ and 'b slexpr =
   | SubSet of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
   | MulSet of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
   | DivSet of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
-  | Seq of (slnonarray slexpr * 'b slexpr) pptok
+  | Seq of (sltype slexpr * 'b slexpr) pptok
 and slstmt =
     Expr of sltype slexpr pptok
   | Select of (slbool slexpr pptok
@@ -113,9 +113,11 @@ and slstmt =
   | Uniform of (string * sltype) list pptok
   | Varying of (bool * string * sltype) list pptok
   | Precdecl of slprecable pptok
-  | Typedecl of (sldecl * slstruct slexpr option) slbind list pptok
+  | Typedecl of (sltype sldecl
+		 * sltype slstruct slexpr option) slbind list pptok
   | Vardecl of (sltype * sltype slexpr option) slbind list pptok
-  | Fundecl of (slfun slbind * slstmt list pptok option) pptok
+  | Fundecl of ((sltype, slreturn) slfun slbind
+		* slstmt list pptok option) pptok
 and slenv = { ctxt : slstmt list slbind SymMap.t list; (* scope stack *)
 	      opensyms : sluniv slbind list;
 	      prec : slprec PrecMap.t list; (* precision stack *)
