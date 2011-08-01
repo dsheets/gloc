@@ -35,6 +35,9 @@ open Sl_lib
 
 (*%type <Sl_lib.sltype Sl_lib.slexpr> assignment_expression*)
 
+%nonassoc LESS_THAN_ELSE
+%nonassoc ELSE
+
 %type <Sl_lib.slenv> translation_unit
 
 %start translation_unit
@@ -289,7 +292,7 @@ declaration
 : f=function_prototype; s=SEMICOLON {
   Fundecl {(fuse_pptok [proj f; proj s]) with v=f.v}
 }
-| t=type_specifier; s=SEMICOLON {
+| t=struct_specifier; s=SEMICOLON {
   Typedecl {(fuse_pptok [proj t; proj s]) with v=[]}
 }
 | t=type_specifier; dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
@@ -564,7 +567,7 @@ selection_statement
   Select {(fuse_pptok [proj i; proj l; proj_slexpr e; proj r;
 		       proj tb])
           with v=(e, tb, None)}
-}
+} %prec LESS_THAN_ELSE
 | i=IF; l=LEFT_PAREN; bex=expression; r=RIGHT_PAREN;
 tb=statement; e=ELSE; fb=statement {
   Select {(fuse_pptok [proj i; proj l; proj_slexpr bex; proj r;
