@@ -2,3 +2,4 @@
 <gloc.*>: package(menhirLib), package(ulex), package(json-wheel), package(str)
 <glo.*>: syntax(camlp4o), package(json-tc.syntax)
 <ce_lib.*>: package(menhirLib)
+<essl_lib.*>: package(menhirLib)

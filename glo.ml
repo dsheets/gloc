@@ -34,7 +34,7 @@ let no_license author =
    "")
 
 let compile target origexpr tokslst =
-  let env = Essl_lib.parse_essl (proj_pptok_expr (List.hd tokslst)) in
+  let env = Essl_lib.parse_essl (Pp_lib.proj_pptok_expr (List.hd tokslst)) in
   {glo=glo_version; target;
    meta=Some {
      author=[];

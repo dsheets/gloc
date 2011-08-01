@@ -1,164 +1,6 @@
 %{
 open Pp_lib
-module SymMap = Map.Make(struct type t=string let compare = compare end)
-
-type 'a slval = Int of 'a * int
-		| Float of 'a * float
-		| Bool of 'a * bool
-
-type slel = X | Y | Z | W
-type slswizzle =
-    Sub1 of slel
-  | Sub2 of slel * slel
-  | Sub3 of slel * slel * slel
-  | Sub4 of slel * slel * slel * slel
-type 'a slbind = { const: bool; name: string option; b: 'a }
-
-type slprec = High | Medium | Low
-type slprectype = Float | Int | Sampler2d | SamplerCube
-module PrecMap = Map.Make(struct type t=slprectype let compare = compare end)
-
-type slfloat = [ `float of slprec ]
-type slint = [ `int of slprec ]
-type slnum = [ slfloat | slint ]
-type slbool = [ `bool ]
-type slprim = [ slnum | slbool ]
-type sldim = [ `vec2 of slprim
-	     | `vec3 of slprim
-	     | `vec4 of slprim
-	     | `mat2 of slprec
-	     | `mat3 of slprec
-	     | `mat4 of slprec
-	     ]
-type slnumish = [ slprim | sldim ]
-
-type slsampler = [ `sampler2d of slprec | `samplerCube of slprec ]
-type slprecable = [ slnum | slsampler ]
-type 'a slparam = In of 'a | Out of 'a | Inout of 'a
-type slvoid = [ `void ] (* Not a real type -- more like bottom/unit/falsity *)
-type 'a slstruct = [ `record of (string * 'a) list ]
-type 'a sldecl = [ `custom of string * 'a slstruct ]
-type ('a,'b) slfun = [ `lam of 'a slparam slbind list * 'b ]
-type ('a,'b) slarray = [ `array of 'a * 'b ]
-type sltop = [ `univ ]
-type sltype = [ (slint slexpr, sltype) slarray
-	      | slsampler | slnumish
-	      | sltype slstruct
-	      | sltop ]
-and slreturn = [ slvoid
-	       | (slint slexpr, sltype) slarray
-	       | slsampler | slnumish
-	       | sltype slstruct ]
-and sluniv = [ (sltype, slreturn) slfun
-             | sltype sldecl
-             | (slint slexpr, sltype) slarray
-	     | slsampler | slnumish
-	     | sltype slstruct
-	     | sltop
-	     ]
-and 'b slexpr =
-    Var of (string * slenv * 'b) pptok
-  | Constant of 'b slval pptok
-      (* TODO: restrict constructor args to nonarrays *)
-  | Construct of ('b * string * slenv * sltype slexpr list) pptok
-  | Group of 'b slexpr pptok
-  | Subscript of ('b * (slint slexpr, sltype) slarray slexpr
-		  * slint slexpr) pptok
-  | App of ('b * string * slenv * sltype slexpr list) pptok
-  | Field of ('b * sltype slstruct slexpr * string) pptok
-  | Swizzle of ('b * sldim slexpr * slswizzle) pptok
-  | PostInc of 'b slexpr pptok (* slnumish -> slnumish *)
-  | PostDec of 'b slexpr pptok (* slnumish -> slnumish *)
-  | PreInc of 'b slexpr pptok (* slnumish -> slnumish *)
-  | PreDec of 'b slexpr pptok (* slnumish -> slnumish *)
-  | Pos of 'b slexpr pptok (* slnumish -> slnumish *)
-  | Neg of 'b slexpr pptok (* slnumish -> slnumish *)
-  | Not of 'b slexpr pptok (* slbool -> slbool *)
-  | Mul of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
-  | Div of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
-  | Add of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
-  | Sub of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
-  | Lt of ('b * slnum slexpr * slnum slexpr) pptok (* -> slbool *)
-  | Gt of ('b * slnum slexpr * slnum slexpr) pptok (* -> slbool *)
-  | Lte of ('b * slnum slexpr * slnum slexpr) pptok (* -> slbool *)
-  | Gte of ('b * slnum slexpr * slnum slexpr) pptok (* -> slbool *)
-      (* TODO: no samplers, no arrays in equality tests *)
-  | Eq of ('b * sltype slexpr * sltype slexpr) pptok (* -> slbool *)
-  | Neq of ('b * sltype slexpr * sltype slexpr) pptok (* -> slbool *)
-  | And of ('b * slbool slexpr * slbool slexpr) pptok (* -> slbool *)
-  | Xor of ('b * slbool slexpr * slbool slexpr) pptok (* -> slbool *)
-  | Or of ('b * slbool slexpr * slbool slexpr) pptok (* -> slbool *)
-  | Sel of (slbool slexpr * 'b slexpr * 'b slexpr) pptok
-  | Set of ('b slexpr * 'b slexpr) pptok
-  | AddSet of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
-  | SubSet of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
-  | MulSet of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
-  | DivSet of ('b slexpr * 'b slexpr) pptok (* slnumish * slnumish -> slnumish *)
-  | Seq of (sltype slexpr * 'b slexpr) pptok
-and slstmt =
-    Expr of sltype slexpr pptok
-  | Select of (slbool slexpr pptok
-	       * slstmt list pptok * slstmt list pptok) pptok
-  | For of (slstmt * (slbool slexpr option
-		      * sltype slexpr option) pptok * slstmt) pptok
-  | While of (slstmt * slstmt) pptok
-  | DoWhile of (slstmt list pptok * slbool slexpr) pptok
-  | Return of (sltype slexpr option) pptok
-  | Discard of unit pptok
-  | Break of unit pptok
-  | Continue of unit pptok
-  | Scope of slstmt list pptok
-  | Invariant of string list pptok
-  | Attribute of (string * sltype) list pptok
-  | Uniform of (string * sltype) list pptok
-  | Varying of (bool * string * sltype) list pptok
-  | Precdecl of slprecable pptok
-  | Typedecl of (sltype sldecl
-		 * sltype slstruct slexpr option) slbind list pptok
-  | Vardecl of (sltype * sltype slexpr option) slbind list pptok
-  | Fundecl of ((sltype, slreturn) slfun slbind
-		* slstmt list pptok option) pptok
-and slenv = { ctxt : slstmt list slbind SymMap.t list; (* scope stack *)
-	      opensyms : sluniv slbind list;
-	      prec : slprec PrecMap.t list; (* precision stack *)
-	      invariant : bool;
-	      pragmas : string pptok pptok SymMap.t;
-	      stmts : slstmt list }
-
-exception BadDeclStatement of unit pptok
-let ctxt = ref { ctxt=[SymMap.empty]; opensyms=[]; prec=[PrecMap.empty];
-		 invariant=false; pragmas=SymMap.empty; stmts=[] }
-(*let typeof_stmt ctxt = function
-  | Expr t -> error (BadDeclStatement (proj t)); `univ
-  | Select t -> error (BadDeclStatement (proj t)); `univ
-  | For t -> error (BadDeclStatement (proj t)); `univ
-  | While t -> error (BadDeclStatement (proj t)); `univ
-  | DoWhile t -> error (BadDeclStatement (proj t)); `univ
-  | Invariant t -> error (BadDeclStatement (proj t)); `univ
-  | Discard t -> error (BadDeclStatement (proj t)); `univ
-  | Break t -> error (BadDeclStatement (proj t)); `univ
-  | Continue t -> error (BadDeclStatement (proj t)); `univ
-  | Return t -> error (BadDeclStatement (proj t)); `univ
-  | Scope t -> error (BadDeclStatement (proj t)); `univ
-  | Attribute ({v=[]} as t) -> error (BadDeclStatement (proj t)); `univ
-  | Uniform ({v=[]} as t) -> error (BadDeclStatement (proj t)); `univ
-  | Varying ({v=[]} as t) -> error (BadDeclStatement (proj t)); `univ
-  | Precdecl t -> error (BadDeclStatement (proj t)); `univ
-  | Typedecl ({v=[]} as t) -> error (BadDeclStatement (proj t)); `univ
-  | Vardecl ({v=[]} as t) -> error (BadDeclStatement (proj t)); `univ
-  | Attribute {v=(_,t)::_} -> t
-  | Uniform {v=(_,t)::_} -> t
-  | Varying {v=(_,_,t)::_} -> t
-  | Typedecl {v={b=(`custom (_,r),_)}::_} -> r
-  | Vardecl {v={b=(t,_)}::_} -> t
-  | Fundecl {v=({b},_)} -> b*)
-let lookup_type envr sym = let env = !envr in (* TODO: overloads *)
-  try let h = List.hd (SymMap.find sym (List.hd env.ctxt)).b in
-    (*typeof_stmt env h*) `univ (* TODO: type propagation *)
-  with Not_found ->
-    envr := {env with opensyms={const=false;
-				name=Some sym; b=`univ}::env.opensyms};
-    `univ
+open Sl_lib
 %}
 
 %token EOF
@@ -191,7 +33,9 @@ let lookup_type envr sym = let env = !envr in (* TODO: overloads *)
  * PERCENT RIGHT_ASSIGN RIGHT_OP TILDE VERTICAL_BAR XOR_ASSIGN
  *)
 
-%type <slenv> translation_unit
+(*%type <Sl_lib.sltype Sl_lib.slexpr> assignment_expression*)
+
+%type <Sl_lib.slenv> translation_unit
 
 %start translation_unit
 
@@ -205,9 +49,11 @@ variable_identifier
 ;
 primary_expression
 : v=variable_identifier { v }
-| i=INTCONSTANT { Constant { i with v = Int (`int,i.v) } }
-| f=FLOATCONSTANT { Constant { f with v = Float (`float,f.v) } }
-| b=BOOLCONSTANT { Constant { b with v = Bool (`bool,b.v) } }
+| i=INTCONSTANT { Constant { i with v = I (`int (lookup_prec ctxt Int),i.v) } }
+| b=BOOLCONSTANT { Constant { b with v = B (`bool,b.v) } }
+| f=FLOATCONSTANT {
+  Constant { f with v = F (`float (lookup_prec ctxt Float),f.v) }
+}
 | l=LEFT_PAREN; e=expression; r=RIGHT_PAREN {
     Group {(fuse_pptok [proj l; proj_slexpr e; proj r]) with v=e}
 }
@@ -216,29 +62,40 @@ postfix_expression
 : p=primary_expression { p }
 | p=postfix_expression; l=LEFT_BRACKET; i=integer_expression; r=RIGHT_BRACKET {
     let t = fuse_pptok [proj_slexpr p; proj l; proj_slexpr i; proj r]
-    in begin match typeof ctxt p with
+    in begin match typeof p with
       | `array (_,el) ->
-	  Subscript {t with v = (el, p, i)}
+	Subscript {t with v = (el, p, i)}
       | `vec2 el | `vec3 el | `vec4 el ->
-	  Swizzle {t with v = (el, p, Sub1 (swizzle_of_int i))}
-      | `mat2 _ ->
-	  Swizzle {t with v = (`vec2 `float, p, Sub1 (swizzle_of_int i))}
-      | `mat3 _ ->
-	  Swizzle {t with v = (`vec3 `float, p, Sub1 (swizzle_of_int i))}
-      | `mat4 _ ->
-	  Swizzle {t with v = (`vec4 `float, p, Sub1 (swizzle_of_int i))}
+	Swizzle {t with v = (inj_prim el, p, Sub1 X)} (*(swizzle_of_int i))}*)
+      | `mat2 prec ->
+	Swizzle {t with v = (`vec2 (`float prec), p,
+			     Sub1 X)} (*(swizzle_of_int i))}*)
+      | `mat3 prec ->
+	Swizzle {t with v = (`vec3 (`float prec), p,
+			     Sub1 X)} (*(swizzle_of_int i))}*)
+      | `mat4 prec ->
+	Swizzle {t with v = (`vec4 (`float prec), p,
+			     Sub1 X)} (*(swizzle_of_int i))}*)
+      | `univ -> Subscript {t with v = (`univ,p,i)}
+      | v -> error (BadSubscript {(proj_slexpr p) with v});
+	     (* TODO: enforce subscriptability *)
+	     Swizzle {t with v=(`univ,p,Sub1 X)}
       end
   }
 | f=function_call { f }
 | p=postfix_expression; d=DOT; i=IDENTIFIER {
     let t = fuse_pptok [proj_slexpr p; proj d; proj i]
-    in begin match typeof ctxt p with
-      | `record (_,tl) ->
-	  Field { t with v=(List.assoc i.v tl,p,i.v)} (* TODO: missing field *)
-      | `vec2 t | `vec3 t | `vec4 t ->
-	  let s = swizzle_of_string i.v in
-	  let st = typeof_swizzle ctxt t s in
+    in begin match typeof p with
+      | `record fs ->
+	  Field { t with v=(List.assoc i.v fs,p,i.v)} (* TODO: missing field *)
+      | `vec2 elt | `vec3 elt | `vec4 elt ->
+	  let s = swizzle_of_identifier i in
+	  let st = typeof_swizzle elt s in
 	    Swizzle { t with v=(st, p, s) } (* TODO: check widths *)
+      | `univ -> Field { t with v=(`univ,p,i.v)}
+      | v -> error (BadField {(proj_slexpr p) with v});
+	     (* TODO: enforce operand slstruct *)
+	     Field { t with v=(`univ,p,i.v)}
       end
   }
 | p=postfix_expression; i=INC_OP {
@@ -255,50 +112,55 @@ integer_expression
 ;
 function_call
 : f=function_call_generic { f }
-| p=postfix_expression; d=DOT; f=function_call_generic {
+(*| p=postfix_expression; d=DOT; f=function_call_generic {
     let t = fuse_pptok [proj_slexpr p; proj d; proj_slexpr f]
     in error (MethodsUnsupported t) (* TODO: dummy *)
-}
+}*)
 ;
 function_call_generic
-: i=IDENTIFIER; p=fuse_sep_list(LEFT_PAREN,assignment_expression,COMMA,RIGHT_PAREN) {
+: i=IDENTIFIER;
+p=fuse_sep_slexpr_list(LEFT_PAREN,assignment_expression,COMMA,RIGHT_PAREN) {
   let t = fuse_pptok [proj i; proj p]
   in begin match lookup_type ctxt i.v with
-    | `lam (pl,rt) -> App {t with v=(rt,i.v,p.v)}
-    | ctype -> Construct {t with v=(ctype,i.v,p.v)}
+    | `lam (pl,rt) ->
+      App {t with v=(`univ (* TODO: rt *),i.v,!ctxt,p.v)}
+    | ctype ->
+      Construct {t with v=(`univ (* TODO: ctype *),i.v,!ctxt,p.v)}
     end
 }
-| c=constructor; p=fuse_sep_list(LEFT_PAREN,assignment_expression,COMMA,RIGHT_PAREN) {
-    Construct {(fuse_pptok [proj c; proj p]) with v=(fst c.v,snd c.v,p.v)}
+| c=constructor;
+p=fuse_sep_slexpr_list(LEFT_PAREN,assignment_expression,COMMA,RIGHT_PAREN) {
+    Construct {(fuse_pptok [proj c; proj p])
+               with v=(fst c.v,snd c.v,!ctxt,p.v)}
   }
 | i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
     let t = fuse_pptok [proj i; proj l; proj v; proj r]
     in begin match lookup_type ctxt i.v with
-      | `lam (pl,rt) -> App {t with v=(rt,i.v,[])}
-      | ctype -> Construct {t with v=(ctype,i.v,[])}
+      | `lam (pl,rt) -> App {t with v=(`univ (* TODO: rt *),i.v,!ctxt,[])}
+      | ctype -> Construct {t with v=(`univ (* TODO: ctype*),i.v,!ctxt,[])}
       end
   }
 | c=constructor; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
     let t = fuse_pptok [proj c; proj l; proj v; proj r] in
-      Construct { t with v=(fst c.v,snd c.v,[]) }
+      Construct { t with v=(fst c.v,snd c.v,!ctxt,[]) }
   }
 ;
-constructor
-: f=FLOAT { {f with v=(`float,"float")} }
-| i=INT { {i with v=(`int,"int")} }
+constructor (* TODO: correct precision tracking (p.34 1.0r17) *)
+: f=FLOAT { {f with v=(`float (lookup_prec ctxt Float),"float")} }
+| i=INT { {i with v=(`int (lookup_prec ctxt Int),"int")} }
 | b=BOOL { {b with v=(`bool,"bool")} }
-| v=VEC2 { {v with v=(`vec2 `float,"vec2")} }
-| v=VEC3 { {v with v=(`vec3 `float,"vec3")} }
-| v=VEC4 { {v with v=(`vec4 `float,"vec4")} }
+| v=VEC2 { {v with v=(`vec2 (`float (lookup_prec ctxt Float)),"vec2")} }
+| v=VEC3 { {v with v=(`vec3 (`float (lookup_prec ctxt Float)),"vec3")} }
+| v=VEC4 { {v with v=(`vec4 (`float (lookup_prec ctxt Float)),"vec4")} }
 | v=BVEC2 { {v with v=(`vec2 `bool,"bvec2")} }
 | v=BVEC3 { {v with v=(`vec3 `bool,"bvec3")} }
 | v=BVEC4 { {v with v=(`vec4 `bool,"bvec4")} }
-| v=IVEC2 { {v with v=(`vec2 `int,"ivec2")} }
-| v=IVEC3 { {v with v=(`vec3 `int,"ivec3")} }
-| v=IVEC4 { {v with v=(`vec4 `int,"ivec4")} }
-| m=MAT2 { {m with v=(`mat2,"mat2")} }
-| m=MAT3 { {m with v=(`mat3,"mat3")} }
-| m=MAT4 { {m with v=(`mat4,"mat4")} }
+| v=IVEC2 { {v with v=(`vec2 (`int (lookup_prec ctxt Int)),"ivec2")} }
+| v=IVEC3 { {v with v=(`vec3 (`int (lookup_prec ctxt Int)),"ivec3")} }
+| v=IVEC4 { {v with v=(`vec4 (`int (lookup_prec ctxt Int)),"ivec4")} }
+| m=MAT2 { {m with v=(`mat2 (lookup_prec ctxt Float),"mat2")} }
+| m=MAT3 { {m with v=(`mat3 (lookup_prec ctxt Float),"mat3")} }
+| m=MAT4 { {m with v=(`mat4 (lookup_prec ctxt Float),"mat4")} }
 ;
 unary_expression
 : p=postfix_expression { p }
@@ -338,17 +200,21 @@ additive_expression
 ;
 relational_expression
 : a=additive_expression { a }
-| r=relational_expression; l=LEFT_ANGLE; a=additive_expression {
-    Lt {(fuse_pptok [proj_slexpr r; proj l; proj_slexpr a]) with v=(r,a)}
+| lh=additive_expression; l=LEFT_ANGLE; rh=additive_expression {
+    Lt {(fuse_pptok [proj_slexpr lh; proj l; proj_slexpr rh])
+        with v=(`bool,lh,rh)}
   }
-| r=relational_expression; g=RIGHT_ANGLE; a=additive_expression {
-    Gt {(fuse_pptok [proj_slexpr r; proj g; proj_slexpr a]) with v=(r,a)}
+| lh=additive_expression; g=RIGHT_ANGLE; rh=additive_expression {
+    Gt {(fuse_pptok [proj_slexpr lh; proj g; proj_slexpr rh])
+        with v=(`bool,lh,rh)}
   }
-| r=relational_expression; l=LE_OP; a=additive_expression {
-    Lte {(fuse_pptok [proj_slexpr r; proj l; proj_slexpr a]) with v=(r,a)}
+| lh=additive_expression; l=LE_OP; rh=additive_expression {
+    Lte {(fuse_pptok [proj_slexpr lh; proj l; proj_slexpr rh])
+         with v=(`bool,lh,rh)}
   }
-| r=relational_expression; g=GE_OP; a=additive_expression {
-    Gte {(fuse_pptok [proj_slexpr r; proj g; proj_slexpr a]) with v=(r,a)}
+| lh=additive_expression; g=GE_OP; rh=additive_expression {
+    Gte {(fuse_pptok [proj_slexpr lh; proj g; proj_slexpr rh])
+         with v=(`bool,lh,rh)}
   }
 ;
 equality_expression
@@ -389,7 +255,7 @@ conditional_expression
 c=COLON; a=assignment_expression {
   Sel {(fuse_pptok [proj_slexpr o; proj q; proj_slexpr e;
 		    proj c; proj_slexpr a])
-       with v=(c,e,a)}
+       with v=(o,e,a)}
 }
 ;
 assignment_expression
@@ -398,11 +264,12 @@ assignment_expression
   (* TODO: mutate *)
   let t = fuse_pptok [proj_slexpr u; proj o; proj_slexpr a] in
   begin match o.v with
-    | EQUAL -> Set { t with v=(u,a) }
-    | MUL_ASSIGN -> MulSet { t with v=(u,a) }
-    | DIV_ASSIGN -> DivSet { t with v=(u,a) }
-    | ADD_ASSIGN -> AddSet { t with v=(u,a) }
-    | SUB_ASSIGN -> SubSet { t with v=(u,a) }
+    | Punc.EQUAL -> Set { t with v=(u,a) }
+    | Punc.MUL_ASSIGN -> MulSet { t with v=(u,a) }
+    | Punc.DIV_ASSIGN -> DivSet { t with v=(u,a) }
+    | Punc.ADD_ASSIGN -> AddSet { t with v=(u,a) }
+    | Punc.SUB_ASSIGN -> SubSet { t with v=(u,a) }
+    | _ -> Set { t with v=(u,a) } (* TODO: ERROR *)
   end
 }
 ;
@@ -423,7 +290,7 @@ declaration
   Fundecl {(fuse_pptok [proj f; proj s]) with v=f.v}
 }
 | t=type_specifier; s=SEMICOLON {
-  Typedecl {(fuse_pptok [proj t; proj s]) with v=()}
+  Typedecl {(fuse_pptok [proj t; proj s]) with v=[]}
 }
 | t=type_specifier; dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
     let v = List.map
@@ -433,7 +300,7 @@ declaration
 	 | n,Some ie,ini ->
 	     { const=false; name=Some n;
 	       b=(`array (ie,t.v),ini) }
-      ) dl
+      ) dl.v
     in
       Vardecl {(fuse_pptok [proj t; proj dl; proj s]) with v}
   }
@@ -446,7 +313,7 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
        | n,Some ie,ini ->
 	   { const=true; name=Some n;
 	     b=(`array (ie,t.v),ini) }
-    ) dl
+    ) dl.v
   in
     Vardecl {(fuse_pptok [proj c; proj t; proj dl; proj s]) with v}
 }
@@ -460,7 +327,7 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
 	(n,t.v)
       | n,Some ie,Some _ -> error (CannotInitializeAttribute (proj d));
 	(n,`array (ie,t.v))
-    ) dl
+    ) dl.v
   in
   Attribute {(fuse_pptok [proj a; proj t; proj dl; proj s]) with v}
 }
@@ -475,7 +342,7 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
 	(inv,n,t.v)
       | n,Some ie,Some _ -> error (CannotInitializeVarying (proj d));
 	(inv,n,`array (ie,t.v))
-    ) dl
+    ) dl.v
   in Varying {(fuse_pptok (i@[proj q; proj t; proj dl; proj s])) with v}
   }
 | u=UNIFORM; t=type_specifier;
@@ -486,13 +353,13 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
       | n,Some ie,None -> (n,`array (ie,t.v))
       | n,None,Some _ -> error (CannotInitializeUniform (proj d));
 	(n,t.v)
-      | n,Some ie,Some _ -> error (CannotInitializeUniform (projd));
+      | n,Some ie,Some _ -> error (CannotInitializeUniform (proj d));
 	(n,`array (ie,t.v))
-    ) dl
+    ) dl.v
   in Uniform {(fuse_pptok [proj u; proj t; proj dl; proj s]) with v}
   }
 | inv=INVARIANT; dl=fuse_sep_nonempty_list(IDENTIFIER,COMMA); s=SEMICOLON {
-  let v = List.map (fun d -> d.v) dl in
+  let v = List.map (fun d -> d.v) dl.v in
   Invariant {(fuse_pptok [proj inv; proj dl; proj s]) with v}
 }
 | p=PRECISION; t=precision_type; s=SEMICOLON {
@@ -531,7 +398,7 @@ function_prototype
 p=fuse_sep_list(LEFT_PAREN,param_declaration,COMMA,RIGHT_PAREN) {
   {(fuse_pptok [proj t; proj i; proj p])
    with v=({const=false; name=Some i.v;
-	    b=`lam (p.v, t.v)
+	    b=`lam (List.map (fun p -> p.v) p.v, t.v)
 	   }, None)}
 }
 | t=type_specifier; i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
@@ -544,22 +411,22 @@ p=fuse_sep_list(LEFT_PAREN,param_declaration,COMMA,RIGHT_PAREN) {
 p=fuse_sep_list(LEFT_PAREN,param_declaration,COMMA,RIGHT_PAREN) {
     {(fuse_pptok [proj v; proj i; proj p])
      with v=({const=false; name=Some i.v;
-	      b=`lam (p.v,`slvoid)
+	      b=`lam (List.map (fun p -> p.v) p.v,`void)
 	     }, None)}
   }
 | n=VOID; i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
     {(fuse_pptok [proj v; proj i; proj l; proj v; proj r])
      with v=({const=false; name=Some i.v;
-	      b=`lam ([],`slvoid)
+	      b=`lam ([],`void)
 	     }, None)}
   }
 ;
 param_declarator
   : t=type_specifier; i=IDENTIFIER {
-    {(fuse_pptok [proj t; proj i]) with v=(t.v,i.v)}
+    {(fuse_pptok [proj t; proj i]) with v=(t.v,Some i.v)}
   }
 | t=type_specifier; i=IDENTIFIER; a=array_type_annot {
-    {(fuse_pptok [proj t; proj i; proj a]) with v=(`array (a.v,t.v),i.v)}
+    {(fuse_pptok [proj t; proj i; proj a]) with v=(`array (a.v,t.v),Some i.v)}
   }
 ;
 param_declaration
@@ -612,9 +479,9 @@ type_specifier
 | m=MAT3 { {m with v=`mat3 (lookup_prec ctxt Float)} }
 | m=MAT4 { {m with v=`mat4 (lookup_prec ctxt Float)} }
 | s=SAMPLER2D { {s with v=`sampler2d (lookup_prec ctxt Sampler2d)} }
-| s=SAMPLERCUBE { {s with v=`samplercube (lookup_prec ctxt SamplerCube)} }
+| s=SAMPLERCUBE { {s with v=`samplerCube (lookup_prec ctxt SamplerCube)} }
 | s=struct_specifier { s }
-| i=IDENTIFIER { {i with v=lookup_type ctxt i.v} }
+| i=IDENTIFIER { {i with v=`univ} } (* TODO: checking *)
 ;
 precision_qualifier
 : h=HIGH_PRECISION { {h with v=High} }
@@ -626,11 +493,13 @@ struct_specifier
 l=LEFT_BRACE; dl=list(struct_declaration); r=RIGHT_BRACE {
   match i with
     | None ->
-      {(fuse_pptok [proj s; proj l; proj dl; proj r])
-       with v=`record (List.flatten dl)}
+      {(fuse_pptok ([proj s; proj l]@(List.map proj dl)@[proj r]))
+       with v=`record (List.flatten (List.map (fun d -> d.v) dl))}
     | Some i ->
-      {(fuse_pptok [proj s; proj i; proj l proj dl; proj r])
-       with v=`custom (i.v,List.flatten dl)}
+      let t = `record (List.flatten (List.map (fun d -> d.v) dl)) in
+      (* TODO: register `custom (i.v,t) *)
+      {(fuse_pptok ([proj s; proj i; proj l]@(List.map proj dl)@[proj r]))
+       with v=t}
 }
 ;
 struct_declaration
@@ -639,7 +508,7 @@ struct_declaration
     (fun d -> match d.v with
       | None,n -> (n,t.v)
       | Some ie,n -> (n,`array (ie,t.v))
-    ) dl
+    ) dl.v
   in {(fuse_pptok [proj t; proj dl; proj s]) with v}
 }
 ;
@@ -667,10 +536,10 @@ simple_statement
 ;
 compound_statement (* TODO: scope sooner? *)
 : l=LEFT_BRACE; sl=list(statement_no_new_scope); r=RIGHT_BRACE {
-  let env = push_new_env sl in
-  Scope {env
-	 with stmts={(fuse_pptok (proj l)::(List.map proj_slstmt sl)@[proj r])
-                     with v=sl}}
+  (*let env = push_new_env sl in*)
+  Scope {(fuse_pptok ((proj l)
+		      ::(List.map proj_slstmt sl)@[proj r]))
+         with v=sl}
 }
 ;
 statement
@@ -679,7 +548,7 @@ statement
 ;
 compound_statement_no_new_scope
 : l=LEFT_BRACE; sl=list(statement_no_new_scope); r=RIGHT_BRACE {
-  {(fuse_pptok (proj l)::(List.map proj_slstmt sl)@[proj r]) with v=sl}
+  {(fuse_pptok ((proj l)::(List.map proj_slstmt sl)@[proj r])) with v=sl}
 }
 ;
 expression_statement
@@ -687,24 +556,24 @@ expression_statement
   Expr {(fuse_pptok [proj_slexpr e; proj s]) with v=e}
 }
 | s=SEMICOLON {
-  Expr {s with v=Constant {s with v=Bool (`bool,false)}}
+  Expr {s with v=Constant {s with v=B (`bool,false)}}
 }
 ;
 selection_statement
 : i=IF; l=LEFT_PAREN; e=expression; r=RIGHT_PAREN; tb=statement {
   Select {(fuse_pptok [proj i; proj l; proj_slexpr e; proj r;
-		       proj_slstmt tb])
-          with v=(e, tb, [])}
+		       proj tb])
+          with v=(e, tb, None)}
 }
 | i=IF; l=LEFT_PAREN; bex=expression; r=RIGHT_PAREN;
 tb=statement; e=ELSE; fb=statement {
   Select {(fuse_pptok [proj i; proj l; proj_slexpr bex; proj r;
-		       proj_slstmt tb; proj e; proj_slstmt fb])
-          with v=(bex, tb, fb)}
+		       proj tb; proj e; proj fb])
+          with v=(bex, tb, Some fb)}
 }
 ;
 condition
-: e=expression { Expr e } (* TODO: check bool *)
+: e=expression { Expr {(proj_slexpr e) with v=e} } (* TODO: check bool *)
 | t=type_specifier; i=IDENTIFIER; e=EQUAL; ini=initializer_ {
     Vardecl {(fuse_pptok [proj t; proj i; proj e; proj_slexpr ini])
              with v=[{const=false; name=Some i.v;
@@ -734,10 +603,11 @@ for_init_statement
 ;
 for_rest_statement
   : c=condition; s=SEMICOLON; e=expression {
-    {(fuse_pptok [proj_slexpr c; proj s; proj_slexpr e]) with v=(Some c, Some e)}
+    {(fuse_pptok [proj_slstmt c; proj s; proj_slexpr e])
+     with v=(Some c, Some e)}
   }
 | c=condition; s=SEMICOLON {
-    {(fuse_pptok [proj_slexpr c; proj s]) with v=(Some c, None)}
+    {(fuse_pptok [proj_slstmt c; proj s]) with v=(Some c, None)}
   }
 | s=SEMICOLON; e=expression {
     {(fuse_pptok [proj s; proj_slexpr e]) with v=(None, Some e)}
@@ -750,12 +620,13 @@ jump_statement
 : c=CONTINUE; s=SEMICOLON { Continue (fuse_pptok [proj c; proj s]) }
 | b=BREAK; s=SEMICOLON { Break (fuse_pptok [proj b; proj s]) }
 | r=RETURN; e=expression?; s=SEMICOLON {
-    Return {(fuse_pptok [proj r; proj_slexpr e; proj s]) with v=e}
+    let etl = match e with Some e -> [proj_slexpr e] | None -> [] in
+    Return {(fuse_pptok ((proj r)::etl@[proj s])) with v=e}
   }
 | d=DISCARD; s=SEMICOLON { Discard (fuse_pptok [proj d; proj s]) }
 ;
-translation_unit (* TODO: expand *)
-: dl=list(external_declaration); EOF { { ctxt; stmts=dl } }
+translation_unit
+: dl=list(external_declaration); EOF { !ctxt }
 ;
 external_declaration
 : f=function_definition { f }
@@ -763,10 +634,8 @@ external_declaration
 ;
 function_definition (* TODO: scopes? *)
 : p=function_prototype; c=compound_statement_no_new_scope {
-  let rt,al,b = p.v in
-  let env = push_new_env c in (* TODO: sooner? *)
-  Fundecl {(fuse_pptok [proj p; proj c])
-           with v=(rt,al,Some env)}
+  (*let env = push_new_env c in (* TODO: sooner? *)*)
+  Fundecl {(fuse_pptok [proj p; proj c]) with v=p.v}
 }
 ;
 %%
