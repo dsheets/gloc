@@ -61,6 +61,7 @@ let set_outlang map = fun () -> exec_state.outlang := (map !(exec_state.outlang)
 (* TODO: add per warning check args *)
 (* TODO: add partial preprocess (only ambiguous conds with dep macros) *)
 (* TODO: add partial preprocess (maximal preprocess without semantic change) *)
+(* TODO: make verbose more... verbose *)
 let arguments =
   ["-c", A.Set exec_state.compile, "produce glo object";
    "-o", A.String (fun o -> exec_state.output := Some o), "output file";
@@ -72,7 +73,7 @@ let arguments =
    " input language";
    "-t", A.Symbol (["webgl"],(fun s -> set_outlang (with_dialect s) ())),
    " target language";
-   (*"-v", A.Set exec_state.verbose, "verbose compilation or version information";*)
+   "-v", A.Set exec_state.verbose, "verbose compilation or version information";
   ]
 let anon_fun arg = exec_state.inputs := arg::!(exec_state.inputs)
 
@@ -216,12 +217,20 @@ let slexpr = if !(exec_state.preprocess)
   else ppexpr
 in
 let product = if !(exec_state.compile)
-  then
-    let outlang = !(exec_state.outlang) in
-    let target = (string_of_dialect outlang.dialect,outlang.version) in
-    let glo = Glo.compile target ppexpr (List.map snd ppl) in
-    Json_io.string_of_json ~compact:true (Glo.json_of_glo glo)
-  else string_of_ppexpr start slexpr
+then
+  let outlang = !(exec_state.outlang) in
+  let target = (string_of_dialect outlang.dialect,outlang.version) in
+    try let glo = Glo.compile target ppexpr (List.map snd ppl) in
+      Json_io.string_of_json ~compact:(not !(exec_state.verbose))
+	(Glo.json_of_glo glo)
+    with err ->
+      (error (Essl_lib.EsslParseError ((Printexc.to_string err),
+				       !(Pp_lib.file),!(Pp_lib.line)));
+       List.iter (fun e -> eprintf "%s\n" (string_of_error e))
+	 (List.rev !errors);
+       eprintf "Fatal: unrecoverable parse error (5)\n";
+       exit 5)
+else string_of_ppexpr start slexpr
 in let out = match !(exec_state.output) with
   | None -> stdout
   | Some fn -> open_out fn

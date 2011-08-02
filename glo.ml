@@ -1,4 +1,6 @@
 open Printf
+open Pp_lib
+open Essl_lib
 
 type glo = {
   glo:version;
@@ -33,15 +35,35 @@ let no_license author =
      author,
    "")
 
+let create_header expr =
+  (* TODO: lift extension exprs *)
+  (* TODO: lift pragma invariant *)
+  {insym=[]; outsym=[]; inmac=[]; opmac=[]; outmac=[]; source=""}
+let create_body expr envs =
+  (* TODO: remove version *)
+  (* TODO: rename GLOC_* to GLOC_GLOC_* *)
+  (* TODO: remove extension *)
+  (* TODO: rewrite line directives *)
+  {insym=[]; outsym=[]; inmac=[]; opmac=[]; outmac=[];
+   source=(snd ((proj_pptok_expr expr).scan {file={src=(-1);input=(-1)};
+					     line={src=0;input=0};
+					     col=0}))}
+
 let compile target origexpr tokslst =
-  let env = Essl_lib.parse_essl (Pp_lib.proj_pptok_expr (List.hd tokslst)) in
-  {glo=glo_version; target;
-   meta=Some {
-     author=[];
-     license=no_license "";
-     library=None;
-     version=None;
-     build=None
-   };
-   units=[];
-   linkmap=Hashtbl.create 0}
+  let envs = List.map
+    (fun ppexpr ->
+       let s = stream_of_pptok_expr ppexpr in
+       let ts = essl_tokenize s in
+	 parse_essl (essl_lexerfn ts)
+    ) tokslst
+  in
+    {glo=glo_version; target;
+     meta=Some {
+       author=[];
+       license=no_license "";
+       library=None;
+       version=None;
+       build=None
+     };
+     units=[create_header origexpr; create_body origexpr envs];
+     linkmap=Hashtbl.create 0}
