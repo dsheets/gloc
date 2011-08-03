@@ -1,0 +1,31 @@
+{
+  "glo": [ 0, 8, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": {
+    "author": {},
+    "license": [ "Copyright (C) 2011 . All rights reserved.", "" ],
+    "library": null,
+    "version": null,
+    "build": null
+  },
+  "units": [
+    {
+      "insym": [],
+      "outsym": [],
+      "inmac": [],
+      "opmac": [],
+      "outmac": [],
+      "source": ""
+    },
+    {
+      "insym": [],
+      "outsym": [],
+      "inmac": [],
+      "opmac": [],
+      "outmac": [],
+      "source":
+        "\n#line 1 0\nvoid main() {\n     gl_Position = vec3(incoming);\n}"
+    }
+  ],
+  "linkmap": {}
+}
