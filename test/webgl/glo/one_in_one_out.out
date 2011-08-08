@@ -21,7 +21,7 @@
       "insym": [],
       "outsym": [],
       "inmac": [],
-      "opmac": [],
+      "opmac": [ "__VERSION__", "GL_ES" ],
       "outmac": [],
       "source":
         "\n#line 1 0\nvoid main() {\n     gl_Position = vec3(incoming);\n}"

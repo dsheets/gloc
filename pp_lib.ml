@@ -35,7 +35,7 @@ and macro = { name: string option;
 
 type env = { macros: macro Env.t;
 	     extensions: behavior Env.t;
-	     openmacros: string pptok list;
+	     inmacros: string pptok list;
 	   }
 
 exception ParserError of string

@@ -227,7 +227,7 @@ let macro_expand ?(cond=false) env ptl =
 			   defarg appenv binder (loop env [] arg)) (* "prescan" *)
 			{macros=Env.empty;
 			 extensions=Env.empty;
-			 openmacros=[]}
+			 inmacros=[]}
 			binders args
 		      in loop env prev ((loop appenv [] (stream w.span.a))@r)
 		  | None ->
@@ -341,7 +341,7 @@ let preprocess_ppexpr env ppexpr =
 	      | None -> loop env prev r)
 	  | Result _ -> loop env prev (tb::r)
 	  | Deferred i ->
-	    let env = { env with openmacros=i@env.openmacros } in
+	    let env = { env with inmacros=i@env.inmacros } in
 	    List.append
 	      (loop env prev (tb::r))
 	      (match fb with

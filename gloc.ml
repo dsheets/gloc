@@ -190,20 +190,23 @@ let macros = Env.add "__VERSION__" (omacro "__VERSION__" (synth_int (Dec,100)))
   (Env.singleton "GL_ES" (omacro "GL_ES" (synth_int (Dec,1)))) in
 let ppl = preprocess_ppexpr {macros;
 			     extensions=Env.empty;
-			     openmacros=[]} ppexpr in
+			     inmacros=[]} ppexpr in
 let () = if (List.length !errors) > 0 then
     (List.iter (fun e -> eprintf "%s\n" (string_of_error e))
        (List.rev !errors);
      eprintf "Fatal: unrecoverable preprocessor error (3)\n";
      exit 3)
 in
+let env_collect (f1,f2) vl (env,_) = (f1 env, f2 env)::vl in
+let get_inmac env = List.map (fun t -> t.v) env.inmacros in
+let get_opmac env = Env.fold (fun s _ l -> s::l) env.macros [] in
 let slexpr = if !(exec_state.preprocess)
   then if List.length ppl > 1
   then let o = List.fold_left
 	 (fun dl pp -> List.fold_left
 	   (fun dl om ->
 	     if List.exists (fun m -> om.v=m.v) dl then dl else om::dl)
-	   dl (fst pp).openmacros)
+	   dl (fst pp).inmacros)
 	 [] ppl
        in List.iter (fun st -> eprintf "%s\n" (string_pperror_of_string_tok st))
        o;
@@ -216,11 +219,16 @@ let slexpr = if !(exec_state.preprocess)
 		    v=[] }
   else ppexpr
 in
+let inmac,opmac = List.split
+  (List.fold_left (env_collect (get_inmac,get_opmac))
+     [] ppl) in
 let product = if !(exec_state.compile)
 then
   let outlang = !(exec_state.outlang) in
   let target = (string_of_dialect outlang.dialect,outlang.version) in
-    try let glo = Glo.compile target ppexpr (List.map snd ppl) in
+    try let glo = Glo.compile target ppexpr
+	  ~inmac:(List.flatten inmac) ~opmac:(List.flatten opmac)
+	  (List.map snd ppl) in
       Json_io.string_of_json ~compact:(not !(exec_state.verbose))
 	(Glo.json_of_glo glo)
     with err ->

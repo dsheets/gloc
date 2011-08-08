@@ -49,7 +49,7 @@ let create_body expr envs =
 					     line={src=0;input=0};
 					     col=0}))}
 
-let compile target origexpr tokslst =
+let compile target origexpr ~inmac ~opmac tokslst =
   let envs = List.map
     (fun ppexpr ->
        let s = stream_of_pptok_expr ppexpr in
@@ -65,5 +65,6 @@ let compile target origexpr tokslst =
        version=None;
        build=None
      };
-     units=[create_header origexpr; create_body origexpr envs];
+     units=[create_header origexpr;
+	    {(create_body origexpr envs) with inmac; opmac}];
      linkmap=Hashtbl.create 0}
