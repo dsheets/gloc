@@ -20,11 +20,11 @@
     {
       "insym": [],
       "outsym": [],
-      "inmac": [],
+      "inmac": [ "INMAC", "INMAC" ],
       "opmac": [],
       "outmac": [],
       "source":
-        "\n#line 1 0\nvoid main() {\n     gl_Position = vec3(incoming);\n}"
+        "\n#line 1 0\n#if INMAC\n\nvoid main() { gl_Position = vec4(1.); }\n\n#else\n\nvoid main() { gl_Position = vec4(0.); }\n\n#endif"
     }
   ],
   "linkmap": {}

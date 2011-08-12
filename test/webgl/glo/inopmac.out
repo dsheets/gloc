@@ -20,11 +20,11 @@
     {
       "insym": [],
       "outsym": [],
-      "inmac": [],
-      "opmac": [],
+      "inmac": [ "EXTMAC", "EXTMAC" ],
+      "opmac": [ "MYMAC", "MYMAC" ],
       "outmac": [],
       "source":
-        "\n#line 1 0\nvoid main() {\n     gl_Position = vec3(incoming);\n}"
+        "\n#line 1 0\n#if EXTMAC\n#define MYMAC vec4(1.)\n#else\n#define MYMAC vec4(0.)\n#endif\n\nvoid main() { gl_Position = MYMAC; }"
     }
   ],
   "linkmap": {}

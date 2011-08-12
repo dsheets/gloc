@@ -33,10 +33,12 @@ and macro = { name: string option;
 	      args: string list option;
 	      stream: loc -> stream }
 
-type env = { macros: macro Env.t;
-	     extensions: behavior Env.t;
-	     inmacros: string pptok list;
-	   }
+type env = {
+  macros: macro Env.t;
+  builtin_macros: (env -> (string * unit Env.t) pptok -> macro) Env.t;
+  extensions: behavior Env.t;
+  inmacros: string pptok list;
+}
 
 exception ParserError of string
 exception UnterminatedConditional of unit pptok

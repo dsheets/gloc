@@ -165,6 +165,19 @@ let string_pperror_of_string_tok st =
   sprintf "%s:\nambiguous preprocessor conditional branch: %s\n"
     (string_of_tokpos st)
     st.v
+
+let builtin_macros = List.fold_left
+  (fun map (n,f) -> Env.add n f map)
+  Env.empty [
+    "__LINE__",(fun e w ->
+		  {name=None; args=None;
+		   stream=fun _ -> [int_replace_word w w.span.a.line.src]});
+    "__FILE__",(fun e w ->
+		  {name=None; args=None;
+		   stream=fun _ -> [int_replace_word w w.span.a.file.src]});
+    "__VERSION__",(fun _ _ -> omacro "__VERSION__" (synth_int (Dec,100)));
+    "GL_ES",(fun _ _ -> omacro "GL_ES" (synth_int (Dec,1)))
+  ]
 ;;
 
 let start = {file={src=0;input=0};line={src=1;input=1};col=0} in
@@ -186,9 +199,8 @@ then (List.iter (fun e -> eprintf "%s\n" (string_of_error e))
       exit 2)
 in
 let ppexpr = normalize_ppexpr ppexpr in
-let macros = Env.add "__VERSION__" (omacro "__VERSION__" (synth_int (Dec,100)))
-  (Env.singleton "GL_ES" (omacro "GL_ES" (synth_int (Dec,1)))) in
-let ppl = preprocess_ppexpr {macros;
+let ppl = preprocess_ppexpr {macros=Env.empty;
+			     builtin_macros;
 			     extensions=Env.empty;
 			     inmacros=[]} ppexpr in
 let () = if (List.length !errors) > 0 then

@@ -1,0 +1,1 @@
+void main() { gl_Position = vec4(__LINE__,__FILE__,__VERSION__,GL_ES); }

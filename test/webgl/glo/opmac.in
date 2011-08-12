@@ -1,0 +1,3 @@
+#define MYMAIN main
+
+void MYMAIN() { gl_Position = vec4(0.); }

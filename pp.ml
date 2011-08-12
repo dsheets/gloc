@@ -142,13 +142,9 @@ let register_extension env x =
 let lookup env w =
   let (name,ms) = w.v in
     if Env.mem name ms then None
-    else if name = "__LINE__" then
-      Some {name=None; args=None;
-	    stream=fun _ -> [int_replace_word w w.span.a.line.src]}
-    else if name = "__FILE__" then
-      Some {name=None; args=None;
-	    stream=fun _ -> [int_replace_word w w.span.a.file.src]}
-    else try
+    else try 
+      Some (Env.find name env.builtin_macros env w)
+    with Not_found -> try
       let m = Env.find name env.macros in
 	Some { m with stream=fun _ -> List.map
 		 (function
@@ -226,6 +222,7 @@ let macro_expand ?(cond=false) env ptl =
 			(fun appenv binder arg ->
 			   defarg appenv binder (loop env [] arg)) (* "prescan" *)
 			{macros=Env.empty;
+			 builtin_macros=Env.empty;
 			 extensions=Env.empty;
 			 inmacros=[]}
 			binders args

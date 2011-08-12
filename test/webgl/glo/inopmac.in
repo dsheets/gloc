@@ -1,0 +1,7 @@
+#if EXTMAC
+#define MYMAC vec4(1.)
+#else
+#define MYMAC vec4(0.)
+#endif
+
+void main() { gl_Position = MYMAC; }

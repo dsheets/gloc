@@ -21,10 +21,10 @@
       "insym": [],
       "outsym": [],
       "inmac": [],
-      "opmac": [],
+      "opmac": [ "MYMAIN" ],
       "outmac": [],
       "source":
-        "\n#line 1 0\nvoid main() {\n     gl_Position = vec3(incoming);\n}"
+        "\n#line 1 0\n#define MYMAIN main\n\nvoid MYMAIN() { gl_Position = vec4(0.); }"
     }
   ],
   "linkmap": {}
