@@ -20,8 +20,8 @@
     {
       "insym": [],
       "outsym": [],
-      "inmac": [ "EXTMAC", "EXTMAC" ],
-      "opmac": [ "MYMAC", "MYMAC" ],
+      "inmac": [ "EXTMAC" ],
+      "opmac": [ "MYMAC" ],
       "outmac": [],
       "source":
         "\n#line 1 0\n#if EXTMAC\n#define MYMAC vec4(1.)\n#else\n#define MYMAC vec4(0.)\n#endif\n\nvoid main() { gl_Position = MYMAC; }"

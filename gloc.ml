@@ -12,6 +12,14 @@ open Pp
 open Esslpp_lex
 open Esslpp
 
+module List = struct
+    include List
+    let unique l =
+      let h = Hashtbl.create (List.length l) in
+      List.iter (fun v -> Hashtbl.replace h v ()) l;
+      Hashtbl.fold (fun k () a -> k::a) h []
+end
+
 type dialect = WebGL
 type version = int * int * int
 type accuracy = Best (*| Decomment | Minify | Pretty *)
@@ -239,7 +247,8 @@ then
   let outlang = !(exec_state.outlang) in
   let target = (string_of_dialect outlang.dialect,outlang.version) in
     try let glo = Glo.compile target ppexpr
-	  ~inmac:(List.flatten inmac) ~opmac:(List.flatten opmac)
+	  ~inmac:(List.unique (List.flatten inmac))
+	  ~opmac:(List.unique (List.flatten opmac))
 	  (List.map snd ppl) in
       Json_io.string_of_json ~compact:(not !(exec_state.verbose))
 	(Glo.json_of_glo glo)

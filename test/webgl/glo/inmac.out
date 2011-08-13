@@ -20,7 +20,7 @@
     {
       "insym": [],
       "outsym": [],
-      "inmac": [ "INMAC", "INMAC" ],
+      "inmac": [ "INMAC" ],
       "opmac": [],
       "outmac": [],
       "source":
