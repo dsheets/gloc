@@ -1,1 +1,23 @@
-error
+{
+  "glo": [ 0, 8, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": {
+    "author": {},
+    "license": [ "Copyright (C) 2011 . All rights reserved.", "" ],
+    "library": null,
+    "version": null,
+    "build": null
+  },
+  "units": [
+    {
+      "insym": [],
+      "outsym": [ "main" ],
+      "inmac": [ "INMAC" ],
+      "opmac": [],
+      "outmac": [],
+      "source":
+        "#line 1 GLOC_0\n#if INMAC\n\nvoid main() { gl_Position = vec4(1.); }\n\n#else\n\nvoid main() { gl_Position = vec4(0.); }\n\n#endif"
+    }
+  ],
+  "linkmap": {}
+}
