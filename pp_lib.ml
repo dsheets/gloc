@@ -246,6 +246,11 @@ let fuse_pptok_expr = function
   | (h::_) as el ->
     List {(fuse_pptok (List.map proj_pptok_expr el)) with v=el}
 
+let empty_pptok_expr expr =
+  let span = (proj_pptok_expr expr).span in
+  List { span; scan=scan_of_string span ([],ref []) "";
+	 comments=([],ref []); v=[] }
+
 let cexpr cs = let t = {(fuse_pptok cs) with v=cs} in
   Comments {t with scan=fun loc ->
             let loc,s = t.scan {loc with col=loc.col+2} in

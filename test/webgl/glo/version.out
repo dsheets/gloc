@@ -18,12 +18,12 @@
       "source": ""
     },
     {
-      "insym": [],
+      "insym": [ "GLOC_VERSION_100" ],
       "outsym": [],
       "inmac": [],
       "opmac": [],
       "outmac": [],
-      "source": "\n#line 1 0\n#version 100\n\nvoid main() { }"
+      "source": "\n#line 3 0\nvoid main() { }"
     }
   ],
   "linkmap": {}

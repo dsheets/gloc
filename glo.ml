@@ -40,19 +40,20 @@ let create_header expr =
   (* TODO: lift pragma invariant *)
   {insym=[]; outsym=[]; inmac=[]; opmac=[]; outmac=[]; source=""}
 let create_body expr envs =
-  (*let rec process_version e = match e with
+  (* TODO: abstract *)
+  let rec process_version e = match e with
     | Comments _ | Chunk _ | Def _ | Fun _ | Undef _
     | Err _ | Pragma _ | Extension _ | Line _ -> [], Some e
     | Version itt -> ["GLOC_VERSION_"^(string_of_int itt.v.v)], None
     | If ({v=(ce,tb,ofb)} as t) ->
 	let tm, tb = match process_version tb with
 	  | tm, Some tb -> tm, tb
-	  | tm, None -> tm, List {(proj_pptok_expr tb) with v=[]}
+	  | tm, None -> tm, empty_pptok_expr tb
 	in
 	let fm, ofb = match ofb with
 	  | None -> [], None
 	  | Some fb -> process_version fb
-	in tm@fm, Some (If { t with v=(ce,tb,ofb) })
+    in tm@fm, Some (If { t with v=(ce,tb,ofb) }) (* TODO: rebuild If *)
     | List ({v=ppel} as t) ->
 	let ml, ppel = List.fold_left
 	  (fun (ml,ppel) ppe -> match process_version ppe with
@@ -60,16 +61,16 @@ let create_body expr envs =
 	     | sml, Some ppe -> (sml@ml,ppe::ppel)
 	  )
 	  ([],[]) ppel
-	in ml, Some (List { t with v=(List.rev ppel) })
+	in ml, Some (fuse_pptok_expr (List.rev ppel))
   in
   let syml, expr = match process_version expr with
     | syml, Some e -> syml, e
-    | syml, None -> syml, List {(proj_pptok_expr expr) with v=[]}
-  in*)
+    | syml, None -> syml, empty_pptok_expr expr
+  in
   (* TODO: rename GLOC_* to GLOC_GLOC_* *)
   (* TODO: remove extension *)
   (* TODO: rewrite line directives *)
-  {insym=[](*@syml*); outsym=[]; inmac=[]; opmac=[]; outmac=[];
+  {insym=[]@syml; outsym=[]; inmac=[]; opmac=[]; outmac=[];
    source=(snd ((proj_pptok_expr expr).scan {file={src=(-1);input=(-1)};
 					     line={src=0;input=0};
 					     col=0}))}
