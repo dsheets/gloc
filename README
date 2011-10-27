@@ -12,7 +12,7 @@ shader systems. gloc 0.8 features:
  - runs as both a native binary and in-the-browser via ocamljs
  - optional emulation of the line continuation character, \
 
-gloc is licensed under the MIT license and distributed by Ashima
+gloc is licensed under a BSD-style license and distributed by Ashima
 Arts as a member of the greater WebGL community.
 
 Commercial users of gloc include:

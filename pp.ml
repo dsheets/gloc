@@ -1,5 +1,5 @@
-(* Copyright (c) 2011 David Sheets, Ashima Arts.
- * All rights reserved.
+(* Copyright (c) 2011 Ashima Arts. All rights reserved.
+ * Author: David Sheets
  * Use of this source code is governed by a BSD-style license that can be
  * found in the LICENSE file.
  *)
