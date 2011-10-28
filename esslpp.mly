@@ -178,7 +178,7 @@ directive
     check_line_base l;
     line := {!line with src=snd l.v};
     Line {(fuse_pptok
-	     ~zloc:{line={src=(!line).src-1; input=(!line).input-1};
+	     ~zloc:{line={(!line) with src=(!line).src-1};
 		    file=(!file); col=l.span.z.col}
 	     [first; proj l])
 	  with v=(None, {l with v=snd l.v})}
@@ -189,7 +189,7 @@ directive
     line := {!line with src=snd l.v};
     file := {!file with src=snd src.v};
     Line {(fuse_pptok
-	     ~zloc:{line={src=(!line).src-1; input=(!line).input-1};
+	     ~zloc:{line={(!line) with src=(!line).src-1};
 		    file=(!file); col=src.span.z.col}
 	     [first; proj l; proj src])
 	  with v=(Some {src with v=snd src.v}, {l with v=snd l.v})}

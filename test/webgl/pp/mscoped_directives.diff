@@ -1,0 +1,17 @@
+--- mscoped_directives.true	2011-07-15 15:11:10.000000000 -0700
++++ mscoped_directives.out	2011-10-28 14:07:40.000000000 -0700
+@@ -1 +1,13 @@
+-error
++File 0, line 2, col 0 - 5:
++invalid line argument
++
++File 0, line 6, col 14 - 15:
++unknown character '"'
++
++File 0, line 6, col 18 - 19:
++unknown character '"'
++
++File 0, line 8, col 0 - 5:
++invalid line argument
++
++Fatal: unrecoverable parse error (2)

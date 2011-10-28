@@ -167,6 +167,7 @@ let span_of_list : 'a pptok list -> span = function
 		      z=(proj (List.hd (List.rev ptl))).span.z}
 
 let emit_newline = ref true
+let file_prefix = ref "GLOC_"
 let file = ref {src=0; input=0}
 let line = ref {src=1; input=1}
 let errors : exn list ref = ref []
@@ -197,14 +198,14 @@ let scan_of_comments cs start =
 
 let scan_of_string ({a;z}) (prec,postc) s = fun start ->
   let start,pre = match prec with
-    | [] -> if !emit_newline
+    | [] -> let wsp = if start.col = 0 then "" else "\n" in if !emit_newline
       then if a.file.src <> start.file.src
       then {a with col=0},
-	sprintf "\n#line %d %d\n" a.line.src a.file.src
+	sprintf "%s#line %d %s%d\n" wsp a.line.src !file_prefix a.file.src
       else if (a.line.src - start.line.src) < 0
-      then {a with col=0}, sprintf "\n#line %d\n" a.line.src
+      then {a with col=0}, sprintf "%s#line %d\n" wsp a.line.src
       else if a.line.src - start.line.src > 0
-      then let ld = sprintf "\n#line %d\n" a.line.src in
+      then let ld = sprintf "%s#line %d\n" wsp a.line.src in
 	if String.length ld > (a.line.src - start.line.src)
 	then ({start with line=a.line; col=0},
 	      String.make (a.line.src - start.line.src) '\n')

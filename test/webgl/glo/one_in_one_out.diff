@@ -1,0 +1,13 @@
+--- one_in_one_out.true	2011-08-15 20:10:31.000000000 -0700
++++ one_in_one_out.out	2011-10-28 14:07:40.000000000 -0700
+@@ -10,8 +10,8 @@
+   },
+   "units": [
+     {
+-      "insym": [ "incoming" ],
+-      "outsym": [ "main" ],
++      "insym": [],
++      "outsym": [],
+       "inmac": [],
+       "opmac": [],
+       "outmac": [],

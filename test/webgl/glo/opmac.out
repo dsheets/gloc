@@ -13,18 +13,10 @@
       "insym": [],
       "outsym": [],
       "inmac": [],
-      "opmac": [],
-      "outmac": [],
-      "source": ""
-    },
-    {
-      "insym": [],
-      "outsym": [],
-      "inmac": [],
       "opmac": [ "MYMAIN" ],
       "outmac": [],
       "source":
-        "\n#line 1 0\n#define MYMAIN main\n\nvoid MYMAIN() { gl_Position = vec4(0.); }"
+        "#line 1 GLOC_0\n#define MYMAIN main\n\nvoid MYMAIN() { gl_Position = vec4(0.); }"
     }
   ],
   "linkmap": {}

@@ -15,16 +15,8 @@
       "inmac": [],
       "opmac": [],
       "outmac": [],
-      "source": ""
-    },
-    {
-      "insym": [],
-      "outsym": [],
-      "inmac": [],
-      "opmac": [],
-      "outmac": [],
       "source":
-        "\n#line 1 0\nvoid main() {\n     gl_Position = vec3(incoming);\n}"
+        "#line 1 GLOC_0\nvoid main() {\n     gl_Position = vec3(incoming);\n}"
     }
   ],
   "linkmap": {}
