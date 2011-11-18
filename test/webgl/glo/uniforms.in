@@ -1,0 +1,3 @@
+uniform vec3 pos;
+
+vec3 get_pos() { return pos; }

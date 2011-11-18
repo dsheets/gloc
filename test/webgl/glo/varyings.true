@@ -11,12 +11,12 @@
   "units": [
     {
       "insym": [],
-      "outsym": [ "k", "foo" ],
+      "outsym": [ "set_gP", "get_gP" ],
       "inmac": [],
       "opmac": [],
       "outmac": [],
       "source":
-        "#line 1 GLOC_0\nprecision highp float;\n\nstruct k { float f; };\n\nint foo() { struct m { int g; }; return 1; }"
+        "#line 1 GLOC_0\nvarying vec3 gP;\n\nvec3 get_gP() { return gP; }\nvoid set_gP(vec3 p) { gP = p; }"
     }
   ],
   "linkmap": {}

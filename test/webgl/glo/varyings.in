@@ -1,0 +1,4 @@
+varying vec3 gP;
+
+vec3 get_gP() { return gP; }
+void set_gP(vec3 p) { gP = p; }
