@@ -1,0 +1,23 @@
+{
+  "glo": [ 0, 1, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": {
+    "author": {},
+    "license": [ "Copyright (C) 2011 . All rights reserved.", "" ],
+    "library": null,
+    "version": null,
+    "build": null
+  },
+  "units": [
+    {
+      "insym": [ "g", "f" ],
+      "outsym": [ "myfun" ],
+      "inmac": [],
+      "opmac": [],
+      "outmac": [],
+      "source":
+        "#line 1 GLOC_0\nconst float g = 0.2;\n\nvec2 myfun(vec2 m) {\n     const vec2 f = vec2(g);\n     return f+m;\n}"
+    }
+  ],
+  "linkmap": {}
+}

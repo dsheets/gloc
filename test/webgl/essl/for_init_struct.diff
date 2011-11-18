@@ -1,8 +1,0 @@
---- for_init_struct.true	2011-11-11 17:38:54.000000000 -0800
-+++ for_init_struct.out	2011-11-17 16:38:57.000000000 -0800
-@@ -1 +1,4 @@
--error
-+void main() {
-+  for (struct foo { int a; } j = foo(0); j.a < 10; j.a++) {}
-+
-+}

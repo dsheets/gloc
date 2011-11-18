@@ -1,0 +1,6 @@
+const float g = 0.2;
+
+vec2 myfun(vec2 m) {
+     const vec2 f = vec2(g);
+     return f+m;
+}
