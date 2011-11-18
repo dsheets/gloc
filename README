@@ -10,6 +10,7 @@ shader systems. gloc 0.1 features:
  - link-time macro definition
  - source-to-source translation with accurate source locations and comments
  - runs as both a native binary and in-the-browser via ocamljs
+ - line continuation emulation for polymorphic macro functions
 
 gloc is licensed under a BSD-style license and distributed by Ashima
 Arts as a member of the greater WebGL community.

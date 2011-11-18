@@ -8,6 +8,7 @@ module Lex = Ulexing
 
 open Pp_lib
 open Esslpp
+open Gloc_lib
 
 module String = struct
     include String
@@ -16,6 +17,7 @@ end
 
 exception UnterminatedComment of unit pptok
 exception UnknownCharacter of unit pptok
+exception LineContinuationUnsupported of unit pptok
 exception InvalidDirectiveLocation of unit pptok
 exception InvalidDirective of string pptok
 exception InvalidOctal of string pptok
@@ -65,17 +67,32 @@ let regexp expo  = ['E''e']['+''-']?digit+
 let regexp octal = ['0'-'7']
 let regexp not_white = [^'\n''\t'' ''\r']
 
-let rec lex = lexer
-  | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex lex lexbuf
-  | "/*" -> Lex.rollback lexbuf; comment_lex lex lexbuf
+let rec lex lang = lexer
+  | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex (lex lang) lexbuf
+  | "/*" -> Lex.rollback lexbuf; comment_lex (lex lang) lexbuf
+  | "\\\n" -> begin match lang with
+      | {dialect=WebGL; bond=Error} ->
+	  error (LineContinuationUnsupported (tok lexbuf ()));
+	  newline lexbuf;
+	  lex lang lexbuf
+      | {dialect=WebGL} ->
+	  let t = tok ~comment:true ~drop:2 ~rewind:2 lexbuf "\\" in
+	    warn (LineContinuationUnsupported (proj t));
+	    newline ~comment:true lexbuf;
+	    let z = {file = !file; line = !line; col = 0} in
+	    let t = {t with span={t.span with z};
+		       scan=fun loc -> (z,"\\\n")} in
+	      add_post_comment {t with v=[t]};
+	      lex lang lexbuf
+    end
   | "\n" -> let t = tok ~comment:true ~drop:1 ~rewind:1 lexbuf () in
       newline lexbuf;
       if !ppdirective
       then (ppdirective := false; ENDPPDIRECTIVE t)
-      else lex lexbuf
+      else lex lang lexbuf
   | "#" -> (if not !first_tok
 	    then error (InvalidDirectiveLocation (tok lexbuf ())));
-      ppdirective := true; head:= false; ppdir_lex lexbuf
+      ppdirective := true; head:= false; ppdir_lex lang lexbuf
   | letter (letter | digit)* "("? ->
       let t = tok lexbuf (Lex.utf8_lexeme lexbuf) in
 	begin match String.sub t.v ((String.length t.v)-1) 1 with
@@ -143,12 +160,12 @@ let rec lex = lexer
   | "&"  -> AMPERSAND (tok lexbuf (Punc.AMPERSAND))
   | "?"  -> QUESTION (tok lexbuf (Punc.QUESTION))
 
-  | " " | "\t" | "\r" -> lex lexbuf
+  | " " | "\t" | "\r" -> lex lang lexbuf
   | eof -> if !ppdirective
     then let t = tok lexbuf () in
       (ppdirective := false; Lex.rollback lexbuf; ENDPPDIRECTIVE t)
     else EOF (tok lexbuf ())
-  | _ -> error (UnknownCharacter (tok lexbuf ())); lex lexbuf
+  | _ -> error (UnknownCharacter (tok lexbuf ())); lex lang lexbuf
 and block_comment start r lines = lexer
   | "\n" -> let t = tok ~comment:true ~drop:1 ~rewind:(r+1) lexbuf "" in
       newline ~comment:true lexbuf;
@@ -191,12 +208,12 @@ and comment_lex klex = lexer
     else (add_post_comment comment; klex lexbuf)
   | " " | "\t" | "\r" -> comment_lex klex lexbuf
   | _ -> Lex.rollback lexbuf; klex lexbuf
-and ppdir_lex = lexer
-  | " " | "\t" -> ppdir_lex lexbuf
+and ppdir_lex lang = lexer
+  | " " | "\t" -> ppdir_lex lang lexbuf
   | "\n" -> let t = tok ~drop:1 lexbuf () in
       newline lexbuf; ppdirective := false; ENDPPDIRECTIVE t
-  | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex ppdir_lex lexbuf
-  | "/*" -> Lex.rollback lexbuf; comment_lex ppdir_lex lexbuf
+  | "//"[^'\n']* -> Lex.rollback lexbuf; comment_lex (ppdir_lex lang) lexbuf
+  | "/*" -> Lex.rollback lexbuf; comment_lex (ppdir_lex lang) lexbuf
   | "extension" -> EXTENSION (tok ~pre:"#" lexbuf ())
   | "version" -> VERSION (tok ~pre:"#" lexbuf ())
   | "line" -> LINE (tok ~pre:"#" lexbuf ())
@@ -211,4 +228,4 @@ and ppdir_lex = lexer
   | "error" -> ERROR (tok ~pre:"#" lexbuf ())
   | "pragma" -> PRAGMA (tok ~pre:"#" lexbuf ())
   | letter+ | _ -> error (InvalidDirective (tok lexbuf (Lex.utf8_lexeme lexbuf)));
-      lex lexbuf
+      lex lang lexbuf

@@ -172,6 +172,8 @@ let file = ref {src=0; input=0}
 let line = ref {src=1; input=1}
 let errors : exn list ref = ref []
 let error exc = errors := exc::!errors
+let warns : exn list ref = ref []
+let warn exc = warns := exc::!warns
 
 let check_version_base t =
   match fst t.v with

@@ -11,6 +11,7 @@ open Pp_lib
 open Pp
 open Esslpp_lex
 open Esslpp
+open Gloc_lib
 
 module List = struct
     include List
@@ -19,26 +20,6 @@ module List = struct
       List.iter (fun v -> Hashtbl.replace h v ()) l;
       Hashtbl.fold (fun k () a -> k::a) h []
 end
-
-type dialect = WebGL
-type version = int * int * int
-type accuracy = Best (*| Decomment | Minify | Pretty *)
-type bondage = Error | Warn | Ignore
-type language = {dialect:dialect;
-		 version:version;
-		 accuracy:accuracy;
-		 bond:bondage;
-		}
-
-type state = {preprocess:bool ref;
-	      compile:bool ref;
-	      verbose:bool ref;
-	      linectrl:bool ref;
-	      output:string option ref;
-	      inputs:string list ref;
-	      inlang:language ref;
-	      outlang:language ref;
-	     }
 
 let gloc_version = (0,1,0)
 let gloc_distributor = "Ashima Arts"
@@ -117,6 +98,8 @@ let string_of_error = function
   | UnknownCharacter t ->
       sprintf "%s:\nunknown character '%s'\n" (string_of_tokpos t)
 	(snd (t.scan t.span.a))
+  | LineContinuationUnsupported t ->
+      sprintf "%s:\nline continuation officially unsupported\n" (string_of_tokpos t)
   | InvalidDirectiveLocation t ->
       sprintf "%s:\ninvalid directive location\n" (string_of_tokpos t)
   | InvalidDirective t ->
@@ -195,7 +178,7 @@ let parse = MenhirLib.Convert.traditional2revised
   (fun _ -> Lexing.dummy_pos) (* TODO: fixme? *)
   (fun _ -> Lexing.dummy_pos)
   translation_unit in
-let ppexpr = try parse (fun () -> lex lexbuf) with
+let ppexpr = try parse (fun () -> lex !(exec_state.inlang) lexbuf) with
   | err -> eprintf "Uncaught exception:\n%s\n" (Printexc.to_string err);
     eprintf "Fatal: unrecoverable internal parser error (1)\n";
     exit 1
@@ -264,5 +247,5 @@ in let out = match !(exec_state.output) with
   | None -> stdout
   | Some fn -> open_out fn
 in fprintf out "%s\n" product
-   
-(*printf "%s\n" (string_of_ppexpr_tree ppexpr);*)
+(*;
+printf "%s\n" (string_of_ppexpr_tree ppexpr)*)
