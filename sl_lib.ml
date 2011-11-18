@@ -15,8 +15,6 @@ type slswizzle =
 exception BadSwizzleField of char
 exception BadSwizzle of string pptok
 
-type 'a slbind = { const: bool; name: string option; b: 'a }
-
 type slprec = High | Medium | Low | Default
 type slprectype = Float | Int | Sampler2d | SamplerCube
 module PrecMap = Map.Make(struct type t=slprectype let compare = compare end)
@@ -40,9 +38,8 @@ type slprecable = [ slnum | slsampler ]
 type 'a slparam = In of 'a | Out of 'a | Inout of 'a
 type slvoid = [ `void ] (* Not a real type -- more like bottom/unit/falsity *)
 type sltop = [ `univ ]
-type 'a slstruct = [ `record of (string * 'a) list | sltop ]
-type 'a sldecl = [ `custom of string * 'a slstruct ]
-type ('a,'b) slfun = [ `lam of 'a slparam slbind list * 'b ]
+type 'a slstruct = [ `record of string option * (string * 'a) list | sltop ]
+type ('a,'b) slfun = [ `lam of 'a list * 'b ]
 type ('a,'b) slarray = [ `array of 'a * 'b ]
 type sltype = [ (sltype (*slint*) slexpr, sltype) slarray
               | slsampler | slnumish
@@ -53,7 +50,6 @@ and slreturn = [ slvoid
                | slsampler | slnumish
                | sltype slstruct ]
 and sluniv = [ (sltype, sltype (*slreturn*)) slfun
-             | sltype sldecl
              | (sltype (*slint*) slexpr, sltype) slarray
              | slsampler | slnumish
              | sltype slstruct ]
@@ -123,13 +119,14 @@ and slstmt =
   | Uniform of (string * sltype) list pptok
   | Varying of (bool * string * sltype) list pptok
   | Precdecl of sltype (*slprecable*) pptok
-  | Typedecl of (sltype sldecl
-                 * sltype slstruct slexpr option) slbind list pptok
-  | Vardecl of (sltype * sltype slexpr option) slbind list pptok
-  | Fundecl of ((sltype, sltype (*slreturn*)) slfun slbind
-                * slstmt list pptok option) pptok
-and slenv = { ctxt : slstmt list slbind SymMap.t list; (* scope stack *)
-              opensyms : sluniv slbind list;
+  | Bind of slbind pptok
+and slbind =
+  | Type of sltype * slbind option
+  | Ref of bool * sltype * (string * sltype slexpr option * sltype slexpr option) list
+  | Param of bool * sltype slparam * string option
+  | Fun of (slbind, sltype (*slreturn*)) slfun * string * slstmt list option
+and slenv = { ctxt : slbind pptok list SymMap.t list; (* scope stack *)
+              opensyms : string list;
               prec : slprec PrecMap.t list; (* precision stack *)
               invariant : bool;
               pragmas : string pptok pptok SymMap.t;
@@ -170,14 +167,38 @@ let ctxt = ref { ctxt=[SymMap.empty]; opensyms=[]; prec=[PrecMap.empty];
   | Vardecl {v={b=(t,_)}::_} -> t
   | Fundecl {v=({b},_)} -> b*)
 
-let lookup_type envr sym = let env = !envr in (* TODO: overloads *)
-  try let h = List.hd (SymMap.find sym (List.hd env.ctxt)).b in
-    (* TODO: scope popping *)
-    (*typeof_stmt env h*) `univ (* TODO: type propagation *)
-  with Not_found ->
-    envr := {env with opensyms={const=false;
-                                name=Some sym; b=`univ}::env.opensyms};
-    `univ
+let lookup_type envr sym =
+  let env = !envr in
+    try let h = List.hd (SymMap.find sym (List.hd env.ctxt)) in
+      (*typeof_stmt env h*) `univ (* TODO: type propagation *)
+    with Not_found ->
+      let env = !envr in
+	if List.mem sym env.opensyms then () (* TODO: inference *)
+	else envr := {env with opensyms=sym::env.opensyms};
+	`univ
+
+let push_scope envr =
+  let env = !envr in
+    envr := {env with ctxt=(List.hd env.ctxt)::env.ctxt}
+let rec pop_scope envr = function
+  | 0 -> ()
+  | n -> let env = !envr in envr := {env with ctxt=List.tl env.ctxt};
+      pop_scope envr (n-1)
+let register envr binding =
+  let bind name =
+    let env = !envr in
+    let scope = List.hd env.ctxt in
+    let up = List.tl env.ctxt in
+    let symstack = try SymMap.find name scope
+    with Not_found -> [] in
+      envr := {env with ctxt=(SymMap.add name (binding::symstack) scope)::up}
+  in match binding.v with
+    | Type (`record (Some name, _), refs) -> bind name
+    | Type (_, refs) -> ()
+    | Ref (const, t, cells) -> List.iter (fun (name,_,_) -> bind name) cells
+    | Fun (t, name, body) -> bind name
+    | Param (const, paramt, Some name) -> bind name
+    | Param (const, paramt, None) -> ()
 
 let lookup_prec envr pt =
   let env = !envr in
@@ -340,6 +361,4 @@ let proj_slstmt = function
   | Uniform t -> proj t
   | Varying t -> proj t
   | Precdecl t -> proj t
-  | Typedecl t -> proj t
-  | Vardecl t -> proj t
-  | Fundecl t -> proj t
+  | Bind t -> proj t

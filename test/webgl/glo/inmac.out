@@ -1,5 +1,5 @@
 {
-  "glo": [ 0, 8, 0 ],
+  "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
   "meta": {
     "author": {},
@@ -11,7 +11,7 @@
   "units": [
     {
       "insym": [],
-      "outsym": [],
+      "outsym": [ "main" ],
       "inmac": [ "INMAC" ],
       "opmac": [],
       "outmac": [],

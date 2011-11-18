@@ -1,0 +1,7 @@
+struct q { int j; };
+struct { int j; } j;
+q fn(struct { int j; } s) { struct q { int j; }; s.j = s.j+1; return s; }
+void main() {
+     j.j = 12;
+     q g = fn(j);
+}

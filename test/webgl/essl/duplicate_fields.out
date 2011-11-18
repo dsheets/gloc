@@ -1,0 +1,4 @@
+precision highp float;
+struct { int q; };
+struct { float q; };
+void main() { }

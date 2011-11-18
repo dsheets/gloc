@@ -1,0 +1,13 @@
+--- unnamed_struct.true	2011-10-30 19:15:30.000000000 -0700
++++ unnamed_struct.out	2011-11-17 16:38:57.000000000 -0800
+@@ -1 +1,9 @@
+-error
++precision highp float;
++
++struct { int q; };
++
++uniform struct { float k; } r;
++
++struct { float k; } id(struct { float k; } k) { return k; }
++
++void main() { id(r); }

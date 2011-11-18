@@ -55,7 +55,7 @@ primary_expression
 | i=INTCONSTANT { Constant { i with v = I (`int (lookup_prec ctxt Int),i.v) } }
 | b=BOOLCONSTANT { Constant { b with v = B (`bool,b.v) } }
 | f=FLOATCONSTANT {
-  Constant { f with v = F (`float (lookup_prec ctxt Float),f.v) }
+    Constant { f with v = F (`float (lookup_prec ctxt Float),f.v) }
 }
 | l=LEFT_PAREN; e=expression; r=RIGHT_PAREN {
     Group {(fuse_pptok [proj l; proj_slexpr e; proj r]) with v=e}
@@ -89,7 +89,7 @@ postfix_expression
 | p=postfix_expression; d=DOT; i=IDENTIFIER {
     let t = fuse_pptok [proj_slexpr p; proj d; proj i]
     in begin match typeof p with
-      | `record fs ->
+      | `record (name, fs) ->
 	  Field { t with v=(List.assoc i.v fs,p,i.v)} (* TODO: missing field *)
       | `vec2 elt | `vec3 elt | `vec4 elt ->
 	  let s = swizzle_of_identifier i in
@@ -290,35 +290,25 @@ constant_expression
 ;
 declaration
 : f=function_prototype; s=SEMICOLON {
-  Fundecl {(fuse_pptok [proj f; proj s]) with v=f.v}
+  let fundecl = {(fuse_pptok [proj f; proj s])
+		 with v=Fun (fst f.v, snd f.v, None)} in
+    pop_scope ctxt 2;
+    register ctxt fundecl;
+    Bind fundecl
 }
 | t=struct_specifier; s=SEMICOLON {
-  Typedecl {(fuse_pptok [proj t; proj s]) with v=[]}
+    let typedecl = {(fuse_pptok [proj t; proj s]) with v=Type (t.v, None)} in
+      register ctxt typedecl;
+      Bind typedecl
 }
 | t=type_specifier; dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-    let v = List.map
-      (fun d -> match d.v with
-	 | n,None,ini ->
-	     { const=false; name=Some n; b=(t.v,ini) }
-	 | n,Some ie,ini ->
-	     { const=false; name=Some n;
-	       b=(`array (ie,t.v),ini) }
-      ) dl.v
-    in
-      Vardecl {(fuse_pptok [proj t; proj dl; proj s]) with v}
+    let tok = fuse_pptok [proj t; proj dl; proj s] in
+      Bind {tok with v=Ref (false,t.v,List.map (fun t -> t.v) dl.v)}
   }
 | c=CONST; t=type_specifier;
 dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-  let v = List.map
-    (fun d -> match d.v with
-       | n,None,ini ->
-	   { const=true; name=Some n; b=(t.v,ini) }
-       | n,Some ie,ini ->
-	   { const=true; name=Some n;
-	     b=(`array (ie,t.v),ini) }
-    ) dl.v
-  in
-    Vardecl {(fuse_pptok [proj c; proj t; proj dl; proj s]) with v}
+  let tok = fuse_pptok [proj c; proj t; proj dl; proj s] in
+    Bind {tok with v=Ref (true,t.v,List.map (fun t -> t.v) dl.v)}
 }
 | a=ATTRIBUTE; t=type_specifier;
 dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
@@ -399,29 +389,31 @@ precision_type
 function_prototype
 : t=type_specifier; i=IDENTIFIER;
 p=fuse_sep_list(LEFT_PAREN,param_declaration,COMMA,RIGHT_PAREN) {
-  {(fuse_pptok [proj t; proj i; proj p])
-   with v=({const=false; name=Some i.v;
-	    b=`lam (List.map (fun p -> p.v) p.v, t.v)
-	   }, None)}
+  push_scope ctxt;
+  let params = List.map (fun p -> p.v) p.v in
+  let () = List.iter (register ctxt) p.v in
+    push_scope ctxt;
+    {(fuse_pptok [proj t; proj i; proj p])
+     with v=(`lam (params, t.v), i.v)}
 }
 | t=type_specifier; i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
+    push_scope ctxt; push_scope ctxt;
     {(fuse_pptok [proj t; proj i; proj l; proj v; proj r])
-     with v=({const=false; name=Some i.v;
-	      b=`lam ([],t.v)
-	     }, None)}
+     with v=(`lam ([],t.v), i.v)}
   }
 | v=VOID; i=IDENTIFIER;
 p=fuse_sep_list(LEFT_PAREN,param_declaration,COMMA,RIGHT_PAREN) {
+  push_scope ctxt;
+  let params = List.map (fun p -> p.v) p.v in
+  let () = List.iter (register ctxt) p.v in
+    push_scope ctxt;
     {(fuse_pptok [proj v; proj i; proj p])
-     with v=({const=false; name=Some i.v;
-	      b=`lam (List.map (fun p -> p.v) p.v,`void)
-	     }, None)}
-  }
+     with v=(`lam (params,`void), i.v)}
+}
 | n=VOID; i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
+    push_scope ctxt; push_scope ctxt;
     {(fuse_pptok [proj v; proj i; proj l; proj v; proj r])
-     with v=({const=false; name=Some i.v;
-	      b=`lam ([],`void)
-	     }, None)}
+     with v=(`lam ([],`void), i.v)}
   }
 ;
 param_declarator
@@ -435,27 +427,27 @@ param_declarator
 param_declaration
 : t=CONST?; d=param_declarator
 | t=CONST?; d=param_type_specifier {
-  let ct,const = match t with Some t -> [t],true | None -> [],false in
-  {(fuse_pptok (ct@[proj d]))
-   with v={const; name=(snd d.v); b=In (fst d.v)}}
+    let ct,const = match t with Some t -> [t],true | None -> [],false in
+      {(fuse_pptok (ct@[proj d]))
+       with v=Param (const, In (fst d.v), snd d.v)}
   }
 | t=CONST?; i=IN; d=param_declarator
 | t=CONST?; i=IN; d=param_type_specifier {
-  let ct,const = match t with Some t -> [t],true | None -> [],false in
-  {(fuse_pptok (ct@[proj i; proj d]))
-   with v={const; name=(snd d.v); b=In (fst d.v)}}
-}
+    let ct,const = match t with Some t -> [t],true | None -> [],false in
+      {(fuse_pptok (ct@[proj i; proj d]))
+       with v=Param (const, In (fst d.v), snd d.v)}
+  }
 | t=CONST?; o=OUT; d=param_declarator
 | t=CONST?; o=OUT; d=param_type_specifier {
-  let ct,const = match t with Some t -> [t],true | None -> [],false in
-  {(fuse_pptok (ct@[proj o; proj d]))
-   with v={const; name=(snd d.v); b=Out (fst d.v)}}
-}
+    let ct,const = match t with Some t -> [t],true | None -> [],false in
+      {(fuse_pptok (ct@[proj o; proj d]))
+       with v=Param (const, Out (fst d.v), snd d.v)}
+  }
 | t=CONST?; io=INOUT; d=param_declarator
 | t=CONST?; io=INOUT; d=param_type_specifier {
-  let ct,const = match t with Some t -> [t],true | None -> [],false in
-  {(fuse_pptok (ct@[proj io; proj d]))
-   with v={const; name=(snd d.v); b=Inout (fst d.v)}}
+    let ct,const = match t with Some t -> [t],true | None -> [],false in
+      {(fuse_pptok (ct@[proj io; proj d]))
+       with v=Param (const, Inout (fst d.v), snd d.v)}
   }
 ;
 param_type_specifier
@@ -496,13 +488,13 @@ struct_specifier
 l=LEFT_BRACE; dl=list(struct_declaration); r=RIGHT_BRACE {
   match i with
     | None ->
-      {(fuse_pptok ([proj s; proj l]@(List.map proj dl)@[proj r]))
-       with v=`record (List.flatten (List.map (fun d -> d.v) dl))}
+	let t = `record (None, List.flatten (List.map (fun d -> d.v) dl)) in 
+	  {(fuse_pptok ([proj s; proj l]@(List.map proj dl)@[proj r]))
+	   with v=t}
     | Some i ->
-      let t = `record (List.flatten (List.map (fun d -> d.v) dl)) in
-      (* TODO: register `custom (i.v,t) *)
-      {(fuse_pptok ([proj s; proj i; proj l]@(List.map proj dl)@[proj r]))
-       with v=t}
+	let t = `record (Some i.v, List.flatten (List.map (fun d -> d.v) dl)) in 
+	  {(fuse_pptok ([proj s; proj i; proj l]@(List.map proj dl)@[proj r]))
+	   with v=t}
 }
 ;
 struct_declaration
@@ -562,33 +554,51 @@ expression_statement
   Expr {s with v=Constant {s with v=B (`bool,false)}}
 }
 ;
+selection_intro
+: i=IF; l=LEFT_PAREN; e=expression; r=RIGHT_PAREN {
+  push_scope ctxt;
+  {(fuse_pptok [proj i; proj l; proj_slexpr e; proj r]) with v=e}
+}
+;
+else_intro
+: e=ELSE { pop_scope ctxt 1; push_scope ctxt; e }
+;
 selection_statement
-: i=IF; l=LEFT_PAREN; e=expression; r=RIGHT_PAREN; tb=statement {
-  Select {(fuse_pptok [proj i; proj l; proj_slexpr e; proj r;
-		       proj tb])
-          with v=(e, tb, None)}
+: s=selection_intro; tb=statement {
+  pop_scope ctxt 1;
+  Select {(fuse_pptok [proj s; proj tb]) with v=(s.v, tb, None)}
 } %prec LESS_THAN_ELSE
-| i=IF; l=LEFT_PAREN; bex=expression; r=RIGHT_PAREN;
-tb=statement; e=ELSE; fb=statement {
-  Select {(fuse_pptok [proj i; proj l; proj_slexpr bex; proj r;
-		       proj tb; proj e; proj fb])
-          with v=(bex, tb, Some fb)}
+| s=selection_intro; tb=statement; e=else_intro; fb=statement {
+  pop_scope ctxt 1;
+  Select {(fuse_pptok [proj s; proj tb; proj e; proj fb])
+          with v=(s.v, tb, Some fb)}
 }
 ;
 condition
-: e=expression { Expr {(proj_slexpr e) with v=e} } (* TODO: check bool *)
+: e=expression {
+  push_scope ctxt; (* symm with next other production *)
+  Expr {(proj_slexpr e) with v=e} (* TODO: check bool *)
+}
 | t=type_specifier; i=IDENTIFIER; e=EQUAL; ini=initializer_ {
-    Vardecl {(fuse_pptok [proj t; proj i; proj e; proj_slexpr ini])
-             with v=[{const=false; name=Some i.v;
-		      b=(t.v,Some ini)}]}
+    push_scope ctxt;
+    let r = Ref (false, t.v, [i.v,None,Some ini]) in
+    let v = match t.v with
+      | `record (Some tyname, fields) -> Type (t.v, Some r)
+      | _ -> r
+    in let cdecl = {(fuse_pptok [proj t; proj i; proj e; proj_slexpr ini]) with v} in
+      register ctxt cdecl;
+      Bind cdecl
   }
 ;
+do_intro : d=DO { push_scope ctxt; d };
+do_outro : w=WHILE { pop_scope ctxt 1; w };
 iteration_statement
 : w=WHILE; l=LEFT_PAREN; c=condition; r=RIGHT_PAREN; s=statement_no_new_scope {
+  pop_scope ctxt 1; (* condition introduces scope *)
   While {(fuse_pptok [proj w; proj l; proj_slstmt c; proj r; proj_slstmt s])
          with v=(c,s)}
 }
-| d=DO; st=statement; w=WHILE;
+| d=do_intro; st=statement; w=do_outro;
 l=LEFT_PAREN; e=expression; r=RIGHT_PAREN; s=SEMICOLON {
   DoWhile {(fuse_pptok [proj d; proj st; proj w;
 			proj l; proj_slexpr e; proj r; proj s])
@@ -596,6 +606,7 @@ l=LEFT_PAREN; e=expression; r=RIGHT_PAREN; s=SEMICOLON {
 }
 | f=FOR; l=LEFT_PAREN; i=for_init_statement; j=for_rest_statement; r=RIGHT_PAREN;
 s=statement_no_new_scope {
+  pop_scope ctxt 1; (* for_rest_statement introduces scope *)
   For {(fuse_pptok [proj f; proj l; proj_slstmt i; proj j; proj r;
 		    proj_slstmt s])
        with v=(i,j,s)}
@@ -613,9 +624,11 @@ for_rest_statement
     {(fuse_pptok [proj_slstmt c; proj s]) with v=(Some c, None)}
   }
 | s=SEMICOLON; e=expression {
+    push_scope ctxt; (* symm with condition *)
     {(fuse_pptok [proj s; proj_slexpr e]) with v=(None, Some e)}
   }
 | s=SEMICOLON {
+    push_scope ctxt; (* symm with condition *)
     { s with v=(None, None) }
   }
 ;
@@ -637,8 +650,11 @@ external_declaration
 ;
 function_definition (* TODO: scopes? *)
 : p=function_prototype; c=compound_statement_no_new_scope {
-  (*let env = push_new_env c in (* TODO: sooner? *)*)
-  Fundecl {(fuse_pptok [proj p; proj c]) with v=p.v}
+  let fundecl = {(fuse_pptok [proj p; proj c])
+		 with v=Fun (fst p.v, snd p.v, Some c.v)} in
+    pop_scope ctxt 2;
+    register ctxt fundecl;
+    Bind fundecl
 }
 ;
 %%

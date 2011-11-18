@@ -1,0 +1,9 @@
+precision highp float;
+
+struct { int q; };
+
+uniform struct { float k; } r;
+
+struct { float k; } id(struct { float k; } k) { return k; }
+
+void main() { id(r); }

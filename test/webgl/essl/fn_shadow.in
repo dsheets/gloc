@@ -1,0 +1,8 @@
+int f(int k) {
+  int k = k + 3;
+  return k;
+}
+
+void main() {
+  gl_FragColor = vec4(f(100));
+}

@@ -1,5 +1,5 @@
 --- mscoped_directives.true	2011-07-15 15:11:10.000000000 -0700
-+++ mscoped_directives.out	2011-10-28 14:07:40.000000000 -0700
++++ mscoped_directives.out	2011-11-17 16:38:57.000000000 -0800
 @@ -1 +1,13 @@
 -error
 +File 0, line 2, col 0 - 5:

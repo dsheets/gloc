@@ -1,0 +1,21 @@
+--- conditional_scope.true	2011-11-14 15:50:40.000000000 -0800
++++ conditional_scope.out	2011-11-17 16:38:56.000000000 -0800
+@@ -1 +1,17 @@
+-error
++void main() {
++  int k = 3;
++
++  if (true) int g = k = 4;
++  else int q = k = 5;
++
++  g = 3;/*  error but angle doesn't*/
++  q = 4;/*  error but angle doesn't*/
++
++  if (true) int g = 4;/*  ok but angle errors*/
++  else int k = 10;/*  ok but angle errors*/
++
++  if (true) { int g = 10; }/*  ok*/
++  else { int k = 20; }/*  ok*/
++
++  gl_FragColor = vec4(1.);
++}

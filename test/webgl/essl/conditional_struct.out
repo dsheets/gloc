@@ -1,0 +1,8 @@
+precision highp float;
+
+void main() {
+
+  if (false) struct s { int k; } q = s(0);
+
+  gl_FragColor = vec4(float(s(q.k).k));
+}

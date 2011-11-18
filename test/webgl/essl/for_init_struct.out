@@ -1,0 +1,4 @@
+void main() {
+  for (struct foo { int a; } j = foo(0); j.a < 10; j.a++) {}
+
+}

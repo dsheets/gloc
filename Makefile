@@ -10,4 +10,4 @@ standard.mly: standard.mly.orig pptok.mly
 clean:
 	ocamlbuild -clean
 	@echo ""
-	rm standard.mly
+	rm -f standard.mly

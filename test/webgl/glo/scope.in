@@ -1,0 +1,5 @@
+precision highp float;
+
+struct k { float f; };
+
+int foo() { struct m { int g; }; return 1; }

@@ -1,0 +1,8 @@
+--- duplicate_fields.true	2011-10-30 19:16:39.000000000 -0700
++++ duplicate_fields.out	2011-11-17 16:38:56.000000000 -0800
+@@ -1 +1,4 @@
+-error
++precision highp float;
++struct { int q; };
++struct { float q; };
++void main() { }

@@ -1,0 +1,9 @@
+--- for_init_struct_scope.true	2011-11-11 17:44:04.000000000 -0800
++++ for_init_struct_scope.out	2011-11-17 16:38:57.000000000 -0800
+@@ -1 +1,5 @@
+-error
++void main() {
++     struct s { int a; };
++     for (struct s { int k; } g = s(0); g.k < 10; g.k++) {}
++     gl_FragColor = vec4(s(10).a);
++}

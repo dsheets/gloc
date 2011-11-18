@@ -1,0 +1,12 @@
+--- conditional_struct.true	2011-11-14 15:58:53.000000000 -0800
++++ conditional_struct.out	2011-11-17 16:38:56.000000000 -0800
+@@ -1 +1,8 @@
+-error
++precision highp float;
++
++void main() {
++
++  if (false) struct s { int k; } q = s(0);
++
++  gl_FragColor = vec4(float(s(q.k).k));
++}

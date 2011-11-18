@@ -1,1 +1,22 @@
-error
+{
+  "glo": [ 0, 1, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": {
+    "author": {},
+    "license": [ "Copyright (C) 2011 . All rights reserved.", "" ],
+    "library": null,
+    "version": null,
+    "build": null
+  },
+  "units": [
+    {
+      "insym": [ "GLOC_VERSION_100" ],
+      "outsym": [ "main" ],
+      "inmac": [],
+      "opmac": [],
+      "outmac": [],
+      "source": "#line 3 GLOC_0\nvoid main() { }"
+    }
+  ],
+  "linkmap": {}
+}

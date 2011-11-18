@@ -40,7 +40,7 @@ type state = {preprocess:bool ref;
 	      outlang:language ref;
 	     }
 
-let gloc_version = (0,8,0)
+let gloc_version = (0,1,0)
 let gloc_distributor = "Ashima Arts"
 
 let default_lang = { dialect=WebGL;

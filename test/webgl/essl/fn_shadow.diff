@@ -1,0 +1,12 @@
+--- fn_shadow.true	2011-11-14 15:48:11.000000000 -0800
++++ fn_shadow.out	2011-11-17 16:38:57.000000000 -0800
+@@ -1 +1,8 @@
+-error
++int f(int k) {
++  int k = k + 3;
++  return k;
++}
++
++void main() {
++  gl_FragColor = vec4(f(100));
++}

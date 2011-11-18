@@ -1,0 +1,10 @@
+void main() {
+  int k = 0;
+  for (int i = 0; i < 10; i++) int i = k+i; // error, redecl no new scope
+  for (int i = 0; i < 10; i++) { int i = k+i; } // ok, compound nests
+  while (k > 0) int k = k--; // error, redecl no new scope
+  while (k > 0) { int k = k--; } // ok, compound nests
+  do int k = 1; while (k != 0); // ok, do always introduces scope
+  do { int k = 1; } while (k != 0); // ok, compound nests
+  gl_FragColor = vec4(float(k));
+}

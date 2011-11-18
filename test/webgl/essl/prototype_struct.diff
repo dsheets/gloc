@@ -1,0 +1,14 @@
+--- prototype_struct.true	2011-10-30 19:32:02.000000000 -0700
++++ prototype_struct.out	2011-11-17 16:38:57.000000000 -0800
+@@ -1 +1,10 @@
+-error
++precision highp float;
++struct q { int j; } myfun(q s) { return s; }
++float fun2(struct s { float m; } g) { return g.m; }
++s fun3(s g) { return g; }
++
++void main() {
++     q j = myfun(q(14));
++     float e = fun2(s(3.0));
++     float f = (fun3(s(4.0))).m;
++}

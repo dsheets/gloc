@@ -1,7 +1,7 @@
 gloc: (WebGL|ESSL) gl(sl) o(bject) c(ompiler)
 
 gloc provides a suite of tools to ease the development of advanced
-shader systems. gloc 0.8 features:
+shader systems. gloc 0.1 features:
  - an ESSL preprocessor to expand shader source for further analysis
  - preprocessor conditional expression partial evaluation
  - a JSON-encapsulated shader object format with symbolic dependencies to ease linking
@@ -10,7 +10,6 @@ shader systems. gloc 0.8 features:
  - link-time macro definition
  - source-to-source translation with accurate source locations and comments
  - runs as both a native binary and in-the-browser via ocamljs
- - optional emulation of the line continuation character, \
 
 gloc is licensed under a BSD-style license and distributed by Ashima
 Arts as a member of the greater WebGL community.
