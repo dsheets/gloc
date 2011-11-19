@@ -312,17 +312,20 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
 }
 | a=ATTRIBUTE; t=type_specifier;
 dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-  let v = List.map
+  let decls = List.map
     (fun d -> match d.v with
-      | n,None,None -> (n,t.v)
-      | n,Some ie,None -> (n,`array (ie,t.v))
-      | n,None,Some _ -> error (CannotInitializeAttribute (proj d));
-	(n,t.v)
-      | n,Some ie,Some _ -> error (CannotInitializeAttribute (proj d));
-	(n,`array (ie,t.v))
+      | n,None,None -> n
+      | n,Some ie,_ -> error (InvalidAttributeArray (proj d)); n
+      | n,_,Some _ -> error (CannotInitializeAttribute (proj d)); n
     ) dl.v
+  in let bind = Attribute (t.v, decls) in
+  let bind = match t with
+    | {v=`record (_,_)} -> error (InvalidAttributeStruct (proj t)); bind
+    | _ -> bind
   in
-  Attribute {(fuse_pptok [proj a; proj t; proj dl; proj s]) with v}
+  let btok = {(fuse_pptok [proj a; proj t; proj dl; proj s]) with v=bind} in
+    register ctxt btok;
+    Bind btok
 }
 | i=INVARIANT?; q=VARYING; t=type_specifier;
 dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
@@ -334,7 +337,7 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
     ) dl.v
   in let bind = Varying (inv, t.v, decls) in
   let bind = match t with
-    | {v=`record (Some name,_)} -> Type (t.v, Some bind)
+    | {v=`record (_,_)} -> error (InvalidVaryingStruct (proj t)); bind
     | _ -> bind
   in
   let btok = {(fuse_pptok (i@[proj q; proj t; proj dl; proj s])) with v=bind} in

@@ -115,7 +115,6 @@ and slstmt =
   | Continue of unit pptok
   | Scope of slstmt list pptok (* slenv? *)
   | Invariant of string list pptok
-  | Attribute of (string * sltype) list pptok
   | Precdecl of sltype (*slprecable*) pptok
   | Bind of slbind pptok
 and slbind =
@@ -123,6 +122,7 @@ and slbind =
   | Ref of bool * sltype * (string * sltype slexpr option * sltype slexpr option) list
   | Uniform of sltype * (string * sltype slexpr option) list
   | Varying of bool * sltype * (string * sltype slexpr option) list
+  | Attribute of sltype * string list
   | Param of bool * sltype slparam * string option
   | Fun of (slbind, sltype (*slreturn*)) slfun * string * slstmt list option
 and slenv = { ctxt : slbind pptok list SymMap.t list; (* scope stack *)
@@ -137,7 +137,10 @@ exception BadDeclStatement of unit pptok
 exception BadSubscript of sltype pptok
 
 exception CannotInitializeAttribute of unit pptok
+exception InvalidAttributeArray of unit pptok
+exception InvalidAttributeStruct of unit pptok
 exception CannotInitializeVarying of unit pptok
+exception InvalidVaryingStruct of unit pptok
 exception CannotInitializeUniform of unit pptok
 
 let ctxt = ref { ctxt=[SymMap.empty]; opensyms=[]; prec=[PrecMap.empty];
@@ -201,6 +204,7 @@ let rec register envr binding =
     | Ref (_, _, cells) -> List.iter (fun (name,_,_) -> bind name) cells
     | Uniform (_, cells) | Varying (_, _, cells) ->
 	List.iter (fun (name,_) -> bind name) cells
+    | Attribute (_, cells) -> List.iter bind cells
     | Fun (t, name, body) -> bind name
     | Param (const, paramt, Some name) -> bind name
     | Param (const, paramt, None) -> ()
@@ -362,6 +366,5 @@ let proj_slstmt = function
   | Continue t -> proj t
   | Scope t -> proj t
   | Invariant t -> proj t
-  | Attribute t -> proj t
   | Precdecl t -> proj t
   | Bind t -> proj t
