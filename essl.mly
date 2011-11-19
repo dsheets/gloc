@@ -340,23 +340,25 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
   }
 | u=UNIFORM; t=type_specifier;
 dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-  let v = List.map
+  let decls = List.map
     (fun d -> match d.v with
-      | n,None,None -> (n,t.v)
-      | n,Some ie,None -> (n,`array (ie,t.v))
-      | n,None,Some _ -> error (CannotInitializeUniform (proj d));
-	(n,t.v)
-      | n,Some ie,Some _ -> error (CannotInitializeUniform (proj d));
-	(n,`array (ie,t.v))
+       | n,oie,None -> (n,oie)
+       | n,oie,Some _ -> error (CannotInitializeUniform (proj d)); (n,oie)
     ) dl.v
-  in Uniform {(fuse_pptok [proj u; proj t; proj dl; proj s]) with v}
-  }
+  in let bind = Uniform (t.v,decls) in
+  let bind = match t with
+    | {v=`record (Some name,_)} -> Type (t.v, Some bind)
+    | _ -> bind
+  in let btok = {(fuse_pptok [proj u; proj t; proj dl; proj s]) with v=bind} in
+    register ctxt btok;
+    Bind btok
+}
 | inv=INVARIANT; dl=fuse_sep_nonempty_list(IDENTIFIER,COMMA); s=SEMICOLON {
   let v = List.map (fun d -> d.v) dl.v in
   Invariant {(fuse_pptok [proj inv; proj dl; proj s]) with v}
-}
+  }
 | p=PRECISION; t=precision_type; s=SEMICOLON {
-   Precdecl {(fuse_pptok [proj p; proj t; proj s]) with v=t.v}
+  Precdecl {(fuse_pptok [proj p; proj t; proj s]) with v=t.v}
   }
 (* TODO: catch bad precision type *)
 ;

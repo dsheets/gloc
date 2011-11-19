@@ -1,3 +1,4 @@
 uniform vec3 pos;
+uniform struct S { int k; } s;
 
 vec3 get_pos() { return pos; }

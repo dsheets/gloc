@@ -116,13 +116,13 @@ and slstmt =
   | Scope of slstmt list pptok (* slenv? *)
   | Invariant of string list pptok
   | Attribute of (string * sltype) list pptok
-  | Uniform of (string * sltype) list pptok
   | Varying of (bool * string * sltype) list pptok
   | Precdecl of sltype (*slprecable*) pptok
   | Bind of slbind pptok
 and slbind =
   | Type of sltype * slbind option
   | Ref of bool * sltype * (string * sltype slexpr option * sltype slexpr option) list
+  | Uniform of sltype * (string * sltype slexpr option) list
   | Param of bool * sltype slparam * string option
   | Fun of (slbind, sltype (*slreturn*)) slfun * string * slstmt list option
 and slenv = { ctxt : slbind pptok list SymMap.t list; (* scope stack *)
@@ -184,7 +184,7 @@ let rec pop_scope envr = function
   | 0 -> ()
   | n -> let env = !envr in envr := {env with ctxt=List.tl env.ctxt};
       pop_scope envr (n-1)
-let register envr binding =
+let rec register envr binding =
   let bind name =
     let env = !envr in
     let scope = List.hd env.ctxt in
@@ -193,9 +193,13 @@ let register envr binding =
     with Not_found -> [] in
       envr := {env with ctxt=(SymMap.add name (binding::symstack) scope)::up}
   in match binding.v with
-    | Type (`record (Some name, _), refs) -> bind name
-    | Type (_, refs) -> ()
+    | Type (`record (Some name, _), None) -> bind name
+    | Type (`record (Some name, _), Some v) -> bind name;
+	register envr {binding with v}
+    | Type (_, Some v) -> register envr {binding with v}
+    | Type (_, None) -> ()
     | Ref (const, t, cells) -> List.iter (fun (name,_,_) -> bind name) cells
+    | Uniform (t, cells) -> List.iter (fun (name,_) -> bind name) cells
     | Fun (t, name, body) -> bind name
     | Param (const, paramt, Some name) -> bind name
     | Param (const, paramt, None) -> ()
@@ -358,7 +362,6 @@ let proj_slstmt = function
   | Scope t -> proj t
   | Invariant t -> proj t
   | Attribute t -> proj t
-  | Uniform t -> proj t
   | Varying t -> proj t
   | Precdecl t -> proj t
   | Bind t -> proj t
