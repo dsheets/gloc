@@ -1,0 +1,21 @@
+
+
+
+
+   vec2
+#line 1
+                gp(
+
+
+
+   vec2
+#line 1
+                     a,
+
+
+
+   vec2
+#line 1
+                         b) {/*\
+*/              return sum(prod(a,b),prod(b,a));/*\
+*/            }
