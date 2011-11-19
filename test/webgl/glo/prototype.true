@@ -1,0 +1,23 @@
+{
+  "glo": [ 0, 1, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": {
+    "author": {},
+    "license": [ "Copyright (C) 2011 . All rights reserved.", "" ],
+    "library": null,
+    "version": null,
+    "build": null
+  },
+  "units": [
+    {
+      "insym": [ "p" ],
+      "outsym": [ "main", "f" ],
+      "inmac": [],
+      "opmac": [],
+      "outmac": [],
+      "source":
+        "#line 1 GLOC_0\nvoid f();\nint p(int);\n\nvoid f() { p(0); }\n\nvoid main() { }"
+    }
+  ],
+  "linkmap": {}
+}

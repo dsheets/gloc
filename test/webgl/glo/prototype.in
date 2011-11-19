@@ -1,0 +1,6 @@
+void f();
+int p(int);
+
+void f() { p(0); }
+
+void main() { }

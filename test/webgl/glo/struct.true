@@ -1,0 +1,22 @@
+{
+  "glo": [ 0, 1, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": {
+    "author": {},
+    "license": [ "Copyright (C) 2011 . All rights reserved.", "" ],
+    "library": null,
+    "version": null,
+    "build": null
+  },
+  "units": [
+    {
+      "insym": [],
+      "outsym": [ "q", "s" ],
+      "inmac": [],
+      "opmac": [],
+      "outmac": [],
+      "source": "#line 1 GLOC_0\nstruct s { int f; } q = s(1);"
+    }
+  ],
+  "linkmap": {}
+}
