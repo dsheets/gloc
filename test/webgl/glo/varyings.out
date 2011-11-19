@@ -10,8 +10,8 @@
   },
   "units": [
     {
-      "insym": [ "gP" ],
-      "outsym": [ "set_gP", "get_gP" ],
+      "insym": [],
+      "outsym": [ "set_gP", "get_gP", "gP" ],
       "inmac": [],
       "opmac": [],
       "outmac": [],

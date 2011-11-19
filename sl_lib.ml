@@ -116,13 +116,13 @@ and slstmt =
   | Scope of slstmt list pptok (* slenv? *)
   | Invariant of string list pptok
   | Attribute of (string * sltype) list pptok
-  | Varying of (bool * string * sltype) list pptok
   | Precdecl of sltype (*slprecable*) pptok
   | Bind of slbind pptok
 and slbind =
   | Type of sltype * slbind option
   | Ref of bool * sltype * (string * sltype slexpr option * sltype slexpr option) list
   | Uniform of sltype * (string * sltype slexpr option) list
+  | Varying of bool * sltype * (string * sltype slexpr option) list
   | Param of bool * sltype slparam * string option
   | Fun of (slbind, sltype (*slreturn*)) slfun * string * slstmt list option
 and slenv = { ctxt : slbind pptok list SymMap.t list; (* scope stack *)
@@ -198,8 +198,9 @@ let rec register envr binding =
 	register envr {binding with v}
     | Type (_, Some v) -> register envr {binding with v}
     | Type (_, None) -> ()
-    | Ref (const, t, cells) -> List.iter (fun (name,_,_) -> bind name) cells
-    | Uniform (t, cells) -> List.iter (fun (name,_) -> bind name) cells
+    | Ref (_, _, cells) -> List.iter (fun (name,_,_) -> bind name) cells
+    | Uniform (_, cells) | Varying (_, _, cells) ->
+	List.iter (fun (name,_) -> bind name) cells
     | Fun (t, name, body) -> bind name
     | Param (const, paramt, Some name) -> bind name
     | Param (const, paramt, None) -> ()
@@ -362,6 +363,5 @@ let proj_slstmt = function
   | Scope t -> proj t
   | Invariant t -> proj t
   | Attribute t -> proj t
-  | Varying t -> proj t
   | Precdecl t -> proj t
   | Bind t -> proj t

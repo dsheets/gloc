@@ -327,16 +327,19 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
 | i=INVARIANT?; q=VARYING; t=type_specifier;
 dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
   let inv,i = match i with Some t -> true,[t] | None -> false,[] in
-  let v = List.map
+  let decls = List.map
     (fun d -> match d.v with
-      | n,None,None -> (inv,n,t.v)
-      | n,Some ie,None -> (inv,n,`array (ie,t.v))
-      | n,None,Some _ -> error (CannotInitializeVarying (proj d));
-	(inv,n,t.v)
-      | n,Some ie,Some _ -> error (CannotInitializeVarying (proj d));
-	(inv,n,`array (ie,t.v))
+       | n,oie,None -> (n,oie)
+       | n,oie,Some _ -> error (CannotInitializeVarying (proj d)); (n,oie)
     ) dl.v
-  in Varying {(fuse_pptok (i@[proj q; proj t; proj dl; proj s])) with v}
+  in let bind = Varying (inv, t.v, decls) in
+  let bind = match t with
+    | {v=`record (Some name,_)} -> Type (t.v, Some bind)
+    | _ -> bind
+  in
+  let btok = {(fuse_pptok (i@[proj q; proj t; proj dl; proj s])) with v=bind} in
+    register ctxt btok;
+    Bind btok
   }
 | u=UNIFORM; t=type_specifier;
 dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
