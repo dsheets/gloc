@@ -495,7 +495,10 @@ type_specifier
 | s=SAMPLER2D { {s with v=`sampler2d (lookup_prec ctxt Sampler2d)} }
 | s=SAMPLERCUBE { {s with v=`samplerCube (lookup_prec ctxt SamplerCube)} }
 | s=struct_specifier { s }
-| i=IDENTIFIER { {i with v=`univ} } (* TODO: checking *)
+| i=IDENTIFIER { match lookup_type ctxt i.v with
+		   | `univ -> {i with v=`record (Some i.v,[])}
+		   | v -> {i with v}
+	       }
 ;
 precision_qualifier
 : h=HIGH_PRECISION { {h with v=High} }
@@ -516,7 +519,7 @@ l=LEFT_BRACE; dl=list(struct_declaration); r=RIGHT_BRACE {
 	   with v=t}
 }
 ;
-struct_declaration
+struct_declaration (* TODO: nested struct error *)
 : t=type_specifier; dl=fuse_sep_nonempty_list(struct_declarator,COMMA); s=SEMICOLON {
   let v = List.map
     (fun d -> match d.v with

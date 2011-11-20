@@ -5,8 +5,8 @@ void f() { p(0); }
 
 struct s { int k; } g() { return s(10); }
 
-s n = s(20);
+s n = g(20);
 
-void h(struct q { int a; } k) { }
+void h(struct q { int a; } k);
 
 void main() { }

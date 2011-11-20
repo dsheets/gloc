@@ -1,5 +1,7 @@
-precision highp float;
-
-struct k { float f; };
-
-int foo() { struct m { int g; }; return 1; }
+int foo() { 
+  struct m { int b; } h;
+  { struct x { int b; } e = x(3); struct q { int b; } d = q(2); h.b=d.b; }
+  x f;
+  z f;
+  return m(1).b+h.b;
+}

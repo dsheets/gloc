@@ -1,0 +1,1 @@
+int x=2, y=x, z=q, h=z;

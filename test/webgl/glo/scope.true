@@ -10,13 +10,13 @@
   },
   "units": [
     {
-      "insym": [],
-      "outsym": [ "k", "foo" ],
+      "insym": [ "x", "z" ],
+      "outsym": [ "foo" ],
       "inmac": [],
       "opmac": [],
       "outmac": [],
       "source":
-        "#line 1 GLOC_0\nprecision highp float;\n\nstruct k { float f; };\n\nint foo() { struct m { int g; }; return 1; }"
+        "#line 1 GLOC_0\nint foo() {\n  struct m { int b; } h;\n  { struct x { int b; } e = x(3); struct q { int b; } d = q(2); h.b=d.b; }\n  x f;\n  z f;\n  return m(1).b+h.b;\n}"
     }
   ],
   "linkmap": {}
