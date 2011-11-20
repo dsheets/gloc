@@ -10,8 +10,8 @@
   },
   "units": [
     {
-      "insym": [ "g" ],
-      "outsym": [ "myfun" ],
+      "insym": [],
+      "outsym": [ "myfun", "g" ],
       "inmac": [],
       "opmac": [],
       "outmac": [],

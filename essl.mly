@@ -301,15 +301,26 @@ declaration
       register ctxt typedecl;
       Bind typedecl
 }
-| t=type_specifier; dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-    let tok = fuse_pptok [proj t; proj dl; proj s] in
-      Bind {tok with v=Ref (false,t.v,List.map (fun t -> t.v) dl.v)}
+| t=type_specifier;
+dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
+  let bind = Ref (false, t.v, List.map (fun t -> t.v) dl.v) in
+  let bind = match t.v with
+    | `record (_,_) -> Type (t.v, Some bind)
+    | _ -> bind
+  in let btok = {(fuse_pptok [proj t; proj dl; proj s]) with v=bind} in
+    register ctxt btok;
+    Bind btok
   }
 | c=CONST; t=type_specifier;
 dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-  let tok = fuse_pptok [proj c; proj t; proj dl; proj s] in
-    Bind {tok with v=Ref (true,t.v,List.map (fun t -> t.v) dl.v)}
-}
+  let bind = Ref (true, t.v, List.map (fun t -> t.v) dl.v) in
+  let bind = match t.v with
+    | `record (_,_) -> Type (t.v, Some bind)
+    | _ -> bind
+  in let btok = {(fuse_pptok [proj c; proj t; proj dl; proj s]) with v=bind} in
+    register ctxt btok;
+    Bind btok
+  }
 | a=ATTRIBUTE; t=type_specifier;
 dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
   let decls = List.map
@@ -319,8 +330,8 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
       | n,_,Some _ -> error (CannotInitializeAttribute (proj d)); n
     ) dl.v
   in let bind = Attribute (t.v, decls) in
-  let bind = match t with
-    | {v=`record (_,_)} -> error (InvalidAttributeStruct (proj t)); bind
+  let bind = match t.v with
+    | `record (_,_) -> error (InvalidAttributeStruct (proj t)); bind
     | _ -> bind
   in
   let btok = {(fuse_pptok [proj a; proj t; proj dl; proj s]) with v=bind} in
@@ -336,8 +347,8 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
        | n,oie,Some _ -> error (CannotInitializeVarying (proj d)); (n,oie)
     ) dl.v
   in let bind = Varying (inv, t.v, decls) in
-  let bind = match t with
-    | {v=`record (_,_)} -> error (InvalidVaryingStruct (proj t)); bind
+  let bind = match t.v with
+    | `record (_,_) -> error (InvalidVaryingStruct (proj t)); bind
     | _ -> bind
   in
   let btok = {(fuse_pptok (i@[proj q; proj t; proj dl; proj s])) with v=bind} in
@@ -352,8 +363,8 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
        | n,oie,Some _ -> error (CannotInitializeUniform (proj d)); (n,oie)
     ) dl.v
   in let bind = Uniform (t.v,decls) in
-  let bind = match t with
-    | {v=`record (Some name,_)} -> Type (t.v, Some bind)
+  let bind = match t.v with
+    | `record (Some name,_) -> Type (t.v, Some bind)
     | _ -> bind
   in let btok = {(fuse_pptok [proj u; proj t; proj dl; proj s]) with v=bind} in
     register ctxt btok;

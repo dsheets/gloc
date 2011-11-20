@@ -11,7 +11,7 @@
   "units": [
     {
       "insym": [ "s" ],
-      "outsym": [],
+      "outsym": [ "s", "q" ],
       "inmac": [],
       "opmac": [],
       "outmac": [],

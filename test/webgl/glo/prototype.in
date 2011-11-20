@@ -7,4 +7,6 @@ struct s { int k; } g() { return s(10); }
 
 s n = s(20);
 
+void h(struct q { int a; } k) { }
+
 void main() { }
