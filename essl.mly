@@ -288,80 +288,42 @@ expression
 constant_expression
 : c=conditional_expression { c } (* TODO: check const *)
 ;
+end_declaration : s=SEMICOLON { close_decl_bind ctxt; s };
+%inline begin_declaration : t=type_specifier {
+  open_decl_bind ctxt (make_ref false t); {t with v=t}
+}
+| c=CONST; t=type_specifier {
+  open_decl_bind ctxt (make_ref true t);
+  {(fuse_pptok [proj c; proj t]) with v=t}
+}
+| a=ATTRIBUTE; t=type_specifier {
+  open_decl_bind ctxt (make_attribute t);
+  (match t.v with `record (_,_) -> error (InvalidAttributeStruct (proj t));
+    | _ -> ());
+  {(fuse_pptok [proj a; proj t]) with v=t}
+}
+| i=INVARIANT?; q=VARYING; t=type_specifier {
+  let inv,i = match i with Some i -> true,[i] | None -> false,[] in
+    open_decl_bind ctxt (make_varying inv t);
+    (match t.v with `record (_,_) -> error (InvalidVaryingStruct (proj t))
+      | _ -> ());
+    {(fuse_pptok (i@[proj q; proj t])) with v=t}
+}
+| u=UNIFORM; t=type_specifier {
+  open_decl_bind ctxt (make_uniform t);
+  {(fuse_pptok [proj u; proj t]) with v=t}
+};
 declaration
-: f=function_prototype; s=SEMICOLON {
-  let fundecl = {(fuse_pptok [proj f; proj s])
-		 with v=Fun (fst f.v, snd f.v, None)} in
-    pop_scope ctxt 2;
-    register ctxt fundecl;
-    Bind fundecl
+: t=struct_specifier; s=SEMICOLON {
+    Bind {(fuse_pptok [proj t; proj s])
+	  with v=[register ctxt {t with v=Type t.v}]}
 }
-| t=struct_specifier; s=SEMICOLON {
-    TBind {(fuse_pptok [proj t; proj s]) with v=({t with v=Type t.v}, None)}
-}
-| t=type_specifier;
-dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-  let bind = Ref (false, t.v, List.map (fun t -> t.v) dl.v) in
-  let tok = {(fuse_pptok [proj t; proj dl; proj s]) with v=bind} in
-  let () = register ctxt tok in match t.v with
-    | `record (_,_) -> TBind {tok with v=({t with v=Type t.v}, Some bind)}
-    | _ -> Bind tok
+| q=begin_declaration;
+dl=fuse_sep_nonempty_list(declarator,COMMA); s=end_declaration {
+  let tok = fuse_pptok [proj q; proj dl; proj s] in match q.v.v with
+    | `record (_,_) -> Bind {tok with v={q.v with v=Type q.v.v}::dl.v}
+    | _ -> Bind {tok with v=dl.v}
   }
-| c=CONST; t=type_specifier;
-dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-  let bind = Ref (true, t.v, List.map (fun t -> t.v) dl.v) in
-  let tok = {(fuse_pptok [proj c; proj t; proj dl; proj s]) with v=bind} in
-  let () = register ctxt tok in match t.v with
-    | `record (Some name,_) -> TBind {tok with v=({t with v=Type t.v}, Some bind)}
-    | _ -> Bind tok
-  }
-| a=ATTRIBUTE; t=type_specifier;
-dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-  let decls = List.map
-    (fun d -> match d.v with
-      | n,None,None -> n
-      | n,Some ie,_ -> error (InvalidAttributeArray (proj d)); n
-      | n,_,Some _ -> error (CannotInitializeAttribute (proj d)); n
-    ) dl.v
-  in let bind = Attribute (t.v, decls) in
-  let bind = match t.v with
-    | `record (_,_) -> error (InvalidAttributeStruct (proj t)); bind
-    | _ -> bind
-  in
-  let btok = {(fuse_pptok [proj a; proj t; proj dl; proj s]) with v=bind} in
-    register ctxt btok;
-    Bind btok
-}
-| i=INVARIANT?; q=VARYING; t=type_specifier;
-dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-  let inv,i = match i with Some t -> true,[t] | None -> false,[] in
-  let decls = List.map
-    (fun d -> match d.v with
-       | n,oie,None -> (n,oie)
-       | n,oie,Some _ -> error (CannotInitializeVarying (proj d)); (n,oie)
-    ) dl.v
-  in let bind = Varying (inv, t.v, decls) in
-  let bind = match t.v with
-    | `record (_,_) -> error (InvalidVaryingStruct (proj t)); bind
-    | _ -> bind
-  in
-  let btok = {(fuse_pptok (i@[proj q; proj t; proj dl; proj s])) with v=bind} in
-    register ctxt btok;
-    Bind btok
-  }
-| u=UNIFORM; t=type_specifier;
-dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
-  let decls = List.map
-    (fun d -> match d.v with
-       | n,oie,None -> (n,oie)
-       | n,oie,Some _ -> error (CannotInitializeUniform (proj d)); (n,oie)
-    ) dl.v
-  in let bind = Uniform (t.v,decls) in
-  let tok = {(fuse_pptok [proj u; proj t; proj dl; proj s]) with v=bind} in
-  let () = register ctxt tok in match t.v with
-    | `record (Some name,_) -> TBind {tok with v=({t with v=Type t.v}, Some bind)}
-    | _ -> Bind tok
-}
 | inv=INVARIANT; dl=fuse_sep_nonempty_list(IDENTIFIER,COMMA); s=SEMICOLON {
   let v = List.map (fun d -> d.v) dl.v in
   Invariant {(fuse_pptok [proj inv; proj dl; proj s]) with v}
@@ -372,12 +334,13 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
 (* TODO: catch bad precision type *)
 ;
 declarator
-: i=IDENTIFIER { { i with v=(i.v,None,None) } }
+: i=IDENTIFIER { bind_decl ctxt { i with v=(i.v,None,None) } }
 | i=IDENTIFIER; a=array_type_annot {
-    {(fuse_pptok [proj i; proj a]) with v=(i.v,Some a.v,None) }
+    bind_decl ctxt {(fuse_pptok [proj i; proj a]) with v=(i.v,Some a.v,None) }
   }
 | i=IDENTIFIER; e=EQUAL; ini=initializer_ {
-    {(fuse_pptok [proj i; proj e; proj_slexpr ini]) with v=(i.v,None,Some ini)}
+    bind_decl ctxt {(fuse_pptok [proj i; proj e; proj_slexpr ini])
+		    with v=(i.v,None,Some ini)}
   }
 ;
 array_type_annot
@@ -404,8 +367,7 @@ begin_param_list
 function_prototype
 : t=type_specifier; i=IDENTIFIER;
 p=fuse_sep_list(begin_param_list,param_declaration,COMMA,RIGHT_PAREN) {
-  let params = List.map (fun p -> p.v) p.v in
-  let () = List.iter (register ctxt) p.v in
+  let params = List.map (fun p -> (register ctxt p).v) p.v in
     push_scope ctxt;
     {(fuse_pptok [proj t; proj i; proj p])
      with v=(`lam (params, t.v), i.v)}
@@ -416,10 +378,8 @@ p=fuse_sep_list(begin_param_list,param_declaration,COMMA,RIGHT_PAREN) {
      with v=(`lam ([],t.v), i.v)}
   }
 | v=VOID; i=IDENTIFIER;
-p=fuse_sep_list(LEFT_PAREN,param_declaration,COMMA,RIGHT_PAREN) {
-  push_scope ctxt;
-  let params = List.map (fun p -> p.v) p.v in
-  let () = List.iter (register ctxt) p.v in
+p=fuse_sep_list(begin_param_list,param_declaration,COMMA,RIGHT_PAREN) {
+  let params = List.map (fun p -> (register ctxt p).v) p.v in
     push_scope ctxt;
     {(fuse_pptok [proj v; proj i; proj p])
      with v=(`lam (params,`void), i.v)}
@@ -489,7 +449,7 @@ type_specifier
 | m=MAT4 { {m with v=`mat4 (lookup_prec ctxt Float)} }
 | s=SAMPLER2D { {s with v=`sampler2d (lookup_prec ctxt Sampler2d)} }
 | s=SAMPLERCUBE { {s with v=`samplerCube (lookup_prec ctxt SamplerCube)} }
-| s=struct_specifier { register ctxt {s with v=Type s.v}; s }
+| s=struct_specifier { ignore (register ctxt {s with v=Type s.v}); s }
 | i=IDENTIFIER { match lookup_type ctxt i.v with
 		   | `univ -> {i with v=`record (Some i.v,[])}
 		   | v -> {i with v}
@@ -599,12 +559,12 @@ condition
 }
 | t=type_specifier; i=IDENTIFIER; e=EQUAL; ini=initializer_ {
     push_scope ctxt;
-    let r = Ref (false, t.v, [i.v,None,Some ini]) in
+    let r = Ref (false, t.v, i.v,None,Some ini) in
     let tok = {(fuse_pptok [proj t; proj i; proj e; proj_slexpr ini]) with v=r} in
-    let () = register ctxt tok in match t.v with
-      | `record (Some tyname, fields) ->
-	  TBind {tok with v=({t with v=Type t.v},Some r)}
-      | _ -> Bind tok
+      match t.v with
+	| `record (Some tyname, fields) ->
+	    Bind {tok with v=[{t with v=Type t.v};register ctxt tok]}
+	| _ -> Bind {tok with v=[register ctxt tok]}
   }
 ;
 do_intro : d=DO { push_scope ctxt; d };
@@ -662,16 +622,18 @@ translation_unit
 : dl=list(external_declaration); EOF { !ctxt }
 ;
 external_declaration
-: f=function_definition { f }
-| d=declaration { d }
-;
-function_definition (* TODO: scopes? *)
-: p=function_prototype; c=compound_statement_no_new_scope {
-  let fundecl = {(fuse_pptok [proj p; proj c])
-		 with v=Fun (fst p.v, snd p.v, Some c.v)} in
-    pop_scope ctxt 2;
-    register ctxt fundecl;
-    Bind fundecl
+: d=declaration { d }
+| f=function_prototype; s=SEMICOLON {
+  pop_scope ctxt 2;
+  let fundecl = {(fuse_pptok [proj f; proj s])
+		 with v=Fun (fst f.v, snd f.v, None)} in
+    Bind {fundecl with v=[register ctxt fundecl]}
+}
+| p=function_prototype; c=compound_statement_no_new_scope {
+  pop_scope ctxt 2;
+  let fundecl = Fun (fst p.v, snd p.v, Some c.v) in
+  let ftok = register ctxt {(fuse_pptok [proj p; proj c]) with v=fundecl} in
+    Bind {ftok with v=[ftok]}
 }
 ;
 %%

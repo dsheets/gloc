@@ -116,14 +116,13 @@ and slstmt =
   | Scope of slstmt list pptok (* slenv? *)
   | Invariant of string list pptok
   | Precdecl of sltype (*slprecable*) pptok
-  | Bind of slbind pptok
-  | TBind of (slbind pptok * slbind option) pptok
+  | Bind of slbind pptok list pptok
 and slbind =
   | Type of sltype
-  | Ref of bool * sltype * (string * sltype slexpr option * sltype slexpr option) list
-  | Uniform of sltype * (string * sltype slexpr option) list
-  | Varying of bool * sltype * (string * sltype slexpr option) list
-  | Attribute of sltype * string list
+  | Ref of bool * sltype * string * sltype slexpr option * sltype slexpr option
+  | Uniform of sltype * string * sltype slexpr option
+  | Varying of bool * sltype * string * sltype slexpr option
+  | Attribute of sltype * string
   | Param of bool * sltype slparam * string option
   | Fun of (slbind, sltype (*slreturn*)) slfun * string * slstmt list option
 and slenv = { ctxt : slbind pptok list SymMap.t list; (* scope stack *)
@@ -131,7 +130,12 @@ and slenv = { ctxt : slbind pptok list SymMap.t list; (* scope stack *)
               prec : slprec PrecMap.t list; (* precision stack *)
               invariant : bool;
               pragmas : string pptok pptok SymMap.t;
-              stmts : slstmt list }
+              stmts : slstmt list;
+	      decl_bind : ((string
+			    * sltype slexpr option
+			    * sltype slexpr option) pptok
+			   -> slbind) option
+	    }
 
 exception BadField of sltype pptok
 exception BadDeclStatement of unit pptok
@@ -145,7 +149,8 @@ exception InvalidVaryingStruct of unit pptok
 exception CannotInitializeUniform of unit pptok
 
 let ctxt = ref { ctxt=[SymMap.empty]; opensyms=[]; prec=[PrecMap.empty];
-                 invariant=false; pragmas=SymMap.empty; stmts=[] }
+                 invariant=false; pragmas=SymMap.empty; stmts=[];
+		 decl_bind=None }
 (*let typeof_stmt ctxt = function
   | Expr t -> error (BadDeclStatement (proj t)); `univ
   | Select t -> error (BadDeclStatement (proj t)); `univ
@@ -188,6 +193,22 @@ let rec pop_scope envr = function
   | 0 -> ()
   | n -> let env = !envr in envr := {env with ctxt=List.tl env.ctxt};
       pop_scope envr (n-1)
+
+let make_ref const t {v=(n,oie,oini)} = Ref (const,t.v,n,oie,oini)
+let make_attribute t = function
+  | {v=(n,None,None)} -> Attribute (t.v,n)
+  | {v=(n,Some ie,_)} as tok -> error (InvalidAttributeArray (proj tok));
+      Attribute (t.v,n)
+  | {v=(n,_,Some ini)} as tok -> error (CannotInitializeAttribute (proj tok));
+      Attribute (t.v,n)
+let make_varying inv t = function
+  | {v=(n,oie,None)} -> Varying (inv,t.v,n,oie)
+  | {v=(n,oie,Some _)} as tok -> error (CannotInitializeVarying (proj tok));
+      Varying (inv,t.v,n,oie)
+let make_uniform t = function
+  | {v=(n,oie,None)} -> Uniform (t.v,n,oie)
+  | {v=(n,oie,Some _)} as tok -> error (CannotInitializeUniform (proj tok));
+      Uniform (t.v,n,oie)
 let rec register envr binding =
   let bind name =
     let env = !envr in
@@ -197,15 +218,22 @@ let rec register envr binding =
     with Not_found -> [] in
       envr := {env with ctxt=(SymMap.add name (binding::symstack) scope)::up}
   in match binding.v with
-    | Type (`record (Some name, _)) -> bind name
-    | Type _ -> ()
-    | Ref (_, _, cells) -> List.iter (fun (name,_,_) -> bind name) cells
-    | Uniform (_, cells) | Varying (_, _, cells) ->
-	List.iter (fun (name,_) -> bind name) cells
-    | Attribute (_, cells) -> List.iter bind cells
-    | Fun (t, name, body) -> bind name
-    | Param (const, paramt, Some name) -> bind name
-    | Param (const, paramt, None) -> ()
+    | Type (`record (Some name, _))
+    | Ref (_, _, name, _, _)
+    | Uniform (_, name, _)
+    | Varying (_, _, name, _)
+    | Attribute (_, name)
+    | Fun (_, name, _)
+    | Param (_, _, Some name) -> bind name; binding
+    | Type _
+    | Param (_, _, None) -> binding
+let close_decl_bind envr = envr := {!envr with decl_bind=None}
+let open_decl_bind envr make = envr := {!envr with decl_bind=Some make}
+let bind_decl envr dbtok =
+  let v = match (!envr).decl_bind with
+    | Some decl_bind -> decl_bind dbtok
+    | None -> make_ref false {dbtok with v=`univ} dbtok (* TODO: error? *)
+  in register envr {dbtok with v}
 
 let lookup_prec envr pt =
   let env = !envr in
@@ -366,4 +394,3 @@ let proj_slstmt = function
   | Invariant t -> proj t
   | Precdecl t -> proj t
   | Bind t -> proj t
-  | TBind t -> proj t

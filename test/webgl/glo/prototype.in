@@ -8,5 +8,6 @@ struct s { int k; } g() { return s(10); }
 s n = g(20);
 
 void h(struct q { int a; } k);
+struct s2 { int k; } j();
 
 void main() { }

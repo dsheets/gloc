@@ -10,13 +10,13 @@
   },
   "units": [
     {
-      "insym": [ "p" ],
-      "outsym": [ "n", "main", "s", "g", "f" ],
+      "insym": [ "j", "h", "p" ],
+      "outsym": [ "s2", "s", "n", "main", "g", "f" ],
       "inmac": [],
       "opmac": [],
       "outmac": [],
       "source":
-        "#line 1 GLOC_0\nvoid f();\nint p(int);\n\nvoid f() { p(0); }\n\nstruct s { int k; } g() { return s(10); }\n\ns n = g(20);\n\nvoid h(struct q { int a; } k);\n\nvoid main() { }"
+        "#line 1 GLOC_0\nvoid f();\nint p(int);\n\nvoid f() { p(0); }\n\nstruct s { int k; } g() { return s(10); }\n\ns n = g(20);\n\nvoid h(struct q { int a; } k);\nstruct s2 { int k; } j();\n\nvoid main() { }"
     }
   ],
   "linkmap": {}
