@@ -117,8 +117,9 @@ and slstmt =
   | Invariant of string list pptok
   | Precdecl of sltype (*slprecable*) pptok
   | Bind of slbind pptok
+  | TBind of (slbind pptok * slbind option) pptok
 and slbind =
-  | Type of sltype * slbind option
+  | Type of sltype
   | Ref of bool * sltype * (string * sltype slexpr option * sltype slexpr option) list
   | Uniform of sltype * (string * sltype slexpr option) list
   | Varying of bool * sltype * (string * sltype slexpr option) list
@@ -196,11 +197,8 @@ let rec register envr binding =
     with Not_found -> [] in
       envr := {env with ctxt=(SymMap.add name (binding::symstack) scope)::up}
   in match binding.v with
-    | Type (`record (Some name, _), None) -> bind name
-    | Type (`record (Some name, _), Some v) -> bind name;
-	register envr {binding with v}
-    | Type (_, Some v) -> register envr {binding with v}
-    | Type (_, None) -> ()
+    | Type (`record (Some name, _)) -> bind name
+    | Type _ -> ()
     | Ref (_, _, cells) -> List.iter (fun (name,_,_) -> bind name) cells
     | Uniform (_, cells) | Varying (_, _, cells) ->
 	List.iter (fun (name,_) -> bind name) cells
@@ -368,3 +366,4 @@ let proj_slstmt = function
   | Invariant t -> proj t
   | Precdecl t -> proj t
   | Bind t -> proj t
+  | TBind t -> proj t
