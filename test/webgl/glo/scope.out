@@ -10,7 +10,7 @@
   },
   "units": [
     {
-      "insym": [ "x", "q", "z" ],
+      "insym": [ "x", "z" ],
       "outsym": [ "foo" ],
       "inmac": [],
       "opmac": [],

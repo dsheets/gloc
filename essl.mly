@@ -546,9 +546,10 @@ simple_statement
 | i=iteration_statement { i }
 | j=jump_statement { j }
 ;
-compound_statement (* TODO: scope sooner? *)
-: l=LEFT_BRACE; sl=list(statement_no_new_scope); r=RIGHT_BRACE {
-  (*let env = push_new_env sl in*)
+begin_compound_scope : l=LEFT_BRACE { push_scope ctxt; l }
+compound_statement
+: l=begin_compound_scope; sl=list(statement_no_new_scope); r=RIGHT_BRACE {
+  pop_scope ctxt 1;
   Scope {(fuse_pptok ((proj l)
 		      ::(List.map proj_slstmt sl)@[proj r]))
          with v=sl}
