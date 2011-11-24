@@ -125,3 +125,86 @@ let parse_essl lex =
     (fun _ -> Lexing.dummy_pos) (* TODO: fixme? *)
     (fun _ -> Lexing.dummy_pos)
     translation_unit in parse lex
+
+let builtins = [ (* TODO: tests *)
+  (* variables *)
+  "gl_Position",                     `vec4 (`float Sl_lib.High);
+  "gl_PointSize",                    `float Sl_lib.Medium;
+  (* TODO: track vs/fs validity *)
+  "gl_FragCoord",                    `vec4 (`float Sl_lib.Medium);
+  "gl_FrontFacing",                  `bool;
+  "gl_FragColor",                    `vec4 (`float Sl_lib.Medium);
+  "gl_FragData",                     `array ();
+  "gl_PointCoord",                   `vec2 (`float Sl_lib.Medium);
+  (* constants *)
+  "gl_MaxVertexAttribs",             `int Sl_lib.Medium;
+  "gl_MaxVertexUniformVectors",      `int Sl_lib.Medium;
+  "gl_MaxVaryingVectors",            `int Sl_lib.Medium;
+  "gl_MaxVertexTextureImageUnits",   `int Sl_lib.Medium;
+  "gl_MaxCombinedTextureImageUnits", `int Sl_lib.Medium;
+  "gl_MaxTextureImageUnits",         `int Sl_lib.Medium;
+  "gl_MaxFragmentUniformVectors",    `int Sl_lib.Medium;
+  "gl_MaxDrawBuffers",               `int Sl_lib.Medium;
+  (* uniforms *) (* TODO: only field names exist *)
+  "gl_DepthRange",                   `record (Some "gl_DepthRangeParameters",
+					      ["near", `float Sl_lib.High;
+					       "far",  `float Sl_lib.High;
+					       "diff", `float Sl_lib.High]);
+  (* types *)
+  "gl_DepthRangeParameters",         `record (Some "gl_DepthRangeParameters",
+					      ["near", `float Sl_lib.High;
+					       "far",  `float Sl_lib.High;
+					       "diff", `float Sl_lib.High]);
+  (* functions *) (* TODO: impl types, polymorphic product *)
+  "radians",                         `univ;
+  "degrees",                         `univ;
+  "sin",                             `univ;
+  "cos",                             `univ;
+  "tan",                             `univ;
+  "asin",                            `univ;
+  "acos",                            `univ;
+  "atan",                            `univ;
+  "pow",                             `univ;
+  "exp",                             `univ;
+  "log",                             `univ;
+  "exp2",                            `univ;
+  "log2",                            `univ;
+  "sqrt",                            `univ;
+  "inversesqrt",                     `univ;
+  "abs",                             `univ;
+  "sign",                            `univ;
+  "floor",                           `univ;
+  "ceil",                            `univ;
+  "fract",                           `univ;
+  "mod",                             `univ;
+  "min",                             `univ;
+  "max",                             `univ;
+  "clamp",                           `univ;
+  "mix",                             `univ;
+  "step",                            `univ;
+  "smoothstep",                      `univ;
+  "length",                          `univ;
+  "distance",                        `univ;
+  "dot",                             `univ;
+  "cross",                           `univ;
+  "normalize",                       `univ;
+  "faceforward",                     `univ;
+  "reflect",                         `univ;
+  "refract",                         `univ;
+  "matrixCompMult",                  `univ;
+  "lessThan",                        `univ;
+  "lessThanEqual",                   `univ;
+  "greaterThan",                     `univ;
+  "greaterThanEqual",                `univ;
+  "equal",                           `univ;
+  "notEqual",                        `univ;
+  "any",                             `univ;
+  "all",                             `univ;
+  "not",                             `univ;
+  "texture2D",                       `univ;
+  "texture2DProj",                   `univ;
+  "texture2DLod",                    `univ;
+  "texture2DProjLod",                `univ;
+  "textureCube",                     `univ;
+  "textureCubeLod",                  `univ
+]

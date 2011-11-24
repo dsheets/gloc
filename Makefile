@@ -1,5 +1,14 @@
 .PHONY: all clean
-all: standard.mly
+
+all: glol_js.js gloc.d.byte
+
+%.js: %.byte
+	js_of_ocaml $*.byte
+
+glol_js.byte: glol_js.ml
+	ocamlbuild -use-ocamlfind glol_js.byte
+
+gloc.d.byte: standard.mly gloc.ml
 	ocamlbuild -use-ocamlfind -use-menhir -menhir "menhir --stdlib .." gloc.d.byte
 
 standard.mly: standard.mly.orig pptok.mly
@@ -10,4 +19,4 @@ standard.mly: standard.mly.orig pptok.mly
 clean:
 	ocamlbuild -clean
 	@echo ""
-	rm -f standard.mly
+	rm -f standard.mly glol_js.js

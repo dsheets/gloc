@@ -1,122 +1,7 @@
 open Printf
 open Pp_lib
 open Essl_lib
-
-type glo = {
-  glo:version;
-  target:string * version;
-  meta:meta option;
-  units: u list;
-  linkmap:(string,string) Hashtbl.t
-}
-and meta = {
-  author:(string * url) list;
-  license:string * url;
-  library:(string * url) option;
-  version:version option;
-  build:string option;
-}
-and u = {
-  insym:string list;
-  outsym:string list;
-  inmac:string list;
-  opmac:string list;
-  outmac:string list;
-  source:string;
-}
-and url = string
-and version = int * int * int
-with json
-
-let glo_version = (0,1,0)
-let no_license author =
-  (sprintf "Copyright (C) %d %s. All rights reserved."
-     ((Unix.gmtime (Unix.time ())).Unix.tm_year + 1900)
-     author,
-   "")
-
-let builtins = [ (* TODO: tests *)
-  (* variables *)
-  "gl_Position",                     `vec4 (`float Sl_lib.High);
-  "gl_PointSize",                    `float Sl_lib.Medium;
-  (* TODO: track vs/fs validity *)
-  "gl_FragCoord",                    `vec4 (`float Sl_lib.Medium);
-  "gl_FrontFacing",                  `bool;
-  "gl_FragColor",                    `vec4 (`float Sl_lib.Medium);
-  "gl_FragData",                     `array ();
-  "gl_PointCoord",                   `vec2 (`float Sl_lib.Medium);
-  (* constants *)
-  "gl_MaxVertexAttribs",             `int Sl_lib.Medium;
-  "gl_MaxVertexUniformVectors",      `int Sl_lib.Medium;
-  "gl_MaxVaryingVectors",            `int Sl_lib.Medium;
-  "gl_MaxVertexTextureImageUnits",   `int Sl_lib.Medium;
-  "gl_MaxCombinedTextureImageUnits", `int Sl_lib.Medium;
-  "gl_MaxTextureImageUnits",         `int Sl_lib.Medium;
-  "gl_MaxFragmentUniformVectors",    `int Sl_lib.Medium;
-  "gl_MaxDrawBuffers",               `int Sl_lib.Medium;
-  (* uniforms *) (* TODO: only field names exist *)
-  "gl_DepthRange",                   `record (Some "gl_DepthRangeParameters",
-					      ["near", `float Sl_lib.High;
-					       "far",  `float Sl_lib.High;
-					       "diff", `float Sl_lib.High]);
-  (* types *)
-  "gl_DepthRangeParameters",         `record (Some "gl_DepthRangeParameters",
-					      ["near", `float Sl_lib.High;
-					       "far",  `float Sl_lib.High;
-					       "diff", `float Sl_lib.High]);
-  (* functions *) (* TODO: impl types, polymorphic product *)
-  "radians",                         `univ;
-  "degrees",                         `univ;
-  "sin",                             `univ;
-  "cos",                             `univ;
-  "tan",                             `univ;
-  "asin",                            `univ;
-  "acos",                            `univ;
-  "atan",                            `univ;
-  "pow",                             `univ;
-  "exp",                             `univ;
-  "log",                             `univ;
-  "exp2",                            `univ;
-  "log2",                            `univ;
-  "sqrt",                            `univ;
-  "inversesqrt",                     `univ;
-  "abs",                             `univ;
-  "sign",                            `univ;
-  "floor",                           `univ;
-  "ceil",                            `univ;
-  "fract",                           `univ;
-  "mod",                             `univ;
-  "min",                             `univ;
-  "max",                             `univ;
-  "clamp",                           `univ;
-  "mix",                             `univ;
-  "step",                            `univ;
-  "smoothstep",                      `univ;
-  "length",                          `univ;
-  "distance",                        `univ;
-  "dot",                             `univ;
-  "cross",                           `univ;
-  "normalize",                       `univ;
-  "faceforward",                     `univ;
-  "reflect",                         `univ;
-  "refract",                         `univ;
-  "matrixCompMult",                  `univ;
-  "lessThan",                        `univ;
-  "lessThanEqual",                   `univ;
-  "greaterThan",                     `univ;
-  "greaterThanEqual",                `univ;
-  "equal",                           `univ;
-  "notEqual",                        `univ;
-  "any",                             `univ;
-  "all",                             `univ;
-  "not",                             `univ;
-  "texture2D",                       `univ;
-  "texture2DProj",                   `univ;
-  "texture2DLod",                    `univ;
-  "texture2DProjLod",                `univ;
-  "textureCube",                     `univ;
-  "textureCubeLod",                  `univ
-]
+open Glo_lib
 
 let create_header expr =
   (* TODO: lift extension exprs *)
@@ -217,12 +102,12 @@ let env_of_ppexpr ppexpr =
   let ts = essl_tokenize s in
     parse_essl (essl_lexerfn ts)
 
-let compile target origexpr ~inmac ~opmac tokslst =
+let compile ~license target origexpr ~inmac ~opmac tokslst =
   let envs = List.map env_of_ppexpr tokslst in
     {glo=glo_version; target;
      meta=Some {
        author=[];
-       license=no_license "";
+       license;
        library=None;
        version=None;
        build=None

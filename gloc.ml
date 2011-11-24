@@ -229,12 +229,16 @@ let product = if !(exec_state.compile)
 then
   let outlang = !(exec_state.outlang) in
   let target = (string_of_dialect outlang.dialect,outlang.version) in
-    try let glo = Glo.compile target ppexpr
-	  ~inmac:(List.unique (List.flatten inmac))
-	  ~opmac:(List.unique (List.flatten opmac))
-	  (List.map snd ppl) in
-      Json_io.string_of_json ~compact:(not !(exec_state.verbose))
-	(Glo.json_of_glo glo)
+    (* TODO: expose *)
+  let license = Glo_lib.no_license
+    ((Unix.gmtime (Unix.time())).Unix.tm_year + 1900)
+    ""
+  in try let glo = Glo.compile ~license target ppexpr
+      ~inmac:(List.unique (List.flatten inmac))
+      ~opmac:(List.unique (List.flatten opmac))
+      (List.map snd ppl) in
+      Json_io.string_of_json (*~compact:(not !(exec_state.verbose))*)
+	(Glo_lib.json_of_glo glo)
     with err ->
       (error (Essl_lib.EsslParseError ((Printexc.to_string err),
 				       !(Pp_lib.file),!(Pp_lib.line)));
