@@ -180,6 +180,15 @@ let create_body expr envs =
     | syml', Some e -> syml@syml', e
     | syml', None -> syml@syml', empty_pptok_expr expr
 	in *)
+    (* TODO: enforce ESSL 1-declare, 1-define rule *)
+  let prototypes = List.fold_left
+    (fun l e -> Sl_lib.SymMap.fold
+       (fun k bindings l ->
+	  if List.for_all (fun b -> not (Sl_lib.definitionp b)) bindings
+	  then k::l else l
+       ) (List.hd (List.rev e.Sl_lib.ctxt)) l)
+    [] envs
+  in
   (* TODO: rename GLOC_* to GLOC_GLOC_* *)
   (* TODO: remove extension *)
   (* TODO: rewrite line directives *)
@@ -190,10 +199,12 @@ let create_body expr envs =
 	    else if List.mem_assoc s builtins then l
 	    else s::l)
 	 l e.Sl_lib.opensyms)
-      syml envs;
+      (syml@prototypes) envs;
    outsym=List.fold_left
       (fun l e -> Sl_lib.SymMap.fold
-	 (fun k _ l -> if List.mem k l then l else k::l) (* TODO: inference *)
+	 (fun k bindings l -> (* TODO: inference *)
+	    if (List.mem k l) or not (List.exists Sl_lib.definitionp bindings)
+	    then l else k::l)
 	 (List.hd (List.rev e.Sl_lib.ctxt)) l)
       [] envs;
    inmac=[]; opmac=[]; outmac=[];

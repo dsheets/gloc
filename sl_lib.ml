@@ -235,6 +235,10 @@ let bind_decl envr dbtok =
     | None -> make_ref false {dbtok with v=`univ} dbtok (* TODO: error? *)
   in register envr {dbtok with v}
 
+let definitionp = function
+  | {v=Fun (_,_,None)} -> false
+  | _ -> true
+
 let lookup_prec envr pt =
   let env = !envr in
   try PrecMap.find pt (List.hd env.prec) (* TODO: scope popping *)
