@@ -1,5 +1,6 @@
 <esslpp_lex.*>: syntax(camlp4o), package(ulex)
 <gloc.*>: package(menhirLib), package(ulex), package(str), package(jsonoj), package(unix)
+<glol.*>: package(jsonoj)
 <glol_js.*>: syntax(camlp4o), package(js_of_ocaml), package(js_of_ocaml.syntax), package(json-tc-js), package(jsonoj)
 <glo_lib.*>: syntax(camlp4o), package(json-tc-js.syntax), package(json-tc-js), package(jsonoj)
 <ce_lib.*>: package(menhirLib)
