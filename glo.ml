@@ -112,6 +112,6 @@ let compile ~license target origexpr ~inmac ~opmac tokslst =
        version=None;
        build=None
      };
-     units=[(*create_header origexpr;*)
-	    {(create_body origexpr envs) with inmac; opmac}];
+     units=[|(*create_header origexpr;*)
+	    {(create_body origexpr envs) with inmac; opmac}|];
      linkmap=Hashtbl.create 0}

@@ -2,7 +2,7 @@ type glo = {
   glo:version;
   target:string * version;
   meta:meta option;
-  units: u list;
+  units: u array;
   linkmap:(string,string) Hashtbl.t
 }
 and meta = {

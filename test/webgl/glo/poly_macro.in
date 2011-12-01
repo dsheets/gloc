@@ -1,1 +1,3 @@
+#if POLY
 POLY(poly,vec2)
+#endif
