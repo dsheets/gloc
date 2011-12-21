@@ -176,6 +176,7 @@ let ctxt = ref { ctxt=[SymMap.empty]; opensyms=[]; prec=[PrecMap.empty];
   | Vardecl {v={b=(t,_)}::_} -> t
   | Fundecl {v=({b},_)} -> b*)
 
+(* TODO: do *)
 let lookup_type envr sym =
   let env = !envr in
     try let h = List.hd (SymMap.find sym (List.hd env.ctxt)) in

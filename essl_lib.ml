@@ -8,7 +8,7 @@ exception EsslParseError of string * src_loc * src_loc
 let rec stream_of_pptok_expr = function
   | Comments _ -> []
   | Chunk t -> t.v
-  | If {v=(_,expr,_)} -> stream_of_pptok_expr expr (* TODO: fixme? *)
+  | If {v=(_,expr,_)} -> stream_of_pptok_expr expr (* TODO: superfluous? *)
   | Def _ | Fun _ | Undef _ | Err _ -> []
   | Pragma _ -> [] (* TODO: thread pragmas into essl parser *)
   | Version _ -> []

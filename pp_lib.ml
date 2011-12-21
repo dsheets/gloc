@@ -107,6 +107,7 @@ type pptok_expr =
   | Line of line_dir pptok
   | List of pptok_expr list pptok
 
+(* forgetful *)
 let proj : 'a pptok -> unit pptok = fun t -> { t with v=() }
 
 let proj_pptok_type = function
@@ -174,6 +175,12 @@ let errors : exn list ref = ref []
 let error exc = errors := exc::!errors
 let warns : exn list ref = ref []
 let warn exc = warns := exc::!warns
+
+let reset () =
+  emit_newline := true;
+  file_prefix := "GLOC_";
+  file := {src=0; input=0};
+  line := {src=1; input=1}
 
 let check_version_base t =
   match fst t.v with
@@ -264,8 +271,40 @@ let pptok_expr_of_body bl def = match bl with
   | l -> fuse_pptok_expr l
 
 let synth_int (base,i) = fun loc ->
-  let is = string_of_int i in
+  let is = match base with
+    | Dec -> sprintf "%d" i
+    | Oct -> sprintf "%o" i
+    | Hex -> sprintf "%x" i
+  in
   let il = String.length is in
-  let span = { a=loc; z={ loc with col=loc.col+il+2 } } in
+  let span = { a=loc; z={ loc with col=loc.col+il } } in
     [Int {span; scan=scan_of_string span ([],ref []) is;
 	  comments=([],ref []); v=(base,i)}]
+
+let synth_tok span s =
+  { span; scan=scan_of_string span ([],ref []) s;
+    comments=([],ref []); v=() }
+let synth_pre_tok loc s = (* TODO: non-negative col domain *)
+  synth_tok {a={ loc with col=loc.col-(String.length s) }; z=loc} s
+let synth_post_tok loc s =
+  synth_tok {a=loc; z={ loc with col=loc.col+(String.length s) }} s
+
+let synth_pp_if ({v=(ce,tb,ofb)} as t) =
+  let ifdir = synth_post_tok t.span.a "#if" in
+  let endifdir = synth_pre_tok t.span.z "#endif" in
+  let scan = match ofb with
+    | None -> (fuse_pptok [ifdir; proj_cond_expr ce;
+			   proj_pptok_expr tb;
+			   endifdir]).scan
+    | Some fb ->
+	let tbt = proj_pptok_expr tb in
+	let fbt = proj_pptok_expr fb in
+	let elsedir = synth_tok
+	  {a=tbt.span.z;
+	   z={ tbt.span.z with col=0;
+		 line={src=tbt.span.z.line.src+2;
+		       input=tbt.span.z.line.input+2} }}
+	  "\n#else\n"
+	in (fuse_pptok [ifdir; proj_cond_expr ce; tbt;
+			elsedir; fbt; endifdir]).scan
+  in If {t with scan}

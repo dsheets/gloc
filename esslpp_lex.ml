@@ -8,7 +8,7 @@ module Lex = Ulexing
 
 open Pp_lib
 open Esslpp
-open Gloc_lib
+open Language
 
 module String = struct
     include String
@@ -28,6 +28,15 @@ let first_tok = ref true
 let ppdirective = ref false
 let comment_stack = ref []
 let last_comment_ref = ref (ref [])
+
+let reset () =
+  head := true;
+  colo := 0;
+  first_tok := true;
+  ppdirective := false;
+  comment_stack := [];
+  last_comment_ref := ref [];
+  reset ()
 
 let newline ?(comment=false) lexbuf =
   if not comment then

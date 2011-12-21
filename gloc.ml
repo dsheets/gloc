@@ -10,61 +10,63 @@ module A = Arg
 open Pp_lib
 open Pp
 open Esslpp_lex
-open Esslpp
 open Gloc_lib
-
-module List = struct
-    include List
-    let unique l =
-      let h = Hashtbl.create (List.length l) in
-      List.iter (fun v -> Hashtbl.replace h v ()) l;
-      Hashtbl.fold (fun k () a -> k::a) h []
-end
 
 let gloc_version = (0,1,0)
 let gloc_distributor = "Ashima Arts"
 
-let default_lang = { dialect=WebGL;
-		     version=(1,0,0);
-		     accuracy=Best;
-		     bond=Warn }
-		     
-let exec_state = { preprocess=ref false;
-		   compile=ref false;
-		   verbose=ref false;
-		   linectrl=ref true;
-		   output=ref None;
-		   inputs=ref [];
-		   inlang=ref default_lang;
-		   outlang=ref default_lang }
+let arg_of_stage = function
+  | ParsePP -> "-e"
+  | Preprocess -> "-E"
+  | Compile -> "-c"
+  | Link -> "<default>"
 
-let string_of_dialect = function
-  | WebGL -> "webgl"
-let with_bond bond = fun lang -> { lang with bond }
-let with_dialect = function
-  | "webgl" -> (fun lang -> { lang with dialect=WebGL })
-  | _ -> (fun lang -> lang)
 let set_inlang map = fun () -> exec_state.inlang := (map !(exec_state.inlang))
 let set_outlang map = fun () -> exec_state.outlang := (map !(exec_state.outlang))
+let set_accuracy a = exec_state.accuracy := a
+let set_stage stage = fun () ->
+  if !(exec_state.stage)=Link
+  then exec_state.stage := stage
+  else raise (CompilerError (1,[IncompatibleArguments
+				  (arg_of_stage !(exec_state.stage),
+				   arg_of_stage stage)]))
 
 (* TODO: add per warning check args *)
 (* TODO: add partial preprocess (only ambiguous conds with dep macros) *)
 (* TODO: add partial preprocess (maximal preprocess without semantic change) *)
 (* TODO: make verbose more... verbose *)
 let arguments =
-  ["-c", A.Set exec_state.compile, "produce glo object";
+  ["-c", A.Unit (set_stage Compile),
+   "produce glo and halt; do not link";
+   "-E", A.Unit (set_stage Preprocess),
+   "preprocess and halt; do not parse SL";
+   "-e", A.Unit (set_stage ParsePP),
+   "parse preprocessor and halt; do not preprocess";
+   "-u", A.String (fun u -> exec_state.symbols := u::!(exec_state.symbols)),
+   "required symbol (default ['main'])";
+   "-D", A.String (fun m -> exec_state.inputs := (Define m)::!(exec_state.inputs)),
+   "define a macro";
    "-o", A.String (fun o -> exec_state.output := Some o), "output file";
    (*"-w", A.Unit (set_inlang (with_bond Ignore)), "inhibit all warning messages";*)
-   "-E", A.Set exec_state.preprocess, "preprocess output source";
+   "--accuracy", A.Symbol (["best";"preprocess"],
+			   fun s -> set_accuracy (Language.accuracy_of_string s)),
+   " output accuracy";
    "-L", A.Clear exec_state.linectrl,
    "disregard incoming line control for errors";
-   "-x", A.Symbol (["webgl"],(fun s -> set_inlang (with_dialect s) ())),
+   "-x", A.Symbol (["webgl"],
+		   fun s -> set_inlang (Language.with_dialect s) ()),
    " input language";
-   "-t", A.Symbol (["webgl"],(fun s -> set_outlang (with_dialect s) ())),
+   "-t", A.Symbol (["webgl"],
+		   fun s -> set_outlang (Language.with_dialect s) ()),
    " target language";
    "-v", A.Set exec_state.verbose, "verbose compilation or version information";
+   (* TODO: do *)
+   "--edit-meta", A.Unit (fun () -> ()), "interactive glo meta segment mutator";
+   (* TODO: do *)
+   "--license", A.Unit (fun () -> ()),
+   "glo license field override, accepts SPDX license identifiers";
   ]
-let anon_fun arg = exec_state.inputs := arg::!(exec_state.inputs)
+let anon_fun arg = exec_state.inputs := (Stream arg)::!(exec_state.inputs)
 
 let string_of_version (maj,min,rev) = sprintf "%d.%d.%d" maj min rev
 let usage_msg = sprintf "gloc version %s (%s)"
@@ -150,106 +152,141 @@ let string_of_error = function
   | PPCondExprParseError t ->
       sprintf "%s:\nerror parsing conditional expression \"%s\"\n"
 	(string_of_tokpos t) (snd (t.scan t.span.a))
+  | UncaughtException e -> sprintf "Uncaught exception:\n%s\n" (Printexc.to_string e)
+  | AmbiguousPreprocessorConditional t ->
+      sprintf "%s:\nambiguous preprocessor conditional branch: %s\n"
+	(string_of_tokpos t) t.v
+  | GlomPPOnly fn ->
+      sprintf "Source '%s' is a glom with multiple source units.\n" fn
+  | MultiUnitGloPPOnly fn ->
+      sprintf "Source '%s' is a glo with multiple source units.\n" fn
   | exn -> sprintf "Unknown error:\n%s\n" (Printexc.to_string exn)
 
-let string_pperror_of_string_tok st =
-  sprintf "%s:\nambiguous preprocessor conditional branch: %s\n"
-    (string_of_tokpos st)
-    st.v
+let string_of_inchan inchan =
+  let s = String.create 1024 in
+  let b = Buffer.create 1024 in
+  let rec consume pos =
+    let k = input inchan s 0 1024 in
+      if k=0 then Buffer.contents b
+      else begin Buffer.add_substring b s 0 k; consume (pos+k) end
+  in consume 0
 
-let builtin_macros = List.fold_left
-  (fun map (n,f) -> Env.add n f map)
-  Env.empty [
-    "__LINE__",(fun e w ->
-		  {name=None; args=None;
-		   stream=fun _ -> [int_replace_word w w.span.a.line.src]});
-    "__FILE__",(fun e w ->
-		  {name=None; args=None;
-		   stream=fun _ -> [int_replace_word w w.span.a.file.src]});
-    "__VERSION__",(fun _ _ -> omacro "__VERSION__" (synth_int (Dec,100)));
-    "GL_ES",(fun _ _ -> omacro "GL_ES" (synth_int (Dec,1)))
-  ]
+let chan_of_filename fn = if fn="-" then stdout else open_out fn
+
+let rec write_glo fn fd = function
+  | Source s -> write_glo fn fd (make_glo fn s)
+  | Glo glo -> output_string fd
+      ((Glo_lib.string_of_glo ~compact:(not !(exec_state.verbose)) glo)^"\n")
+  | Glom glom -> output_string fd
+      ((Glo_lib.string_of_glom ~compact:(not !(exec_state.verbose)) glom)^"\n")
+
+let rec source_of_fmt fn = function
+  | Source s -> begin try source_of_fmt fn (glo_of_string s)
+    with Json_type.Json_error _ -> s end
+  | Glo glo -> if (Array.length glo.Glo_lib.units)=1
+    then Glol.armor 0 [] glo.Glo_lib.units.(0).Glo_lib.source
+    else raise (CompilerError (5, [MultiUnitGloPPOnly fn]))
+  | Glom glom -> if ((Array.length glom)=1
+	&& (Array.length (snd glom.(0)).Glo_lib.units)=1)
+    then Glol.armor 0 [] (snd glom.(0)).Glo_lib.units.(0).Glo_lib.source
+    else raise (CompilerError (5, [GlomPPOnly fn]))
+
+let write_glopp fn fd fmt =
+  let ppexpr = parse (source_of_fmt fn fmt) in
+    output_string fd
+      ((string_of_ppexpr start_loc
+	  (match !(exec_state.stage) with
+	     | ParsePP -> ppexpr
+	     | Preprocess -> check_pp_divergence (preprocess ppexpr)
+	     | s -> raise (CompilerError (5, [GloppStageError s]))
+	  ))^"\n")
+
+let print_errors errors =
+  List.iter (fun e -> eprintf "%s\n" (string_of_error e)) (List.rev errors)
+
+let streamp = function Stream _ -> true | _ -> false
+let stream_inputp il = List.exists streamp il
+let fmt_of_input = function Stream f -> f | Define f -> f
+
+let compiler_error k errs =
+  print_errors errs;
+  eprintf "Fatal: %s (%d)\n" exit_codes.(k) k;
+  exit k
 ;;
 
-let start = {file={src=0;input=0};line={src=1;input=1};col=0} in
-let lexbuf = Ulexing.from_utf8_channel stdin in
-let parse = MenhirLib.Convert.traditional2revised
-  (fun t -> t)
-  (fun _ -> Lexing.dummy_pos) (* TODO: fixme? *)
-  (fun _ -> Lexing.dummy_pos)
-  translation_unit in
-let ppexpr = try parse (fun () -> lex !(exec_state.inlang) lexbuf) with
-  | err -> eprintf "Uncaught exception:\n%s\n" (Printexc.to_string err);
-    eprintf "Fatal: unrecoverable internal parser error (1)\n";
-    exit 1
-in
-let () = if (List.length !errors) > 0
-then (List.iter (fun e -> eprintf "%s\n" (string_of_error e))
-	(List.rev !errors);
-      eprintf "Fatal: unrecoverable parse error (2)\n";
-      exit 2)
-in
-let ppexpr = normalize_ppexpr ppexpr in
-let ppl = preprocess_ppexpr {macros=Env.empty;
-			     builtin_macros;
-			     extensions=Env.empty;
-			     inmacros=[]} ppexpr in
-let () = if (List.length !errors) > 0 then
-    (List.iter (fun e -> eprintf "%s\n" (string_of_error e))
-       (List.rev !errors);
-     eprintf "Fatal: unrecoverable preprocessor error (3)\n";
-     exit 3)
-in
-let env_collect (f1,f2) vl (env,_) = (f1 env, f2 env)::vl in
-let get_inmac env = List.map (fun t -> t.v) env.inmacros in
-let get_opmac env = Env.fold (fun s _ l -> s::l) env.macros [] in
-let slexpr = if !(exec_state.preprocess)
-  then if List.length ppl > 1
-  then let o = List.fold_left
-	 (fun dl pp -> List.fold_left
-	   (fun dl om ->
-	     if List.exists (fun m -> om.v=m.v) dl then dl else om::dl)
-	   dl (fst pp).inmacros)
-	 [] ppl
-       in List.iter (fun st -> eprintf "%s\n" (string_pperror_of_string_tok st))
-       o;
-       eprintf "Fatal: unrecoverable preprocessor divergence (4)\n";
-       exit 4
-  else match ppl with (_,e)::_ -> e
-    | [] -> Chunk { span={a=start;z=start};
-		    scan=(fun loc -> (loc,""));
-		    comments=([],ref []);
-		    v=[] }
-  else ppexpr
-in
-let inmac,opmac = List.split
-  (List.fold_left (env_collect (get_inmac,get_opmac))
-     [] ppl) in
-let product = if !(exec_state.compile)
-then
-  let outlang = !(exec_state.outlang) in
-  let target = (string_of_dialect outlang.dialect,outlang.version) in
-    (* TODO: expose *)
-  let license = Glo_lib.no_license
-    ((Unix.gmtime (Unix.time())).Unix.tm_year + 1900)
-    ""
-  in try let glo = Glo.compile ~license target ppexpr
-      ~inmac:(List.unique (List.flatten inmac))
-      ~opmac:(List.unique (List.flatten opmac))
-      (List.map snd ppl) in
-      Json_io.string_of_json (*~compact:(not !(exec_state.verbose))*)
-	(Glo_lib.json_of_glo glo)
-    with err ->
-      (error (Essl_lib.EsslParseError ((Printexc.to_string err),
-				       !(Pp_lib.file),!(Pp_lib.line)));
-       List.iter (fun e -> eprintf "%s\n" (string_of_error e))
-	 (List.rev !errors);
-       eprintf "Fatal: unrecoverable parse error (5)\n";
-       exit 5)
-else string_of_ppexpr start slexpr
-in let out = match !(exec_state.output) with
-  | None -> stdout
-  | Some fn -> open_out fn
-in fprintf out "%s\n" product
-(*;
-printf "%s\n" (string_of_ppexpr_tree ppexpr)*)
+let req_sym = match !(exec_state.symbols) with [] -> ["main"] | l -> l in
+let stdin_input () = ("<stdin>", Stream (Source (string_of_inchan stdin))) in
+let inputs = match !(exec_state.inputs) with [] -> [stdin_input ()]
+  | il -> List.map
+      (function
+	 | Stream fn -> (fn, Stream (Source (string_of_inchan (open_in fn))))
+	 | Define ds -> if ds="" then ("<-D>", Define (Source ""))
+	   else ("<-D "^ds^">",
+		 Define (Glo (glo_of_u !(exec_state.metadata)
+				(Lang.target_of_language !(exec_state.outlang))
+				(make_define_unit ds))))
+      )	il
+in let inputs = if stream_inputp (List.map snd inputs) then inputs
+  else (stdin_input ())::inputs
+in match (!(exec_state.output),
+	  !(exec_state.stage)) with
+  | None, Link -> let glom = try make_glom inputs
+    with CompilerError (k,errs) -> compiler_error k errs in
+    let src = Glol.link req_sym (Array.to_list glom) in
+      output_string stdout
+	((if !(exec_state.accuracy)=Lang.Preprocess
+	  then string_of_ppexpr start_loc
+	    (check_pp_divergence (preprocess (parse src)))
+	  else src)^"\n")
+  | None, Compile -> if stream_inputp !(exec_state.inputs)
+    then List.iter
+      (function (fn,Define d) -> ()
+	 | (fn,Stream s) -> if not (is_glo_file fn)
+	   then let fd = open_out (glo_file_name fn) in
+	     write_glo fn fd s;
+	     close_out fd) inputs
+    else begin
+      try write_glo (fst (List.hd inputs)) stdout
+	(fmt_of_input (snd (List.hd inputs)))
+      with CompilerError (k,errs) -> compiler_error k errs end
+  | None, Preprocess | None, ParsePP ->
+      if stream_inputp !(exec_state.inputs)
+      then List.iter
+	(function (fn,Define d) -> () (* TODO: use -D in PP only as well *)
+	   | (fn,Stream s) -> if not (is_glopp_file fn)
+	     then let fd = open_out (glopp_file_name fn) in
+	       write_glopp fn fd s;
+	       close_out fd) inputs
+      else begin
+	try write_glopp (fst (List.hd inputs)) stdout
+	  (fmt_of_input (snd (List.hd inputs)))
+	with CompilerError (k,errs) -> compiler_error k errs end
+  | Some fn, Link -> let glom = try make_glom inputs
+    with CompilerError (k,errs) -> compiler_error k errs in
+    let src = Glol.link req_sym (Array.to_list glom) in
+    let fd = chan_of_filename fn in
+      output_string fd
+	((if !(exec_state.accuracy)=Lang.Preprocess
+	  then string_of_ppexpr start_loc
+	    (check_pp_divergence (preprocess (parse src)))
+	  else src)^"\n");
+      close_out fd
+  | Some fn, Compile -> (* TODO: consolidate glo *)
+      let fd = chan_of_filename fn in
+	if stream_inputp !(exec_state.inputs)
+	then let glom = try make_glom inputs
+	with CompilerError (k,errs) -> compiler_error k errs in
+	  write_glo fn fd (Glom glom)
+	else begin try write_glo fn fd (fmt_of_input (snd (List.hd inputs)))
+	with CompilerError (k,errs) -> compiler_error k errs end;
+	close_out fd
+  | Some fn, Preprocess | Some fn, ParsePP ->
+      let fd = chan_of_filename fn in
+	if (List.length (List.filter streamp !(exec_state.inputs)))=1
+	then List.iter
+	  (function (_,Define d) -> () (* TODO: use -D in PP only as well *)
+	     | (_,Stream s) -> write_glopp fn fd s) inputs
+	else begin
+	  try write_glopp (fst (List.hd inputs)) stdout
+	    (fmt_of_input (snd (List.hd inputs)))
+	  with CompilerError (k,errs) -> compiler_error k errs end
