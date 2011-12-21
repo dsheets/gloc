@@ -1,10 +1,6 @@
-precision highp float;
-struct q { int j; } myfun(q s) { return s; }
-float fun2(struct s { float m; } g) { return g.m; }
-s fun3(s g) { return g; }
-
-void main() {
-     q j = myfun(q(14));
-     float e = fun2(s(3.0));
-     float f = (fun3(s(4.0))).m;
-}
+Fatal error: exception Glol.MissingSymbol(_, "s")
+Raised at file "glol.ml", line 57, characters 16-43
+Called from file "glol.ml", line 114, characters 22-52
+Called from file "glol.ml", line 131, characters 10-80
+Called from file "glol.ml", line 146, characters 17-42
+Called from file "gloc.ml", line 235, characters 14-52

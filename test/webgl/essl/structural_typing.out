@@ -1,3 +1,4 @@
+#line 1 0
 struct q { int j; };
 struct { int j; } j;
 q fn(struct { int j; } s) { struct q { int j; }; s.j = s.j+1; return s; }

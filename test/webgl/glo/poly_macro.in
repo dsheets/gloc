@@ -1,3 +1,5 @@
-#if POLY
-POLY(poly,vec2)
-#endif
+#define GP(t) t gp(t a,t b) { \
+                return sum(prod(a,b),prod(b,a)); \
+              }
+
+GP(vec2)

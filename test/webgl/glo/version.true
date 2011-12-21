@@ -2,8 +2,9 @@
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
   "meta": {
+    "copyright": [ "", 2011, "" ],
     "author": {},
-    "license": [ "Copyright (C) 2011 . All rights reserved.", "" ],
+    "license": null,
     "library": null,
     "version": null,
     "build": null
@@ -18,5 +19,5 @@
       "source": "#line 3 GLOC_0\nvoid main() { }"
     }
   ],
-  "linkmap": {}
+  "linkmap": { "0": "<stdin>#0" }
 }

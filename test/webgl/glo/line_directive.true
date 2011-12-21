@@ -2,8 +2,9 @@
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
   "meta": {
+    "copyright": [ "", 2011, "" ],
     "author": {},
-    "license": [ "Copyright (C) 2011 . All rights reserved.", "" ],
+    "license": null,
     "library": null,
     "version": null,
     "build": null
@@ -13,11 +14,10 @@
       "insym": [],
       "outsym": [],
       "inmac": [],
-      "opmac": [ "K", "Q" ],
+      "opmac": [ "Q", "K" ],
       "outmac": [],
-      "source":
-        "#line 1 GLOC_1\n#define K 3\n#line 1 GLOC_2\n#define Q 4"
+      "source": "#line 1 GLOC_1\n#define K 3\n#line 1 GLOC_2\n#define Q 4"
     }
   ],
-  "linkmap": {}
+  "linkmap": { "1": "<stdin>#1", "2": "<stdin>#2" }
 }

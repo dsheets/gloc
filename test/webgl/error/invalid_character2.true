@@ -1,10 +1,14 @@
-File 0, line 1, col 9 - 10:
-unknown character '\'
+#error warn about line continuation support
+#version/*\
+*/ 100
 
-File 0, line 1, col 0 - 8:
-invalid version argument
+#define FOO
 
-File 0, line 6, col 7 - 8:
-unknown character '\'
+#if def/*\
+*/ ined FOO  
 
-Fatal: unrecoverable parse error (2)
+#endif
+
+void main() {
+
+}

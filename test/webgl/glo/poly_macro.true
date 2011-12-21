@@ -1,1 +1,24 @@
-error
+{
+  "glo": [ 0, 1, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": {
+    "copyright": [ "", 2011, "" ],
+    "author": {},
+    "license": null,
+    "library": null,
+    "version": null,
+    "build": null
+  },
+  "units": [
+    {
+      "insym": [ "prod", "sum" ],
+      "outsym": [ "gp" ],
+      "inmac": [],
+      "opmac": [ "GP" ],
+      "outmac": [],
+      "source":
+        "#line 1 GLOC_0\n#define GP(t) t gp(t a,t b) {/*\\\n*/              return sum(prod(a,b),prod(b,a));/*\\\n*/            }\n\nGP(vec2)"
+    }
+  ],
+  "linkmap": { "0": "<stdin>#0" }
+}

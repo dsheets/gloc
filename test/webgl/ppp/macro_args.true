@@ -1,7 +1,7 @@
-#define B B
+#define B A
 #define A 2
 #define Q(A,B) ((A)+(B))
 
 void main() {
-     Q(B,A)
+     Q(B,A);
 }

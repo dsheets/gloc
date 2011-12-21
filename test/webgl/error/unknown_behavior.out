@@ -1,4 +1,4 @@
 File 0, line 1, col 19 - 25:
 unknown behavior "fizzle"
 
-Fatal: unrecoverable parse error (2)
+Fatal: unrecoverable preprocessor parse error (3)

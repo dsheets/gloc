@@ -1,6 +1,6 @@
 #define Q(A) foo((A)*2)
 void bar() {
-     Q(6); Q;
+     Q(6);
 }
 #undef Q
 

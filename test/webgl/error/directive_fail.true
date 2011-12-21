@@ -1,4 +1,4 @@
 File 0, line 2, col 13 - 14:
 invalid directive "#"
 
-Fatal: unrecoverable parse error (2)
+Fatal: unrecoverable preprocessor parse error (3)

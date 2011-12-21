@@ -24,7 +24,7 @@ int blah() { return Q; }
 #if OP W
 #define Q 77
 #endif
-void main() { glPosition = Q; }
+void main() { gl_Position = Q; }
 #define defined Q
 #if defined < 100
 int baz() { return defined; }

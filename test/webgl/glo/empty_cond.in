@@ -1,0 +1,5 @@
+#if defined E
+#else
+#endif
+
+void main() {}

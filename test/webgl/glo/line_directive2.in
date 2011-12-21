@@ -1,0 +1,17 @@
+#line 2
+/*if*/#if defined E
+/*A */#/*very commented */line/*line directive */10/* */77// with trailing comment
+int foo() {
+#line 13 3
+  return 1;
+}
+#/*elif*/elif defined F // comments trailing pp conditional
+#line 13 4
+int foo() {
+  return 2;
+}
+#else
+int foo() {
+  return 3;
+}
+#endif // comments trailing endif

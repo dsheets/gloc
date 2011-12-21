@@ -1,4 +1,4 @@
 File 0, line 1, col 0 - 3:
 unterminated conditional "#if"
 
-Fatal: unrecoverable parse error (2)
+Fatal: unrecoverable preprocessor parse error (3)

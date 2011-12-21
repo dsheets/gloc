@@ -1,4 +1,4 @@
 File 0, line 4, col 2:
 unterminated comment
 
-Fatal: unrecoverable parse error (2)
+Fatal: unrecoverable preprocessor parse error (3)

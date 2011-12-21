@@ -1,0 +1,6 @@
+#define Q 7
+#define defined Q
+#if defined < 100
+int baz() { return defined; }
+void main() {}
+#endif

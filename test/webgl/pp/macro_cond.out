@@ -15,7 +15,7 @@ int blah() { return
 
 
 
-void main() { glPosition =
+void main() { gl_Position =
 #line 1004
           7
 
@@ -23,7 +23,7 @@ void main() { glPosition =
 
 
 
-                            ; }
+                             ; }
 
 
 int baz() { return

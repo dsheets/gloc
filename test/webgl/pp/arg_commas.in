@@ -1,0 +1,3 @@
+#define F(Q,) Q
+
+void main() { F(4); }

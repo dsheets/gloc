@@ -1,3 +1,4 @@
+#line 1 0
 void main() {
      struct s { int a; };
      for (struct s { int k; } g = s(0); g.k < 10; g.k++) {}

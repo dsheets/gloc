@@ -4,4 +4,4 @@ floating point is not supported in preprocessor expressions
 File 0, line 1, col 10 - 13:
 floating point is not supported in preprocessor expressions
 
-Fatal: unrecoverable preprocessor error (3)
+Fatal: unrecoverable preprocessor error (4)

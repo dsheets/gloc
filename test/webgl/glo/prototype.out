@@ -2,8 +2,9 @@
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
   "meta": {
+    "copyright": [ "", 2011, "" ],
     "author": {},
-    "license": [ "Copyright (C) 2011 . All rights reserved.", "" ],
+    "license": null,
     "library": null,
     "version": null,
     "build": null
@@ -19,5 +20,5 @@
         "#line 1 GLOC_0\nvoid f();\nint p(int);\n\nvoid f() { p(0); }\n\nstruct s { int k; } g() { return s(10); }\n\ns n = g(20);\n\nvoid h(struct q { int a; } k);\nstruct s2 { int k; } j();\n\nvoid main() { }"
     }
   ],
-  "linkmap": {}
+  "linkmap": { "0": "<stdin>#0" }
 }

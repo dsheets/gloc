@@ -1,0 +1,5 @@
+#if E
+#define X f
+#endif
+
+void main() { X(); }
