@@ -282,9 +282,18 @@ let synth_int (base,i) = fun loc ->
 
 let synth_tok comments span s =
   { span; scan=scan_of_string span comments s; comments; v=() }
-let synth_pre_tok ?(comments=([],ref [])) loc s =
-  (* TODO: non-negative col domain *)
-  synth_tok comments {a={ loc with col=loc.col-(String.length s) }; z=loc} s
+let synth_first_tok ?(comments=([],ref [])) loc s =
+  let t = synth_tok comments
+    {a={ loc with col=loc.col-(String.length s) }; z=loc} s
+  in { t with scan=(fun loc ->
+		      if loc.col=0
+		      then t.scan loc
+		      else let l,s = t.scan
+			{loc with col=0;
+			   line={src=loc.line.src+1;
+				 input=loc.line.input+1}}
+		      in l,("\n"^s)
+		   )}
 let synth_post_tok ?(comments=([],ref [])) loc s =
   synth_tok comments {a=loc; z={ loc with col=loc.col+(String.length s) }} s
 
@@ -307,7 +316,7 @@ let synth_pp_line_armored t =
 
 let synth_pp_if ({v=(ce,tb,ofb)} as t) =
   let ifdir = synth_post_tok ~comments:(fst t.comments, ref []) t.span.a "#if" in
-  let endifdir = synth_pre_tok ~comments:([], snd t.comments) t.span.z "\n#endif" in
+  let endifdir = synth_first_tok ~comments:([], snd t.comments) t.span.z "#endif" in
   let scan = match ofb with
     | None -> (fuse_pptok [ifdir; proj_cond_expr ce;
 			   proj_pptok_expr tb;
