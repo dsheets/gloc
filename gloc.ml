@@ -158,8 +158,12 @@ let string_of_error = function
 	(string_of_tokpos t) t.v
   | GlomPPOnly fn ->
       sprintf "Source '%s' is a glom with multiple source units.\n" fn
-  | MultiUnitGloPPOnly fn ->
+  | MultiUnitGloPPOnly fn -> (* TODO: test *)
       sprintf "Source '%s' is a glo with multiple source units.\n" fn
+  | Glol.CircularDependency ual -> List.fold_left
+      (fun s (fn,un) ->
+	 sprintf "%s%s#%d\n" s fn un
+      ) "Circular dependency linking:\n" ual
   | exn -> sprintf "Unknown error:\n%s\n" (Printexc.to_string exn)
 
 let string_of_inchan inchan =
@@ -230,14 +234,14 @@ in let inputs = if stream_inputp (List.map snd inputs) then inputs
   else (stdin_input ())::inputs
 in match (!(exec_state.output),
 	  !(exec_state.stage)) with
-  | None, Link -> let glom = try make_glom inputs
-    with CompilerError (k,errs) -> compiler_error k errs in
-    let src = Glol.link req_sym (Array.to_list glom) in
+  | None, Link -> begin try let glom = make_glom inputs in
+    let src = link req_sym (Array.to_list glom) in
       output_string stdout
 	((if !(exec_state.accuracy)=Lang.Preprocess
 	  then string_of_ppexpr start_loc
 	    (check_pp_divergence (preprocess (parse src)))
 	  else src)^"\n")
+    with CompilerError (k,errs) -> compiler_error k errs end
   | None, Compile -> if stream_inputp !(exec_state.inputs)
     then List.iter
       (function (fn,Define d) -> ()
@@ -261,9 +265,8 @@ in match (!(exec_state.output),
 	try write_glopp (fst (List.hd inputs)) stdout
 	  (fmt_of_input (snd (List.hd inputs)))
 	with CompilerError (k,errs) -> compiler_error k errs end
-  | Some fn, Link -> let glom = try make_glom inputs
-    with CompilerError (k,errs) -> compiler_error k errs in
-    let src = Glol.link req_sym (Array.to_list glom) in
+  | Some fn, Link -> begin try let glom = make_glom inputs in
+    let src = link req_sym (Array.to_list glom) in
     let fd = chan_of_filename fn in
       output_string fd
 	((if !(exec_state.accuracy)=Lang.Preprocess
@@ -271,6 +274,7 @@ in match (!(exec_state.output),
 	    (check_pp_divergence (preprocess (parse src)))
 	  else src)^"\n");
       close_out fd
+    with CompilerError (k,errs) -> compiler_error k errs end
   | Some fn, Compile -> (* TODO: consolidate glo *)
       let fd = chan_of_filename fn in
 	if stream_inputp !(exec_state.inputs)

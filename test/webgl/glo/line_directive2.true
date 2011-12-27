@@ -1,1 +1,29 @@
-error
+{
+  "glo": [ 0, 1, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": {
+    "copyright": [ "", 2011, "" ],
+    "author": {},
+    "license": null,
+    "library": null,
+    "version": null,
+    "build": null
+  },
+  "units": [
+    {
+      "insym": [],
+      "outsym": [ "foo" ],
+      "inmac": [],
+      "opmac": [],
+      "outmac": [],
+      "source":
+        "#line 1 GLOC_0\n#line 2\n/*if*/#if defined E\n/*A      very commented */ #line                 10/**/ GLOC_77/*  with trailing comment*/\nint foo() {\n#line 13 GLOC_3\n  return 1;\n}\n#else\n#line 15\n/* elif*/ #if defined F/*  comments trailing pp conditional*/\n#line 13 GLOC_4\nint foo() {\n  return 2;\n}\n#else\nint foo() {\n  return 3;\n}\n \n#endif/*  comments trailing endif*/ \n#endif/*  comments trailing endif*/"
+    }
+  ],
+  "linkmap": {
+    "3": "<stdin>#3",
+    "77": "<stdin>#77",
+    "4": "<stdin>#4",
+    "0": "<stdin>#0"
+  }
+}

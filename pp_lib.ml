@@ -192,12 +192,26 @@ let check_line_base t =
     | Hex | Oct -> error (InvalidLineBase {t with v=fst t.v})
     | Dec -> ()
 
+let fix_cursor start a =
+  let wsp = if start.col = 0 then "" else "\n" in
+    if !emit_newline
+    then if a.file.src <> start.file.src
+    then ({a with col=0},
+	  sprintf "%s#line %d %s%d\n" wsp a.line.src !file_prefix a.file.src)
+    else if (a.line.src - start.line.src) < 0
+    then {a with col=0}, sprintf "%s#line %d\n" wsp a.line.src
+    else if a.line.src - start.line.src > 0
+    then let ld = sprintf "%s#line %d\n" wsp a.line.src in
+      if String.length ld > (a.line.src - start.line.src)
+      then ({start with line=a.line; col=0},
+	    String.make (a.line.src - start.line.src) '\n')
+      else ({start with line=a.line; col=0}, ld)
+    else start,""
+    else start,""  
+
 let scan_of_comments cs start =
   let ({a}) = (List.hd cs).span in
-  let start, pre = if (a.line.src - start.line.src) > 0 && !emit_newline
-  then {start with line=a.line; col=0},
-    String.make (a.line.src - start.line.src) '\n'
-  else start,"" in
+  let start, pre = fix_cursor start a in
   let start, pre = List.fold_left
     (fun (start,pre) t ->
        let loc,s = t.scan start in
@@ -206,23 +220,8 @@ let scan_of_comments cs start =
   in ({start with col=start.col+2},pre^"*/")
 
 let scan_of_string ({a;z}) (prec,postc) s = fun start ->
-  let start,pre = match prec with
-    | [] -> let wsp = if start.col = 0 then "" else "\n" in if !emit_newline
-      then if a.file.src <> start.file.src
-      then {a with col=0},
-	sprintf "%s#line %d %s%d\n" wsp a.line.src !file_prefix a.file.src
-      else if (a.line.src - start.line.src) < 0
-      then {a with col=0}, sprintf "%s#line %d\n" wsp a.line.src
-      else if a.line.src - start.line.src > 0
-      then let ld = sprintf "%s#line %d\n" wsp a.line.src in
-	if String.length ld > (a.line.src - start.line.src)
-	then ({start with line=a.line; col=0},
-	      String.make (a.line.src - start.line.src) '\n')
-	else ({start with line=a.line; col=0}, ld)
-      else start,""
-      else start,""
-    | cs -> scan_of_comments cs start
-  in
+  let start,pre = match prec with [] -> fix_cursor start a
+    | cs -> scan_of_comments cs start in
   let cerr,cfix =
     if start.col <= a.col
     then 0,String.make (a.col - start.col) ' '
@@ -281,17 +280,34 @@ let synth_int (base,i) = fun loc ->
     [Int {span; scan=scan_of_string span ([],ref []) is;
 	  comments=([],ref []); v=(base,i)}]
 
-let synth_tok span s =
-  { span; scan=scan_of_string span ([],ref []) s;
-    comments=([],ref []); v=() }
-let synth_pre_tok loc s = (* TODO: non-negative col domain *)
-  synth_tok {a={ loc with col=loc.col-(String.length s) }; z=loc} s
-let synth_post_tok loc s =
-  synth_tok {a=loc; z={ loc with col=loc.col+(String.length s) }} s
+let synth_tok comments span s =
+  { span; scan=scan_of_string span comments s; comments; v=() }
+let synth_pre_tok ?(comments=([],ref [])) loc s =
+  (* TODO: non-negative col domain *)
+  synth_tok comments {a={ loc with col=loc.col-(String.length s) }; z=loc} s
+let synth_post_tok ?(comments=([],ref [])) loc s =
+  synth_tok comments {a=loc; z={ loc with col=loc.col+(String.length s) }} s
+
+let synth_pp_line_armored t =
+  let zloc,_ = t.scan t.span.a in (* recover #line zloc *)
+  let prefixl = String.length !file_prefix in
+  let comments = (fst t.comments, ref []) in
+  let linedir = synth_post_tok ~comments t.span.a "#line" in
+  let scan = match fst t.v with
+    | Some ft ->
+	let comments = ([],snd ft.comments) in
+	let ft = synth_post_tok ~comments ft.span.a
+	  (sprintf "%s%d" !file_prefix ft.v)
+	in (fuse_pptok ~zloc [linedir; proj (snd t.v); proj ft]).scan
+    | None -> (fuse_pptok ~zloc [linedir; proj (snd t.v)]).scan
+  in Line {t with
+	     span={t.span with
+		     z={t.span.z with col=t.span.z.col+prefixl}};
+	     scan }
 
 let synth_pp_if ({v=(ce,tb,ofb)} as t) =
-  let ifdir = synth_post_tok t.span.a "#if" in
-  let endifdir = synth_pre_tok t.span.z "#endif" in
+  let ifdir = synth_post_tok ~comments:(fst t.comments, ref []) t.span.a "#if" in
+  let endifdir = synth_pre_tok ~comments:([], snd t.comments) t.span.z "\n#endif" in
   let scan = match ofb with
     | None -> (fuse_pptok [ifdir; proj_cond_expr ce;
 			   proj_pptok_expr tb;
@@ -299,7 +315,7 @@ let synth_pp_if ({v=(ce,tb,ofb)} as t) =
     | Some fb ->
 	let tbt = proj_pptok_expr tb in
 	let fbt = proj_pptok_expr fb in
-	let elsedir = synth_tok
+	let elsedir = synth_tok ([],ref [])
 	  {a=tbt.span.z;
 	   z={ tbt.span.z with col=0;
 		 line={src=tbt.span.z.line.src+2;

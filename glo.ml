@@ -42,32 +42,20 @@ let create_body expr envs =
     | If t -> apply_to_if process_version t
     | List t -> apply_to_list process_version t
   in
-  let rec process_line prefix e = let prefixl = String.length prefix in
-    match e with
-      | Comments _ | Chunk _ | Def _ | Fun _ | Undef _
-      | Err _ | Pragma _ | Extension _ | Version _ -> [], Some e
-      | Line ({ v=(Some ft,_) } as t) -> let linedir =
-	  Line {t with
-		  span={t.span with
-			  z={t.span.z with col=t.span.z.col+prefixl}};
-		  scan=fun loc ->
-		    let loc, s = t.scan loc in
-		    let ll = String.length s in
-		    let fns = string_of_int ft.v in
-		    let fnl = String.length fns in
-		      ({loc with col=loc.col+prefixl},
-		       (String.sub s 0 (ll-fnl))^prefix^fns)
-	       }
-	in [ft.v], Some linedir
-      | Line _ -> [], Some e
-      | If t -> apply_to_if (process_line prefix) t
-      | List t -> apply_to_list (process_line prefix) t
+  let rec process_line e = match e with
+    | Comments _ | Chunk _ | Def _ | Fun _ | Undef _
+    | Err _ | Pragma _ | Extension _ | Version _ -> [], Some e
+    | Line ({ v=(Some ft,_) } as t) ->
+	let linedir = synth_pp_line_armored t in [ft.v], Some linedir
+    | Line _ -> [], Some e
+    | If t -> apply_to_if process_line t
+    | List t -> apply_to_list process_line t
   in
   let syml, expr = match process_version expr with
     | syml, Some e -> syml, e
     | syml, None -> syml, empty_pptok_expr expr
   in
-  let file_nums, expr = match process_line !file_prefix expr with
+  let file_nums, expr = match process_line expr with
     | file_nums, Some e -> file_nums, e
     | file_nums, None -> file_nums, empty_pptok_expr expr
   in

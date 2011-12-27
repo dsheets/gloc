@@ -148,9 +148,11 @@ exception CannotInitializeVarying of unit pptok
 exception InvalidVaryingStruct of unit pptok
 exception CannotInitializeUniform of unit pptok
 
-let ctxt = ref { ctxt=[SymMap.empty]; opensyms=[]; prec=[PrecMap.empty];
-                 invariant=false; pragmas=SymMap.empty; stmts=[];
-		 decl_bind=None }
+let empty_ctxt = { ctxt=[SymMap.empty]; opensyms=[]; prec=[PrecMap.empty];
+                   invariant=false; pragmas=SymMap.empty; stmts=[];
+		   decl_bind=None }
+let ctxt = ref empty_ctxt
+
 (*let typeof_stmt ctxt = function
   | Expr t -> error (BadDeclStatement (proj t)); `univ
   | Select t -> error (BadDeclStatement (proj t)); `univ
@@ -175,6 +177,8 @@ let ctxt = ref { ctxt=[SymMap.empty]; opensyms=[]; prec=[PrecMap.empty];
   | Typedecl {v={b=(`custom (_,r),_)}::_} -> r
   | Vardecl {v={b=(t,_)}::_} -> t
   | Fundecl {v=({b},_)} -> b*)
+
+let reset_ctxt () = ctxt := empty_ctxt
 
 (* TODO: do *)
 let lookup_type envr sym =

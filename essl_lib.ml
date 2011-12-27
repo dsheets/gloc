@@ -120,6 +120,7 @@ let essl_lexerfn ts =
       | [] -> EOF
 
 let parse_essl lex =
+  let () = Sl_lib.reset_ctxt () in
   let parse = MenhirLib.Convert.traditional2revised
     (fun t -> t)
     (fun _ -> Lexing.dummy_pos) (* TODO: fixme? *)

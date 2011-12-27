@@ -17,7 +17,7 @@
       "opmac": [ "MYMAC" ],
       "outmac": [],
       "source":
-        "#line 1 GLOC_0\n#if EXTMAC\n#define MYMAC vec4(1.)\n#else\n#define MYMAC vec4(0.)\n#endif\n\nvoid main() { gl_Position = MYMAC; }"
+        "#line 1 GLOC_0\n#if EXTMAC\n#define MYMAC vec4(1.)\n#else\n#define MYMAC vec4(0.)\n \n#endif\n\nvoid main() { gl_Position = MYMAC; }"
     }
   ],
   "linkmap": { "0": "<stdin>#0" }

@@ -17,7 +17,7 @@
       "opmac": [],
       "outmac": [],
       "source":
-        "#line 1 GLOC_0\n#if INMAC\n\nvoid main() { gl_Position = vec4(1.); }\n#else\n\n\nvoid main() { gl_Position = vec4(0.); }\n\n#endif"
+        "#line 1 GLOC_0\n#if INMAC\n\nvoid main() { gl_Position = vec4(1.); }\n#else\n\n\nvoid main() { gl_Position = vec4(0.); }\n\n \n#endif"
     }
   ],
   "linkmap": { "0": "<stdin>#0" }

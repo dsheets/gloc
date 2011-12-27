@@ -69,7 +69,9 @@ let exit_codes = [|"success";
 		   "unrecoverable preprocessor parse error";
 		   "unrecoverable preprocessor error";
 		   "unrecoverable preprocessor divergence";
-		   "unrecoverable parse error"
+		   "unrecoverable parse error";
+		   "unrecoverable analysis error";
+		   "unrecoverable link error"
 		 |]
 
 let glo_of_string s = let json = Json_io.json_of_string s in
@@ -169,6 +171,10 @@ let compile fn source =
       maybe_fatal_error 6;
       raise err
     end
+
+let link required glo_alist =
+  try Glol.link required glo_alist
+  with e -> raise (CompilerError (8,[e]))
 
 let file_extp ext fn = (Str.last_chars fn ((String.length ext)+1))="."^ext
 let file_ext ext fn = (* TODO: paths with dots but no file extension *)
