@@ -1,0 +1,5 @@
+Circular dependency linking:
+circ_b.glsl#0
+circ_a.glsl#0
+
+Fatal: unrecoverable link error (8)

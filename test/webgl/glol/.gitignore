@@ -1,0 +1,7 @@
+*.out
+*.err
+*.dout
+*.derr
+*.args
+*.argsym
+sym
