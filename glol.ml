@@ -5,7 +5,7 @@ open Glo_lib
 module M = Map.Make(String)
   
 (* Each unit of SL source belongs to a labeled glo and has a (mostly)
-   meaningless glo index. *)
+   meaningless glo index that determines link precedence. *)
 type unit_addr = string * int
     
 (* To satisfy the various symbol dependency constraints, we zip through the
@@ -25,12 +25,14 @@ exception SymbolConflict of string * string * unit_addr * unit_addr
 
 (* Prepare the packaged source for concatenation. *)
 let armor fs_ct opmac s =
+  (* Replace special symbols in line directives to satisfy linkmap *)
   (*required regexp instead of macros due to ANGLE bug 183*)
   let intpatt = Str.regexp "GLOC_\\([0-9]+\\)" in
   let offset s = let s = Str.matched_string s in
     (string_of_int ((int_of_string (Str.string_after s 5))+fs_ct))
   in
   let s = Str.global_substitute intpatt offset s in
+    (* Undefine open macros so they do not bleed *)
     List.fold_left (fun s mac -> s^"\n#undef "^mac) s opmac
 
 let rec satisfy_macro addr macro = function
@@ -141,7 +143,7 @@ let link required glo_alist =
 	  glo.linkmap 0
 	in
 	let u = glo.units.(u) in
-	  (src^(armor o u.opmac u.source),
+	  (src^(armor o u.opmac u.source)^"\n",
 	   o+sup+1)
       end ("",0) (sort required glo_alist)
   end
