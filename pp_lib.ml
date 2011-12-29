@@ -221,7 +221,10 @@ let scan_of_comments cs start =
 
 let scan_of_string ({a;z}) (prec,postc) s = fun start ->
   let start,pre = match prec with [] -> fix_cursor start a
-    | cs -> scan_of_comments cs start in
+    | cs -> let start, pre = scan_of_comments cs start in
+      let start, p = fix_cursor start a in
+	start, (pre^p)
+  in
   let cerr,cfix =
     if start.col <= a.col
     then 0,String.make (a.col - start.col) ' '

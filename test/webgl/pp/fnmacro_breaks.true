@@ -123,7 +123,9 @@ void main() {
 #line 1011
                ;
 /* Q(-3 C -4); // fails because C doesn't expand fast enough
-   Q(-3 , -4 RP; // fails because RP doesn't expand fast enough*/ }
+   Q(-3 , -4 RP; // fails because RP doesn't expand fast enough*/
+
+}
 #line 2001
 void foo() {
 #line 3
