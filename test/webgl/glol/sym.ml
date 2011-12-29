@@ -17,7 +17,15 @@ Arg.parse ["-", Arg.String set_append,
 	   "escape strings beginning with '-'"] set_append
   "prints all permutations of argument symbols"
 ;;
+let rec read_lines ls =
+  try read_lines ((read_line ())::ls)
+  with End_of_file -> ls
+in
 let rec print_list sep = function
   | [] -> () | e::[] -> print_endline e
   | e::r -> (printf "%s%s" e sep; print_list sep r)
-in List.iter (print_list " ") (permute !set)
+in List.iter (print_list " ")
+(permute begin if (List.length !set)=0
+  then read_lines []
+  else !set
+end)
