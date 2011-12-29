@@ -164,6 +164,7 @@ let string_of_error = function
       (fun s (fn,un) ->
 	 sprintf "%s%s#%d\n" s fn un
       ) "Circular dependency linking:\n" ual
+  | Sys_error m -> sprintf "System error:\n%s\n" m
   | exn -> sprintf "Unknown error:\n%s\n" (Printexc.to_string exn)
 
 let string_of_inchan inchan =
@@ -223,7 +224,9 @@ let stdin_input () = ("<stdin>", Stream (Source (string_of_inchan stdin))) in
 let inputs = match !(exec_state.inputs) with [] -> [stdin_input ()]
   | il -> List.map
       (function
-	 | Stream fn -> (fn, Stream (Source (string_of_inchan (open_in fn))))
+	 | Stream fn ->
+	     begin try (fn, Stream (Source (string_of_inchan (open_in fn))))
+	     with e -> compiler_error 1 [e] end
 	 | Define ds -> if ds="" then ("<-D>", Define (Source ""))
 	   else ("<-D "^ds^">",
 		 Define (Glo (glo_of_u !(exec_state.metadata)
