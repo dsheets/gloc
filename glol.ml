@@ -35,6 +35,7 @@ let armor fs_ct opmac s =
     (* Undefine open macros so they do not bleed *)
     List.fold_left (fun s mac -> s^"\n#undef "^mac) s opmac
 
+(* Linearly search for an exported macro. *)
 let rec satisfy_macro addr macro = function
   | (name,glo)::rest -> begin match Array.fold_left
       (fun uo (i,u) -> match uo with Some u -> Some u
@@ -46,6 +47,8 @@ let rec satisfy_macro addr macro = function
     end
   | [] -> raise (MissingMacro (addr, macro))
 
+(* Linearly search for an exported symbol.
+   Macros take precedence to SL symbols in every glo. *)
 let rec satisfy_sym addr sym = function
   | (name,glo)::rest -> begin match Array.fold_left
       (fun uo (i,u) -> match uo with Some u -> Some u
@@ -60,6 +63,7 @@ let rec satisfy_sym addr sym = function
 
 let map_of_list v = List.fold_left (fun m n -> M.add n v m) M.empty
 
+(* Construct the constraint data structure from a glo unit. *)
 let tooth addr u =
   { rsym=u.insym; (* to be satisfied *)
     rmac=u.inmac;
@@ -72,30 +76,40 @@ let tooth addr u =
 let lookup glo_alist (n,u) = (List.assoc n glo_alist).units.(u)
 let tooth_of_addr glo_alist addr = tooth addr (lookup glo_alist addr)
 let has_addr addr_a ({addr=addr_b}) = addr_a = addr_b
+(* Advertize prior units to later units. *)
 let mergeb b = function [] -> b
   | {bsym; bmac}::r -> {b with bsym=M.fold M.add b.bsym bsym;
 			  bmac=M.fold M.add b.bmac bmac}
+(* Satisfy a macro dependency with an already included dependency. *)
 let connect_mac b n addr =
   {b with rmac=List.filter (fun m -> not (m=n)) b.rmac; tmac=M.add n addr b.tmac}
+(* Satisfy a symbol dependency with an already included dependency. *)
 let connect_sym b n addr =
   {b with rsym=List.filter (fun m -> not (m=n)) b.rsym; tsym=M.add n addr b.tsym}
+(* Search for an already included macro. *)
 let provided_mac n = function [] -> None
   | t::r -> try let addr = M.find n t.bmac in Some addr
     with Not_found -> None
+(* Search for an already included symbol. *)
 let provided_sym n = function [] -> None
   | t::r -> try let addr = M.find n t.bmac in Some addr
     with Not_found -> try let addr = M.find n t.bsym in Some addr
     with Not_found -> None
+(* Given a tooth and a prefix tooth list, find conflicts. *)
 let conflicted a = function [] -> None
   | t::r -> let keys = List.map fst ((M.bindings a.bsym)@(M.bindings a.bmac)) in
       begin match List.filter (fun (sym,addr) -> List.mem sym keys)
 	((M.bindings t.bsym)@(M.bindings t.bmac))
       with [] -> None | b::_ -> Some b end
 
+(* Build a list of units with internal requirements satisfied. *)
 let rec satisfy_zipper glo_alist = function
+    (* At the bottom of the zipper, we must be done. *)
   | ([],t) -> ([],t)
+    (* Without further requirements from below, we must be ready to descend. *)
   | (({rmac=[]; rsym=[]} as b)::r,t) ->
       satisfy_zipper glo_alist (r,(mergeb b t)::t)
+    (* Subsequent units require a macro. *)
   | (({rmac=n::_} as b)::r,t) ->
       begin match provided_mac n t with
 	| Some addr -> satisfy_zipper glo_alist ((connect_mac b n addr)::r,t)
@@ -110,6 +124,7 @@ let rec satisfy_zipper glo_alist = function
 		    (tooth::(connect_mac b n addr)::r,t)
 	      end
       end
+    (* Subsequent units require a symbol. *)
   | (({rmac=[]; rsym=n::_} as b)::r,t) ->
       begin match provided_sym n t with
 	| Some addr -> satisfy_zipper glo_alist ((connect_sym b n addr)::r,t)
@@ -125,14 +140,19 @@ let rec satisfy_zipper glo_alist = function
 	      end
       end
 
+(* Generate a list of unit addresses from a list of required symbols and
+   a search list. *)
 let sort required glo_alist =
   let addrs = List.fold_left
     (fun al sym -> let addr = satisfy_sym ("<-u>",0) sym glo_alist in
        if List.mem addr al then al else addr::al)
     [] required in
-  let z = satisfy_zipper glo_alist (List.map (tooth_of_addr glo_alist) addrs,[]) in
-    List.rev_map (fun tooth -> tooth.addr) (snd z)
+  let z = satisfy_zipper glo_alist
+    (List.rev_map (tooth_of_addr glo_alist) addrs,[])
+  in List.rev_map (fun tooth -> tooth.addr) (snd z)
 
+(* Produce a string representing a valid SL program given a list of required
+   symbols and a search list. *)
 (* TODO: compact linkmap index space *)
 let link required glo_alist =
   fst begin List.fold_left

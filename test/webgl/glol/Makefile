@@ -18,13 +18,30 @@ all :
 sym: sym.ml
 	ocamlc -o sym sym.ml
 
+# BEGIN test specifics
+
+shadow_glom.001.out shadow_glom.001.err \
+shadow_glom.002.out shadow_glom.002.err : \
+shadow_glom.002.glo shadow_glom.001.glo
+shadow_glom.001.glo : shadow_a.glsl shadow_b.glsl
+	$(GLOC) -o shadow_glom.001.glo -c -v `cat shadow.001.args`
+shadow_glom.002.glo : shadow_a.glsl shadow_b.glsl
+	$(GLOC) -o shadow_glom.002.glo -c -v `cat shadow.002.args`
+
+monkey.%.out monkey.%.err : monkey.glo monkey.%.args
+	@$(GLOC) `cat monkey.$*.args` 2> monkey.$*.err > monkey.$*.out || true
+monkey.glo : monkey_a.glsl monkey_b.glsl monkey_c.glsl
+	$(GLOC) -o monkey.glo -c -v $^
+
+# END test specifics
+
 %.argsym : %.argset sym
 	@rm -f $*.*.args
-	@N=1
-	@./sym < $*.argset | while read -r args; do \
-		touch $*.$$N.tout; \
-		touch $*.$$N.terr; \
-		echo "$$args" > $*.$$[N++].args; \
+	@export N=1 && ./sym < $*.argset | while read -r args; do \
+		touch `printf "$*.%03d.tout" $$N`; \
+		touch `printf "$*.%03d.terr" $$N`; \
+		echo "$$args" > `printf "$*.%03d.args" $$N`; \
+		true $$[N++]; \
 	done
 	@touch $*.argsym
 
@@ -45,4 +62,4 @@ test : $(OUTS) $(DOUTS) $(ERRS) $(DERRS)
 	@printf "Test failures: "
 	@ls *.dout *.derr 2> /dev/null | file -f - | grep -v empty | wc -l
 clean :
-	@rm -f *.argsym *.out *.err *.dout *.derr
+	@rm -f *.argsym *.out *.err *.dout *.derr *.glo

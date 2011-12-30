@@ -1,0 +1,13 @@
+#line 1 0
+void foo() {
+
+}
+#line 1 1
+void main() {
+  foo();
+}
+#line 1 2
+void bar() {
+
+}
+

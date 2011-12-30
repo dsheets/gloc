@@ -1,0 +1,3 @@
+-u main -D foo=bar
+-u bar monkey.glo
+-D foo=bar
