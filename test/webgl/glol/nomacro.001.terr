@@ -1,0 +1,3 @@
+nomacro.glsl#0 requires macro 'MISSING' which cannot be found.
+
+Fatal: unrecoverable link error (8)

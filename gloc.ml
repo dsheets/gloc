@@ -61,10 +61,10 @@ let arguments =
    " target language";
    "-v", A.Set exec_state.verbose, "verbose compilation or version information";
    (* TODO: do *)
-   "--edit-meta", A.Unit (fun () -> ()), "interactive glo meta segment mutator";
+   (*"--edit-meta", A.Unit (fun () -> ()), "interactive glo meta segment mutator";*)
    (* TODO: do *)
-   "--license", A.Unit (fun () -> ()),
-   "glo license field override, accepts SPDX license identifiers";
+   (*"--license", A.Unit (fun () -> ()),
+   "glo license field override, accepts SPDX license identifiers";*)
   ]
 let anon_fun arg = exec_state.inputs := (Stream arg)::!(exec_state.inputs)
 
@@ -164,6 +164,13 @@ let string_of_error = function
       (fun s (fn,un) ->
 	 sprintf "%s%s#%d\n" s fn un
       ) "Circular dependency linking:\n" ual
+  | Glol.MissingMacro ((fn,un),mn) ->
+      sprintf "%s#%d requires macro '%s' which cannot be found.\n" fn un mn
+  | Glol.MissingSymbol ((fn,un),mn) ->
+      sprintf "%s#%d requires symbol '%s' which cannot be found.\n" fn un mn
+  | Glol.SymbolConflict (ssym,csym,(sfn,sun),(cfn,cun)) ->
+      sprintf "%s#%d provides '%s' but exposes '%s' which conflicts with %s#%d\n"
+	sfn sun ssym csym cfn cun
   | Sys_error m -> sprintf "System error:\n%s\n" m
   | exn -> sprintf "Unknown error:\n%s\n" (Printexc.to_string exn)
 

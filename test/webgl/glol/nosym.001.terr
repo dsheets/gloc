@@ -1,0 +1,3 @@
+nosym.glsl#0 requires symbol 'missing' which cannot be found.
+
+Fatal: unrecoverable link error (8)

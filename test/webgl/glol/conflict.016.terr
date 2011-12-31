@@ -1,0 +1,3 @@
+conflict_d.glsl#0 provides 'g' but exposes 'q' which conflicts with conflict_c.glsl#0
+
+Fatal: unrecoverable link error (8)

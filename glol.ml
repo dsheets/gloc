@@ -119,7 +119,7 @@ let rec satisfy_zipper glo_alist = function
 			  (List.map (fun {addr} -> addr) (b::r)))
 	    else let tooth = tooth_of_addr glo_alist addr in
 	      begin match conflicted tooth t with
-		| Some (sym, caddr) -> raise (SymbolConflict (sym,n,addr,caddr))
+		| Some (sym, caddr) -> raise (SymbolConflict (n,sym,addr,caddr))
 		| None -> satisfy_zipper glo_alist
 		    (tooth::(connect_mac b n addr)::r,t)
 	      end
@@ -134,7 +134,7 @@ let rec satisfy_zipper glo_alist = function
 			  (List.map (fun {addr} -> addr) (b::r)))
 	    else let tooth = tooth_of_addr glo_alist addr in
 	      begin match conflicted tooth t with
-		| Some (sym, caddr) -> raise (SymbolConflict (sym,n,addr,caddr))
+		| Some (sym, caddr) -> raise (SymbolConflict (n,sym,addr,caddr))
 		| None -> satisfy_zipper glo_alist
 		    (tooth::(connect_sym b n addr)::r,t)
 	      end

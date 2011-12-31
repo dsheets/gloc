@@ -1,0 +1,13 @@
+#line 1 0
+#define q 1
+void f() {}
+#undef q
+#line 1 1
+int q() { return 2; }
+void g() { }
+#line 1 2
+void main() {
+     f();
+     g();
+}
+
