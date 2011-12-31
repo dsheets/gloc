@@ -2,8 +2,10 @@
 void bar() {
 
 }
-#define foo bar
+#line 1 1
+void foo() {
 
+}
 #line 1 2
 void main() {
   foo();
