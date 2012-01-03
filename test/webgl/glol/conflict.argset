@@ -1,4 +1,7 @@
-conflict.glsl conflict_a.glsl
-conflict_b.glsl
+conflict.glsl
+
+conflict_a.glsl
 conflict_c.glsl
+
+conflict_b.glsl
 conflict_d.glsl

@@ -1,11 +1,11 @@
-#line 1 0
-void bar() {
-
-}
 #define foo bar
 
-#line 1 2
+#line 1 1/* monkey_a.glsl#u=0 */
 void main() {
   foo();
+}
+#line 1 2/* monkey_c.glsl#u=0 */
+void bar() {
+
 }
 

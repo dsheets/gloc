@@ -1,0 +1,13 @@
+#line 1 0/* conflict_c.glsl#u=0 */
+int q() { return 1; }
+void f() { }
+#line 1 1/* conflict_b.glsl#u=0 */
+#define q 2
+void g() {}
+#undef q
+#line 1 2/* conflict.glsl#u=0 */
+void main() {
+     f();
+     g();
+}
+
