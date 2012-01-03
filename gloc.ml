@@ -27,9 +27,9 @@ let set_accuracy a = exec_state.accuracy := a
 let set_stage stage = fun () ->
   if !(exec_state.stage)=Link
   then exec_state.stage := stage
-  else raise (CompilerError (1,[IncompatibleArguments
-				  (arg_of_stage !(exec_state.stage),
-				   arg_of_stage stage)]))
+  else raise (CompilerError (Command,[IncompatibleArguments
+					(arg_of_stage !(exec_state.stage),
+					 arg_of_stage stage)]))
 
 (* TODO: add per warning check args *)
 (* TODO: add partial preprocess (only ambiguous conds with dep macros) *)
@@ -162,17 +162,27 @@ let string_of_error = function
       sprintf "Source '%s' is a glo with multiple source units.\n" fn
   | Glol.CircularDependency ual -> List.fold_left
       (fun s (fn,un) ->
-	 sprintf "%s%s#%d\n" s fn un
+	 sprintf "%s%s#u=%d\n" s fn un
       ) "Circular dependency linking:\n" ual
   | Glol.MissingMacro ((fn,un),mn) ->
-      sprintf "%s#%d requires macro '%s' which cannot be found.\n" fn un mn
+      sprintf "%s#u=%d requires macro '%s' which cannot be found.\n" fn un mn
   | Glol.MissingSymbol ((fn,un),mn) ->
-      sprintf "%s#%d requires symbol '%s' which cannot be found.\n" fn un mn
+      sprintf "%s#u=%d requires symbol '%s' which cannot be found.\n" fn un mn
   | Glol.SymbolConflict (ssym,csym,(sfn,sun),(cfn,cun)) ->
-      sprintf "%s#%d provides '%s' but exposes '%s' which conflicts with %s#%d\n"
+      sprintf "%s#u=%d provides '%s' but exposes '%s' which conflicts with %s#u=%d\n"
 	sfn sun ssym csym cfn cun
   | Sys_error m -> sprintf "System error:\n%s\n" m
   | exn -> sprintf "Unknown error:\n%s\n" (Printexc.to_string exn)
+
+let print_errors errors =
+  List.iter (fun e -> eprintf "%s\n" (string_of_error e)) (List.rev errors)
+
+let compiler_error k errs =
+  let code = exit_code_of_component k in
+    print_errors errs;
+    eprintf "Fatal: %s (%d)\n"
+      (string_of_component_error k) code;
+  exit code
 
 let string_of_inchan inchan =
   let s = String.create 1024 in
@@ -183,7 +193,9 @@ let string_of_inchan inchan =
       else begin Buffer.add_substring b s 0 k; consume (pos+k) end
   in consume 0
 
-let chan_of_filename fn = if fn="-" then stdout else open_out fn
+let chan_of_filename fn fdf =
+  let fd = if fn="-" then stdout else open_out fn in
+    try (fdf fd; close_out fd) with e -> (close_out fd; raise e)
 
 let rec write_glo fn fd = function
   | Source s -> write_glo fn fd (make_glo fn s)
@@ -192,16 +204,19 @@ let rec write_glo fn fd = function
   | Glom glom -> output_string fd
       ((Glo_lib.string_of_glom ~compact:(not !(exec_state.verbose)) glom)^"\n")
 
+(* TODO: expose --source *)
 let rec source_of_fmt fn = function
   | Source s -> begin try source_of_fmt fn (glo_of_string s)
     with Json_type.Json_error _ -> s end
   | Glo glo -> if (Array.length glo.Glo_lib.units)=1
-    then Glol.armor 0 [] glo.Glo_lib.units.(0).Glo_lib.source
-    else raise (CompilerError (5, [MultiUnitGloPPOnly fn]))
-  | Glom glom -> if ((Array.length glom)=1
-	&& (Array.length (snd glom.(0)).Glo_lib.units)=1)
-    then Glol.armor 0 [] (snd glom.(0)).Glo_lib.units.(0).Glo_lib.source
-    else raise (CompilerError (5, [GlomPPOnly fn]))
+    then Glol.armor (glo.Glo_lib.linkmap,0) []
+      glo.Glo_lib.units.(0).Glo_lib.source
+    else raise (CompilerError (PPDiverge, [MultiUnitGloPPOnly fn]))
+  | Glom glom -> let glo = snd glom.(0) in if ((Array.length glom)=1
+	&& (Array.length glo.Glo_lib.units)=1)
+    then Glol.armor (glo.Glo_lib.linkmap,0) []
+      glo.Glo_lib.units.(0).Glo_lib.source
+    else raise (CompilerError (PPDiverge, [GlomPPOnly fn]))
 
 let write_glopp fn fd fmt =
   let ppexpr = parse (source_of_fmt fn fmt) in
@@ -210,20 +225,13 @@ let write_glopp fn fd fmt =
 	  (match !(exec_state.stage) with
 	     | ParsePP -> ppexpr
 	     | Preprocess -> check_pp_divergence (preprocess ppexpr)
-	     | s -> raise (CompilerError (5, [GloppStageError s]))
+	     | s -> (* TODO: stage? error message? tests? *)
+		 raise (CompilerError (PPDiverge, [GloppStageError s]))
 	  ))^"\n")
-
-let print_errors errors =
-  List.iter (fun e -> eprintf "%s\n" (string_of_error e)) (List.rev errors)
 
 let streamp = function Stream _ -> true | _ -> false
 let stream_inputp il = List.exists streamp il
 let fmt_of_input = function Stream f -> f | Define f -> f
-
-let compiler_error k errs =
-  print_errors errs;
-  eprintf "Fatal: %s (%d)\n" exit_codes.(k) k;
-  exit k
 ;;
 
 let req_sym = match !(exec_state.symbols) with [] -> ["main"] | l -> l in
@@ -233,7 +241,7 @@ let inputs = match !(exec_state.inputs) with [] -> [stdin_input ()]
       (function
 	 | Stream fn ->
 	     begin try (fn, Stream (Source (string_of_inchan (open_in fn))))
-	     with e -> compiler_error 1 [e] end
+	     with e -> compiler_error Command [e] end
 	 | Define ds -> if ds="" then ("<-D>", Define (Source ""))
 	   else ("<-D "^ds^">",
 		 Define (Glo (glo_of_u !(exec_state.metadata)
@@ -242,65 +250,56 @@ let inputs = match !(exec_state.inputs) with [] -> [stdin_input ()]
       )	il
 in let inputs = if stream_inputp (List.map snd inputs) then inputs
   else (stdin_input ())::inputs
-in match (!(exec_state.output),
-	  !(exec_state.stage)) with
-  | None, Link -> begin try let glom = make_glom inputs in
+in try begin match (!(exec_state.output),
+		    !(exec_state.stage)) with
+  | None, Link -> let glom = make_glom inputs in
     let src = link req_sym (Array.to_list glom) in
       output_string stdout
 	((if !(exec_state.accuracy)=Lang.Preprocess
 	  then string_of_ppexpr start_loc
 	    (check_pp_divergence (preprocess (parse src)))
 	  else src)^"\n")
-    with CompilerError (k,errs) -> compiler_error k errs end
   | None, Compile -> if stream_inputp !(exec_state.inputs)
     then List.iter
       (function (fn,Define d) -> ()
 	 | (fn,Stream s) -> if not (is_glo_file fn)
-	   then let fd = open_out (glo_file_name fn) in
-	     write_glo fn fd s;
-	     close_out fd) inputs
-    else begin
-      try write_glo (fst (List.hd inputs)) stdout
-	(fmt_of_input (snd (List.hd inputs)))
-      with CompilerError (k,errs) -> compiler_error k errs end
+	   then chan_of_filename (glo_file_name fn)
+	     (fun fd -> write_glo fn fd s)) inputs
+    else write_glo (fst (List.hd inputs)) stdout
+      (fmt_of_input (snd (List.hd inputs)))
   | None, Preprocess | None, ParsePP ->
       if stream_inputp !(exec_state.inputs)
       then List.iter
 	(function (fn,Define d) -> () (* TODO: use -D in PP only as well *)
 	   | (fn,Stream s) -> if not (is_glopp_file fn)
-	     then let fd = open_out (glopp_file_name fn) in
-	       write_glopp fn fd s;
-	       close_out fd) inputs
-      else begin
-	try write_glopp (fst (List.hd inputs)) stdout
-	  (fmt_of_input (snd (List.hd inputs)))
-	with CompilerError (k,errs) -> compiler_error k errs end
-  | Some fn, Link -> begin try let glom = make_glom inputs in
+	     then chan_of_filename (glopp_file_name fn)
+	       (fun fd -> write_glopp fn fd s)) inputs
+      else write_glopp (fst (List.hd inputs)) stdout
+	(fmt_of_input (snd (List.hd inputs)))
+  | Some fn, Link -> let glom = make_glom inputs in
     let src = link req_sym (Array.to_list glom) in
-    let fd = chan_of_filename fn in
-      output_string fd
-	((if !(exec_state.accuracy)=Lang.Preprocess
-	  then string_of_ppexpr start_loc
-	    (check_pp_divergence (preprocess (parse src)))
-	  else src)^"\n");
-      close_out fd
-    with CompilerError (k,errs) -> compiler_error k errs end
+      chan_of_filename fn
+	(fun fd ->
+	   output_string fd
+	     ((if !(exec_state.accuracy)=Lang.Preprocess
+	       then string_of_ppexpr start_loc
+		 (check_pp_divergence (preprocess (parse src)))
+	       else src)^"\n"))
   | Some fn, Compile -> (* TODO: consolidate glo *)
-      let fd = chan_of_filename fn in
-	if stream_inputp !(exec_state.inputs)
-	then let glom = try make_glom inputs
-	with CompilerError (k,errs) -> compiler_error k errs in
-	  write_glo fn fd (Glom glom)
-	else begin try write_glo fn fd (fmt_of_input (snd (List.hd inputs)))
-	with CompilerError (k,errs) -> compiler_error k errs end;
-	close_out fd
+      chan_of_filename fn
+	(fun fd ->
+	   if stream_inputp !(exec_state.inputs)
+	   then let glom = make_glom inputs in
+	     write_glo fn fd (Glom glom)
+	   else write_glo fn fd (fmt_of_input (snd (List.hd inputs))))
   | Some fn, Preprocess | Some fn, ParsePP ->
-      let fd = chan_of_filename fn in
-	if (List.length (List.filter streamp !(exec_state.inputs)))=1
-	then List.iter
-	  (function (_,Define d) -> () (* TODO: use -D in PP only as well *)
-	     | (_,Stream s) -> write_glopp fn fd s) inputs
-	else begin
-	  try write_glopp (fst (List.hd inputs)) stdout
-	    (fmt_of_input (snd (List.hd inputs)))
-	  with CompilerError (k,errs) -> compiler_error k errs end
+      chan_of_filename fn
+	(fun fd ->
+	   if (List.length (List.filter streamp !(exec_state.inputs)))=1
+	   then List.iter
+	     (function (_,Define d) -> () (* TODO: use -D in PP only as well *)
+		| (_,Stream s) -> write_glopp fn fd s) inputs
+	   else write_glopp (fst (List.hd inputs)) stdout
+	     (fmt_of_input (snd (List.hd inputs))))
+  end
+  with CompilerError (k,errs) -> compiler_error k errs

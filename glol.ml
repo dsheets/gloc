@@ -24,12 +24,15 @@ exception CircularDependency of unit_addr list
 exception SymbolConflict of string * string * unit_addr * unit_addr
 
 (* Prepare the packaged source for concatenation. *)
-let armor fs_ct opmac s =
+let armor (linkmap,fs_ct) opmac s =
   (* Replace special symbols in line directives to satisfy linkmap *)
-  (*required regexp instead of macros due to ANGLE bug 183*)
+  (*required regexp (greetz jwz) instead of macros due to ANGLE bug 183*)
   let intpatt = Str.regexp "GLOC_\\([0-9]+\\)" in
-  let offset s = let s = Str.matched_string s in
-    (string_of_int ((int_of_string (Str.string_after s 5))+fs_ct))
+  let offset s =
+    let fn = int_of_string (Str.string_after (Str.matched_string s) 5) in
+    let anno = try "/* "^(Hashtbl.find linkmap (string_of_int fn))^" */"
+    with Not_found -> ""
+    in (string_of_int (fn + fs_ct))^anno
   in
   let s = Str.global_substitute intpatt offset s in
     (* Undefine open macros so they do not bleed *)
@@ -163,7 +166,7 @@ let link required glo_alist =
 	  glo.linkmap 0
 	in
 	let u = glo.units.(u) in
-	  (src^(armor o u.opmac u.source)^"\n",
+	  (src^(armor (glo.linkmap, o) u.opmac u.source)^"\n",
 	   o+sup+1)
       end ("",0) (sort required glo_alist)
   end

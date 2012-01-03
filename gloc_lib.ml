@@ -16,7 +16,40 @@ module List = struct
       in List.rev l
 end
 
+(* TODO: harmonize? *)
 type stage = ParsePP | Preprocess | Compile | Link
+type component =
+  | Command
+  | Format
+  | Parser
+  | PPParser
+  | PPError
+  | PPDiverge
+  | SLParser
+  | Analyzer
+  | Linker
+
+let exit_code_of_component = function
+  | Command -> 1
+  | Format -> 2
+  | Parser -> 3
+  | PPParser -> 4
+  | PPError -> 5
+  | PPDiverge -> 6
+  | SLParser -> 7
+  | Analyzer -> 8
+  | Linker -> 9
+
+let string_of_component_error = function
+  | Command -> "unrecoverable command error"
+  | Format -> "unrecoverable format read error"
+  | Parser -> "unrecoverable internal parser error"
+  | PPParser -> "unrecoverable preprocessor parse error"
+  | PPError -> "unrecoverable preprocessor error"
+  | PPDiverge -> "unrecoverable preprocessor divergence"
+  | SLParser -> "unrecoverable parse error"
+  | Analyzer -> "unrecoverable analysis error"
+  | Linker ->"unrecoverable link error"
 
 exception UnrecognizedJsonFormat
 exception UncaughtException of exn
@@ -26,7 +59,7 @@ exception GlomPPOnly of string
 exception IncompatibleArguments of string * string
 exception GloppStageError of stage
 
-exception CompilerError of int * exn list
+exception CompilerError of component * exn list
 
 type file_fmt = Glo of glo | Glom of glom | Source of string
 type 'a input = Stream of 'a | Define of 'a
@@ -62,17 +95,6 @@ let exec_state = { stage=ref Link;
 		   outlang=ref default_lang;
 		   accuracy=ref Lang.Best;
 		 } (* one-shot monad *)
-
-let exit_codes = [|"success";
-		   "unrecoverable format read error";
-		   "unrecoverable internal parser error";
-		   "unrecoverable preprocessor parse error";
-		   "unrecoverable preprocessor error";
-		   "unrecoverable preprocessor divergence";
-		   "unrecoverable parse error";
-		   "unrecoverable analysis error";
-		   "unrecoverable link error"
-		 |]
 
 let glo_of_string s = let json = Json_io.json_of_string s in
   match json with
@@ -111,8 +133,8 @@ let parse source =
     (fun _ -> Lexing.dummy_pos)
     translation_unit in
   let ppexpr = try parse (fun () -> lex !(exec_state.inlang) lexbuf) with
-    | err -> raise (CompilerError (2, [UncaughtException err]))
-  in maybe_fatal_error 3;
+    | err -> raise (CompilerError (Parser, [UncaughtException err]))
+  in maybe_fatal_error PPParser;
     normalize_ppexpr ppexpr
 
 let preprocess ppexpr =
@@ -120,7 +142,7 @@ let preprocess ppexpr =
 			       builtin_macros;
 			       extensions=Env.empty;
 			       inmacros=[]} ppexpr in
-    maybe_fatal_error 4;
+    maybe_fatal_error PPError;
     ppl
 
 let check_pp_divergence ppl =
@@ -132,7 +154,7 @@ let check_pp_divergence ppl =
        dl (fst pp).inmacros)
     [] ppl
   in raise (CompilerError
-	      (5, List.rev_map (fun t -> AmbiguousPreprocessorConditional t) o))
+	      (PPDiverge, List.rev_map (fun t -> AmbiguousPreprocessorConditional t) o))
   else match ppl with (_,e)::_ -> e
     | [] -> Chunk { span={a=start_loc;z=start_loc};
 		    scan=(fun loc -> (loc,""));
@@ -168,13 +190,13 @@ let compile fn source =
     with err -> begin
       error (Essl_lib.EsslParseError ((Printexc.to_string err),
 				      !(Pp_lib.file),!(Pp_lib.line)));
-      maybe_fatal_error 6;
+      maybe_fatal_error SLParser;
       raise err
     end
 
 let link required glo_alist =
   try Glol.link required glo_alist
-  with e -> raise (CompilerError (8,[e]))
+  with e -> raise (CompilerError (Linker,[e]))
 
 let file_extp ext fn = (Str.last_chars fn ((String.length ext)+1))="."^ext
 let file_ext ext fn = (* TODO: paths with dots but no file extension *)
@@ -209,7 +231,8 @@ let glo_of_u meta target u =
 
 let make_glo fn s =
   try glo_of_string s
-  with UnrecognizedJsonFormat as e -> raise (CompilerError (1,[e])) (* TODO: msg *)
+  with UnrecognizedJsonFormat as
+      e -> raise (CompilerError (Format,[e])) (* TODO: msg *)
     | Json_type.Json_error _ -> Glo (compile fn s)
 
 let make_glom inputs = let lst = List.fold_left
@@ -220,7 +243,7 @@ let make_glom inputs = let lst = List.fold_left
 	   | Glo glo -> (fn,glo)::al (* TODO: order *)
 	   | Glom glom -> (Array.to_list glom)@al (* TODO: order *)
 	   | Source _ -> al (* TODO: ? *)
-	 end with e -> raise (CompilerError (1,[e])) (* TODO: msg *)
+	 end with e -> raise (CompilerError (Format,[e])) (* TODO: msg *)
 	 else begin match make_glo fn s with
 	   | Glo glo -> (fn,glo)::al (* TODO: order *)
 	   | Glom glom -> (Array.to_list glom)@al (* TODO: order *)
