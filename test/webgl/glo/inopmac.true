@@ -2,7 +2,7 @@
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
   "meta": {
-    "copyright": [ "", 2011, "" ],
+    "copyright": [ "", 2012, "" ],
     "author": {},
     "license": null,
     "library": null,
@@ -20,5 +20,5 @@
         "#line 1 GLOC_0\n#if EXTMAC\n#define MYMAC vec4(1.)\n#else\n#define MYMAC vec4(0.)\n#endif\n\nvoid main() { gl_Position = MYMAC; }"
     }
   ],
-  "linkmap": { "0": "<stdin>#0" }
+  "linkmap": { "0": "<stdin>#u=0" }
 }

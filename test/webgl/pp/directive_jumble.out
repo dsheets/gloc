@@ -7,4 +7,4 @@ File 0, line 3, col 9 - 19:
 File 0, line 4, col 0 - 10:
 #error baz/*third*/
 
-Fatal: unrecoverable preprocessor error (4)
+Fatal: unrecoverable preprocessor error (5)

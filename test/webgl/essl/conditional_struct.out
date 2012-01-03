@@ -1,6 +1,3 @@
-Fatal error: exception Glol.MissingSymbol(_, "false")
-Raised at file "glol.ml", line 57, characters 16-43
-Called from file "glol.ml", line 114, characters 22-52
-Called from file "glol.ml", line 131, characters 10-80
-Called from file "glol.ml", line 146, characters 17-42
-Called from file "gloc.ml", line 235, characters 14-52
+<stdin>#u=0 requires symbol 'false' which cannot be found.
+
+Fatal: unrecoverable link error (9)

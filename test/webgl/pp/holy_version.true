@@ -4,4 +4,4 @@ version must be first semantic token
 File 0, line 1, col 0 - 19:
 #error this is fine
 
-Fatal: unrecoverable preprocessor error (4)
+Fatal: unrecoverable preprocessor error (5)

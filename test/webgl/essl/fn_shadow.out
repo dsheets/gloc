@@ -1,4 +1,4 @@
-#line 1 0
+#line 1 0/* <stdin>#u=0 */
 int f(int k) {
   int k = k + 3;
   return k;
@@ -7,3 +7,4 @@ int f(int k) {
 void main() {
   gl_FragColor = vec4(f(100));
 }
+

@@ -16,4 +16,4 @@ File 0, line 31, col 8 - 16:
 File 0, line 35, col 8 - 16:
 "__LINE__" is a reserved macro and may not be redefined
 
-Fatal: unrecoverable preprocessor error (4)
+Fatal: unrecoverable preprocessor error (5)

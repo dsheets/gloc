@@ -12,4 +12,4 @@ File 0, l8 c8 - l10 c11:
 File 0, line 12, col 0 - 9:
 #error OK/*  eol comment*/
 
-Fatal: unrecoverable preprocessor error (4)
+Fatal: unrecoverable preprocessor error (5)

@@ -1,4 +1,4 @@
-#line 1 0
+#line 1 0/* <stdin>#u=0 */
 void main() {
   int k = 0;
   for (int i = 0; i < 10; i++) int i = k+i;/*  error, redecl no new scope*/
@@ -9,3 +9,4 @@ void main() {
   do { int k = 1; } while (k != 0);/*  ok, compound nests*/
   gl_FragColor = vec4(float(k));
 }
+

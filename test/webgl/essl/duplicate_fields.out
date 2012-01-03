@@ -1,5 +1,6 @@
-#line 1 0
+#line 1 0/* <stdin>#u=0 */
 precision highp float;
 struct { int q; };
 struct { float q; };
 void main() { }
+

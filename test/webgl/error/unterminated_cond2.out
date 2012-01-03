@@ -1,4 +1,4 @@
 File 0, line 3, col 0 - 5:
 unterminated conditional "#elif"
 
-Fatal: unrecoverable preprocessor parse error (3)
+Fatal: unrecoverable preprocessor parse error (4)

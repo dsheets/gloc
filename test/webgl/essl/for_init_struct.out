@@ -1,5 +1,6 @@
-#line 1 0
+#line 1 0/* <stdin>#u=0 */
 void main() {
   for (struct foo { int a; } j = foo(0); j.a < 10; j.a++) {}
 
 }
+

@@ -1,4 +1,4 @@
-#line 1 0
+#line 1 0/* <stdin>#u=0 */
 precision highp float;
 
 struct { int q; };
@@ -8,3 +8,4 @@ uniform struct { float k; } r;
 struct { float k; } id(struct { float k; } k) { return k; }
 
 void main() { id(r); }
+

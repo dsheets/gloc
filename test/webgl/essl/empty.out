@@ -1,4 +1,4 @@
-#line 1 0
+#line 1 0/* <stdin>#u=0 */
 void main() {
   ;
   ;
@@ -9,3 +9,4 @@ void main() {
 
   gl_FragColor = vec4(0.);
 }
+

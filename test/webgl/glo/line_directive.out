@@ -2,7 +2,7 @@
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
   "meta": {
-    "copyright": [ "", 2011, "" ],
+    "copyright": [ "", 2012, "" ],
     "author": {},
     "license": null,
     "library": null,
@@ -19,5 +19,5 @@
       "source": "#line 1 GLOC_1\n#define K 3\n#line 1 GLOC_2\n#define Q 4"
     }
   ],
-  "linkmap": { "1": "<stdin>#1", "2": "<stdin>#2" }
+  "linkmap": { "1": "<stdin>#u=1", "2": "<stdin>#u=2" }
 }

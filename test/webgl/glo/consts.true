@@ -2,7 +2,7 @@
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
   "meta": {
-    "copyright": [ "", 2011, "" ],
+    "copyright": [ "", 2012, "" ],
     "author": {},
     "license": null,
     "library": null,
@@ -20,5 +20,5 @@
         "#line 1 GLOC_0\nconst float g = 0.2;\n\nvec2 myfun(vec2 m) {\n     const vec2 f = vec2(g);\n     return f+m;\n}"
     }
   ],
-  "linkmap": { "0": "<stdin>#0" }
+  "linkmap": { "0": "<stdin>#u=0" }
 }

@@ -2,7 +2,7 @@
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
   "meta": {
-    "copyright": [ "", 2011, "" ],
+    "copyright": [ "", 2012, "" ],
     "author": {},
     "license": null,
     "library": null,
@@ -21,9 +21,9 @@
     }
   ],
   "linkmap": {
-    "3": "<stdin>#3",
-    "77": "<stdin>#77",
-    "4": "<stdin>#4",
-    "0": "<stdin>#0"
+    "3": "<stdin>#u=3",
+    "77": "<stdin>#u=77",
+    "4": "<stdin>#u=4",
+    "0": "<stdin>#u=0"
   }
 }

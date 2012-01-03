@@ -1,4 +1,4 @@
 File 0, line 1, col 39 - 44:
 invalid directive "bogus"
 
-Fatal: unrecoverable preprocessor parse error (3)
+Fatal: unrecoverable preprocessor parse error (4)
