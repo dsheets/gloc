@@ -219,7 +219,7 @@ let macro_name m = (* TODO: parser? *)
 
 let make_define_unit ds =
   let u m source =
-    {insym=[]; outsym=[]; inmac=[]; opmac=[];
+    {require=[]; insym=[]; outsym=[]; inmac=[]; opmac=[];
      outmac=if m="" then [] else [macro_name m]; source}
   in match Str.bounded_split (Str.regexp_string "=") ds 2 with
     | [] -> u "" ""
@@ -241,16 +241,15 @@ let make_glom inputs = let lst = List.fold_left
 	 if is_glo_file fn
 	 then try begin match glo_of_string s with
 	   | Glo glo -> (fn,glo)::al (* TODO: order *)
-	   | Glom glom -> (Array.to_list glom)@al (* TODO: order *)
+	   | Glom glom -> glom@al (* TODO: order *)
 	   | Source _ -> al (* TODO: ? *)
 	 end with e -> raise (CompilerError (Format,[e])) (* TODO: msg *)
 	 else begin match make_glo fn s with
 	   | Glo glo -> (fn,glo)::al (* TODO: order *)
-	   | Glom glom -> (Array.to_list glom)@al (* TODO: order *)
+	   | Glom glom -> glom@al (* TODO: order *)
 	   | Source _ -> al (* TODO: ? *)
 	 end
      | (fn, Stream (Glo glo)) | (fn, Define (Glo glo)) -> (fn,glo)::al
      | (fn, Stream (Glom glom)) | (fn, Define (Glom glom)) ->
-	 (Array.to_list glom)@al
-  ) [] inputs in
-  Array.of_list lst
+	 glom@al
+  ) [] inputs in lst

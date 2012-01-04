@@ -1,21 +1,13 @@
 {
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": {
-    "copyright": [ "", 2012, "" ],
-    "author": {},
-    "license": null,
-    "library": null,
-    "version": null,
-    "build": null
-  },
+  "meta": { "copyright": [ "", 2012, "" ] },
   "units": [
     {
       "insym": [ "X", "f" ],
       "outsym": [ "main" ],
       "inmac": [ "E" ],
       "opmac": [ "X" ],
-      "outmac": [],
       "source":
         "#line 1 GLOC_0\n#if E\n#define X f\n#endif\n\nvoid main() { X(); }"
     }

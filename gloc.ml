@@ -172,7 +172,7 @@ let string_of_error = function
       sprintf "%s#u=%d provides '%s' but exposes '%s' which conflicts with %s#u=%d\n"
 	sfn sun ssym csym cfn cun
   | Sys_error m -> sprintf "System error:\n%s\n" m
-  | exn -> sprintf "Unknown error:\n%s\n" (Printexc.to_string exn)
+  | exn -> raise exn
 
 let print_errors errors =
   List.iter (fun e -> eprintf "%s\n" (string_of_error e)) (List.rev errors)
@@ -212,7 +212,7 @@ let rec source_of_fmt fn = function
     then Glol.armor (glo.Glo_lib.linkmap,0) []
       glo.Glo_lib.units.(0).Glo_lib.source
     else raise (CompilerError (PPDiverge, [MultiUnitGloPPOnly fn]))
-  | Glom glom -> let glo = snd glom.(0) in if ((Array.length glom)=1
+  | Glom glom -> let glo = snd (List.hd glom) in if ((List.length glom)=1
 	&& (Array.length glo.Glo_lib.units)=1)
     then Glol.armor (glo.Glo_lib.linkmap,0) []
       glo.Glo_lib.units.(0).Glo_lib.source
@@ -253,7 +253,7 @@ in let inputs = if stream_inputp (List.map snd inputs) then inputs
 in try begin match (!(exec_state.output),
 		    !(exec_state.stage)) with
   | None, Link -> let glom = make_glom inputs in
-    let src = link req_sym (Array.to_list glom) in
+    let src = link req_sym glom in
       output_string stdout
 	((if !(exec_state.accuracy)=Lang.Preprocess
 	  then string_of_ppexpr start_loc
@@ -277,7 +277,7 @@ in try begin match (!(exec_state.output),
       else write_glopp (fst (List.hd inputs)) stdout
 	(fmt_of_input (snd (List.hd inputs)))
   | Some fn, Link -> let glom = make_glom inputs in
-    let src = link req_sym (Array.to_list glom) in
+    let src = link req_sym glom in
       chan_of_filename fn
 	(fun fd ->
 	   output_string fd

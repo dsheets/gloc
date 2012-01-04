@@ -18,10 +18,23 @@ type tooth = { rsym : string list;   rmac : string list;
     (* Bottom * Top *)
 type zipper = tooth list * tooth list
 
+(* Link state *)
+type state = { version : (unit_addr * int) option;
+	       invariant : (unit_addr * string) option;
+	       extensions : (unit_addr * string) M.t
+	     }
+
 exception MissingSymbol of unit_addr * string
 exception MissingMacro of unit_addr * string
 exception CircularDependency of unit_addr list
 exception SymbolConflict of string * string * unit_addr * unit_addr
+(* TODO: test *)
+exception VersionConflict of unit_addr * int * unit_addr * int
+exception ExtensionConflict of
+  unit_addr * string * string * unit_addr * string * string
+
+(* Track directives that must come before SL tokens. *)
+let state = ref { version=None; invariant=None; extensions=M.empty }
 
 (* Prepare the packaged source for concatenation. *)
 let armor (linkmap,fs_ct) opmac s =
@@ -77,7 +90,9 @@ let tooth addr u =
     addr }
 
 let lookup glo_alist (n,u) = (List.assoc n glo_alist).units.(u)
-let tooth_of_addr glo_alist addr = tooth addr (lookup glo_alist addr)
+let tooth_of_addr glo_alist addr =
+  let u = lookup glo_alist addr in
+    tooth addr u
 let has_addr addr_a ({addr=addr_b}) = addr_a = addr_b
 (* Advertize prior units to later units. *)
 let mergeb b = function [] -> b

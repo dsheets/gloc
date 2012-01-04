@@ -1,21 +1,11 @@
 {
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": {
-    "copyright": [ "", 2012, "" ],
-    "author": {},
-    "license": null,
-    "library": null,
-    "version": null,
-    "build": null
-  },
+  "meta": { "copyright": [ "", 2012, "" ] },
   "units": [
     {
       "insym": [ "incoming" ],
       "outsym": [ "main" ],
-      "inmac": [],
-      "opmac": [],
-      "outmac": [],
       "source":
         "#line 1 GLOC_0\nvoid main() {\n     gl_Position = vec3(incoming);\n}"
     }

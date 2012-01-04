@@ -1,21 +1,10 @@
 {
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": {
-    "copyright": [ "", 2012, "" ],
-    "author": {},
-    "license": null,
-    "library": null,
-    "version": null,
-    "build": null
-  },
+  "meta": { "copyright": [ "", 2012, "" ] },
   "units": [
     {
-      "insym": [],
       "outsym": [ "s", "pos", "get_pos", "S" ],
-      "inmac": [],
-      "opmac": [],
-      "outmac": [],
       "source":
         "#line 1 GLOC_0\nuniform vec3 pos;\nuniform struct S { int k; } s;\n\nvec3 get_pos() { return pos; }"
     }

@@ -1,21 +1,11 @@
 {
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": {
-    "copyright": [ "", 2012, "" ],
-    "author": {},
-    "license": null,
-    "library": null,
-    "version": null,
-    "build": null
-  },
+  "meta": { "copyright": [ "", 2012, "" ] },
   "units": [
     {
-      "insym": [],
       "outsym": [ "main" ],
       "inmac": [ "INMAC" ],
-      "opmac": [],
-      "outmac": [],
       "source":
         "#line 1 GLOC_0\n#if INMAC\n\nvoid main() { gl_Position = vec4(1.); }\n#else\n\n\nvoid main() { gl_Position = vec4(0.); }\n\n#endif"
     }

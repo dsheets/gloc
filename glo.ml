@@ -10,10 +10,6 @@ let unique lst =
     | [] -> prev
   in dedupe [] (List.sort compare lst)
 
-let create_header expr =
-  (* TODO: lift extension exprs *)
-  (* TODO: lift pragma invariant *)
-  {insym=[]; outsym=[]; inmac=[]; opmac=[]; outmac=[]; source=""}
 let create_body expr envs =
   (* TODO: abstract *)
   let apply_to_if fn ({v=(ce,tb,ofb)} as t) =
@@ -35,12 +31,20 @@ let create_body expr envs =
       ([],[]) ppel
     in ml, Some (fuse_pptok_expr (List.rev ppel))
   in
-  let rec process_version e = match e with
+  let rec process_requires e = match e with
     | Comments _ | Chunk _ | Def _ | Fun _ | Undef _
-    | Err _ | Pragma _ | Extension _ | Line _ -> [], Some e
-    | Version itt -> ["GLOC_VERSION_"^(string_of_int itt.v.v)], None
-    | If t -> apply_to_if process_version t
-    | List t -> apply_to_list process_version t
+    | Err _ | Line _ -> [], Some e
+    | Extension {v=({v=name},{v=behavior})} ->
+	["extension "^name^" : "^(match behavior with
+				    | Require -> "require"
+				    | Enable -> "enable"
+				    | Warn -> "warn"
+				    | Disable -> "disable"
+				 )], None
+    | Pragma _ -> [], Some e
+    | Version itt -> ["version "^(string_of_int itt.v.v)], None
+    | If t -> apply_to_if process_requires t
+    | List t -> apply_to_list process_requires t
   in
   let rec process_line e = match e with
     | Comments _ | Chunk _ | Def _ | Fun _ | Undef _
@@ -51,9 +55,9 @@ let create_body expr envs =
     | If t -> apply_to_if process_line t
     | List t -> apply_to_list process_line t
   in
-  let syml, expr = match process_version expr with
-    | syml, Some e -> syml, e
-    | syml, None -> syml, empty_pptok_expr expr
+  let require, expr = match process_requires expr with
+    | requires, Some e -> requires, e
+    | requires, None -> requires, empty_pptok_expr expr
   in
   let file_nums, expr = match process_line expr with
     | file_nums, Some e -> file_nums, e
@@ -74,17 +78,17 @@ let create_body expr envs =
 	file_nums, {file={src=0;input=0}; line={src=1;input=1}; col=0}
     | _ ->
 	(0::file_nums), {file={src=(-1);input=(-1)}; line={src=1;input=1}; col=0}
-  in	
+  in
   (* TODO: rename GLOC_* to GLOC_GLOC_* *)
-  (* TODO: remove extension *)
-    ({insym=List.fold_left
+    ({require;
+      insym=List.fold_left
 	 (fun l e -> List.fold_left
 	    (fun l s -> (* TODO: inference *)
 	       if List.mem s l then l
 	       else if List.mem_assoc s builtins then l
 	       else s::l)
 	    l e.Sl_lib.opensyms)
-	 (syml@prototypes) envs;
+	 prototypes envs;
       outsym=List.fold_left
 	 (fun l e -> Sl_lib.SymMap.fold
 	    (fun k bindings l -> (* TODO: inference *)
@@ -109,6 +113,7 @@ let compile ?meta target fn origexpr ~inmac ~opmac tokslst =
       (fun n -> Hashtbl.add linkmap (string_of_int n) (sprintf "%s#u=%d" fn n))
       file_nums;
     {glo=glo_version; target; meta;
-     units=[|(*create_header origexpr;*)
-       {body_unit with inmac; opmac}|];
+     units=[|{body_unit with inmac=inmac@body_unit.inmac;
+		opmac=opmac@body_unit.opmac}
+	   |];
      linkmap}

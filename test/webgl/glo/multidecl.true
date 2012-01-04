@@ -1,21 +1,11 @@
 {
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": {
-    "copyright": [ "", 2012, "" ],
-    "author": {},
-    "license": null,
-    "library": null,
-    "version": null,
-    "build": null
-  },
+  "meta": { "copyright": [ "", 2012, "" ] },
   "units": [
     {
       "insym": [ "q" ],
       "outsym": [ "z", "y", "x", "h" ],
-      "inmac": [],
-      "opmac": [],
-      "outmac": [],
       "source": "#line 1 GLOC_0\nint x=2, y=x, z=q, h=z;"
     }
   ],

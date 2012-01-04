@@ -1,21 +1,10 @@
 {
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": {
-    "copyright": [ "", 2012, "" ],
-    "author": {},
-    "license": null,
-    "library": null,
-    "version": null,
-    "build": null
-  },
+  "meta": { "copyright": [ "", 2012, "" ] },
   "units": [
     {
-      "insym": [],
       "outsym": [ "set_gP", "get_gP", "gP" ],
-      "inmac": [],
-      "opmac": [],
-      "outmac": [],
       "source":
         "#line 1 GLOC_0\nvarying vec3 gP;\n\nvec3 get_gP() { return gP; }\nvoid set_gP(vec3 p) { gP = p; }"
     }
