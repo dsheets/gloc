@@ -3,6 +3,8 @@ open Pp_lib
 open Essl_lib
 open Glo_lib
 
+type require = Pdir of string | Edir of string * behavior | Vdir of int
+
 let unique lst =
   let rec dedupe prev = function
     | x::y::r when x=y -> dedupe prev (x::r)
@@ -31,18 +33,30 @@ let create_body expr envs =
       ([],[]) ppel
     in ml, Some (fuse_pptok_expr (List.rev ppel))
   in
+  let rec print_stream = function
+    | [] -> ()
+    | (Int _)::r -> print_endline "Int"; print_stream r
+    | (Float _)::r -> print_endline "Float"; print_stream r
+    | (Word _)::r -> print_endline "Word"; print_stream r
+    | (Call _)::r -> print_endline "Call"; print_stream r
+    | (Punc _)::r -> print_endline "Punc"; print_stream r
+    | (Comma _)::r -> print_endline "Comma"; print_stream r
+    | (Leftp _)::r -> print_endline "Leftp"; print_stream r
+    | (Rightp _)::r -> print_endline "Rightp"; print_stream r
+  in
   let rec process_requires e = match e with
     | Comments _ | Chunk _ | Def _ | Fun _ | Undef _
     | Err _ | Line _ -> [], Some e
     | Extension {v=({v=name},{v=behavior})} ->
-	["extension "^name^" : "^(match behavior with
-				    | Require -> "require"
-				    | Enable -> "enable"
-				    | Warn -> "warn"
-				    | Disable -> "disable"
-				 )], None
-    | Pragma _ -> [], Some e
-    | Version itt -> ["version "^(string_of_int itt.v.v)], None
+	[Edir (name, behavior)], None
+    | Pragma ({v=[Word {v=("STDGL",_)};
+		  Word {v=("invariant",_)};
+		  Leftp _;
+		  Word {v=("all",_)};
+		  Rightp _;
+		 ]} as t) -> [Pdir (snd (t.scan t.span.a))], None
+    | Pragma {v} -> [], Some e
+    | Version itt -> [Vdir itt.v.v], None
     | If t -> apply_to_if process_requires t
     | List t -> apply_to_list process_requires t
   in
@@ -55,9 +69,16 @@ let create_body expr envs =
     | If t -> apply_to_if process_line t
     | List t -> apply_to_list process_line t
   in
-  let require, expr = match process_requires expr with
-    | requires, Some e -> requires, e
-    | requires, None -> requires, empty_pptok_expr expr
+  let directives_of_requires requires =
+    List.fold_left
+      (fun (pl,el,vo) -> function
+	 | Pdir s -> (s::pl,el,vo)
+	 | Edir (n,Require) -> (pl,(n,"require")::el,vo)
+	 | Edir (n,Enable) -> (pl,(n,"enable")::el,vo)
+	 | Edir (n,Warn) -> (pl,(n,"warn")::el,vo)
+	 | Edir (n,Disable) -> (pl,(n,"disable")::el,vo)
+	 | Vdir n -> (pl,el,Some n)
+      ) ([],[],None) requires
   in
   let file_nums, expr = match process_line expr with
     | file_nums, Some e -> file_nums, e
@@ -79,8 +100,12 @@ let create_body expr envs =
     | _ ->
 	(0::file_nums), {file={src=(-1);input=(-1)}; line={src=1;input=1}; col=0}
   in
+  let (pdir,edir,vdir),expr = match process_requires expr with
+    | requires, Some e -> directives_of_requires requires, e
+    | requires, None -> directives_of_requires requires, empty_pptok_expr expr
+  in
   (* TODO: rename GLOC_* to GLOC_GLOC_* *)
-    ({require;
+    ({pdir; edir; vdir;
       insym=List.fold_left
 	 (fun l e -> List.fold_left
 	    (fun l s -> (* TODO: inference *)

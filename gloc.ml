@@ -253,7 +253,8 @@ in let inputs = if stream_inputp (List.map snd inputs) then inputs
 in try begin match (!(exec_state.output),
 		    !(exec_state.stage)) with
   | None, Link -> let glom = make_glom inputs in
-    let src = link req_sym glom in
+    let src = try link "" req_sym glom
+    with e -> raise (CompilerError (Linker,[e])) in
       output_string stdout
 	((if !(exec_state.accuracy)=Lang.Preprocess
 	  then string_of_ppexpr start_loc
@@ -277,7 +278,8 @@ in try begin match (!(exec_state.output),
       else write_glopp (fst (List.hd inputs)) stdout
 	(fmt_of_input (snd (List.hd inputs)))
   | Some fn, Link -> let glom = make_glom inputs in
-    let src = link req_sym glom in
+    let src = try link "" req_sym glom
+    with e -> raise (CompilerError (Linker,[e])) in
       chan_of_filename fn
 	(fun fd ->
 	   output_string fd

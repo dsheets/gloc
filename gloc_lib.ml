@@ -122,8 +122,6 @@ let maybe_fatal_error k =
     raise (CompilerError (k,errs))
   end
 
-let start_loc = {file={src=0;input=0};line={src=1;input=1};col=0}
-
 let parse source =
   let () = reset () in
   let lexbuf = Ulexing.from_utf8_string source in
@@ -219,7 +217,7 @@ let macro_name m = (* TODO: parser? *)
 
 let make_define_unit ds =
   let u m source =
-    {require=[]; insym=[]; outsym=[]; inmac=[]; opmac=[];
+    {pdir=[]; edir=[]; vdir=None; insym=[]; outsym=[]; inmac=[]; opmac=[];
      outmac=if m="" then [] else [macro_name m]; source}
   in match Str.bounded_split (Str.regexp_string "=") ds 2 with
     | [] -> u "" ""

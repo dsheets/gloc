@@ -162,6 +162,8 @@ let proj_pptok_expr = function
   | Line t -> proj t
   | List t -> proj t
 
+let start_loc = {file={src=0;input=0};line={src=1;input=1};col=0}
+
 let span_of_list : 'a pptok list -> span = function
   | [] -> raise (ParserError "spanning empty pptok list")
   | (h::_) as ptl -> {a=(proj h).span.a;
@@ -255,8 +257,7 @@ let fuse_pptok ?zloc ?(nl=true) = function
 
 let fuse_pptok_expr = function
   | [] -> raise (ParserError "fusing empty pptok_expr list")
-  | (h::_) as el ->
-    List {(fuse_pptok (List.map proj_pptok_expr el)) with v=el}
+  | el -> List {(fuse_pptok (List.map proj_pptok_expr el)) with v=el}
 
 let empty_pptok_expr expr =
   let span = (proj_pptok_expr expr).span in

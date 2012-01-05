@@ -28,13 +28,9 @@ exception MissingSymbol of unit_addr * string
 exception MissingMacro of unit_addr * string
 exception CircularDependency of unit_addr list
 exception SymbolConflict of string * string * unit_addr * unit_addr
-(* TODO: test *)
-exception VersionConflict of unit_addr * int * unit_addr * int
-exception ExtensionConflict of
-  unit_addr * string * string * unit_addr * string * string
-
-(* Track directives that must come before SL tokens. *)
-let state = ref { version=None; invariant=None; extensions=M.empty }
+(* TODO: msg, test *)
+exception UnknownBehavior of unit_addr * string
+exception UnknownGloVersion of unit_addr * version
 
 (* Prepare the packaged source for concatenation. *)
 let armor (linkmap,fs_ct) opmac s =
@@ -90,9 +86,7 @@ let tooth addr u =
     addr }
 
 let lookup glo_alist (n,u) = (List.assoc n glo_alist).units.(u)
-let tooth_of_addr glo_alist addr =
-  let u = lookup glo_alist addr in
-    tooth addr u
+let tooth_of_addr glo_alist addr = tooth addr (lookup glo_alist addr)
 let has_addr addr_a ({addr=addr_b}) = addr_a = addr_b
 (* Advertize prior units to later units. *)
 let mergeb b = function [] -> b
@@ -169,19 +163,55 @@ let sort required glo_alist =
     (List.rev_map (tooth_of_addr glo_alist) addrs,[])
   in List.rev_map (fun tooth -> tooth.addr) (snd z)
 
+(* Generate the shader preamble. *)
+let preamble glol =
+  (* Precedence for conflicting behaviors *)
+  let b_order = ["require"; "warn"; "enable"; "disable"] in
+  let rec b_max x y = function [] -> x
+    | b::r when b=x -> x
+    | b::r when b=y -> y
+    | _::r -> b_max x y r
+  in
+  let ext_merge addr m (ext,b) =
+    match b,(try Some (M.find ext m) with Not_found -> None) with
+      | b, None -> if List.mem b b_order
+	then M.add ext b m
+	else raise (UnknownBehavior (addr, b))
+      | b, Some pb -> M.add ext (b_max b pb b_order) m
+  in
+  let ext_decl ext b = "#extension "^ext^" : "^b^"\n" in
+  let ext_segment m =
+    (try ext_decl "all" (M.find "all" m) with Not_found -> "")
+    ^(M.fold (fun ext b s -> if ext="all" then s else s^(ext_decl ext b)) m "")
+  in
+  let (version,pragmas,exts) = List.fold_left
+    (fun (version,pragmas,exts) ((name,i),glo) -> let u = glo.units.(i) in
+       (begin match u.vdir,version with
+	  | None,v -> v
+	  | Some uv,None -> Some uv
+	  | Some uv,Some pv -> Some (max uv pv)
+	end,
+	List.fold_left (fun p s -> p^s^"\n") pragmas u.pdir,
+	List.fold_left (ext_merge (name,i)) exts u.edir
+       )
+    ) (None,"",M.empty) glol
+  in match version with
+    | Some v -> "#version "^(string_of_int v)^"\n"^pragmas^(ext_segment exts)
+    | None -> pragmas^(ext_segment exts)
+
 (* Produce a string representing a valid SL program given a list of required
    symbols and a search list. *)
-(* TODO: compact linkmap index space *)
-let link required glo_alist =
-  fst begin List.fold_left
-      begin fun (src,o) (name,u) ->
-	let glo = List.assoc name glo_alist in
-	let sup = Hashtbl.fold
-	  (fun is _ sup -> max sup (int_of_string is))
-	  glo.linkmap 0
-	in
-	let u = glo.units.(u) in
-	  (src^(armor (glo.linkmap, o) u.opmac u.source)^"\n",
-	   o+sup+1)
-      end ("",0) (sort required glo_alist)
-  end
+let link prologue required glo_alist =
+  let glol = List.map (fun (name,u) -> ((name,u),List.assoc name glo_alist))
+    (sort required glo_alist)
+  in fst begin List.fold_left
+	begin fun (src,o) ((name,u),glo) ->
+	  let sup = Hashtbl.fold
+	    (fun is _ sup -> max sup (int_of_string is))
+	    glo.linkmap 0
+	  in
+	  let u = glo.units.(u) in
+	    (src^(armor (glo.linkmap, o) u.opmac u.source)^"\n",
+	     o+sup+1)
+	end ((preamble glol)^prologue,0) glol
+    end

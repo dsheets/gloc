@@ -16,7 +16,9 @@ and meta = {
   build:string option;
 }
 and u = {
-  require: string list;
+  pdir: string list;
+  edir: (string * string) list;
+  vdir: int option;
   insym:string list;
   outsym:string list;
   inmac:string list;
@@ -96,7 +98,9 @@ let json = add_zero_fields [
      | Array l ->
 	 Array (List.map
 		  (add_zero_fields [
-		     "require",Array [],id;
+		     "pdir",Array [],id;
+		     "edir",Object [],id;
+		     "vdir",Null,id;
 		     "insym",Array [],id;
 		     "outsym",Array [],id;
 		     "inmac",Array [],id;
