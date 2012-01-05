@@ -28,7 +28,6 @@ exception MissingSymbol of unit_addr * string
 exception MissingMacro of unit_addr * string
 exception CircularDependency of unit_addr list
 exception SymbolConflict of string * string * unit_addr * unit_addr
-(* TODO: msg, test *)
 exception UnknownBehavior of unit_addr * string
 exception UnknownGloVersion of unit_addr * version
 
@@ -202,8 +201,14 @@ let preamble glol =
 (* Produce a string representing a valid SL program given a list of required
    symbols and a search list. *)
 let link prologue required glo_alist =
-  let glol = List.map (fun (name,u) -> ((name,u),List.assoc name glo_alist))
-    (sort required glo_alist)
+  let support = [|[|[||];[|true|]|]|] in
+  let glol = List.map
+    (fun (name,u) -> let glo = List.assoc name glo_alist in
+     let (maj,min,rev) = glo.glo in
+       if try support.(maj).(min).(rev) with Invalid_argument _ -> false
+       then ((name,u),glo)
+       else raise (UnknownGloVersion ((name,u),glo.glo))
+    ) (sort required glo_alist)
   in fst begin List.fold_left
 	begin fun (src,o) ((name,u),glo) ->
 	  let sup = Hashtbl.fold

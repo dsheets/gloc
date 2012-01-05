@@ -171,6 +171,11 @@ let string_of_error = function
   | Glol.SymbolConflict (ssym,csym,(sfn,sun),(cfn,cun)) ->
       sprintf "%s#u=%d provides '%s' but exposes '%s' which conflicts with %s#u=%d\n"
 	sfn sun ssym csym cfn cun
+  | Glol.UnknownBehavior ((fn,un),b) ->
+      sprintf "%s#u=%d uses unknown extension behavior '%s'.\n" fn un b
+  | Glol.UnknownGloVersion ((fn,un),(maj,min,rev)) ->
+      sprintf "%s#u=%d declares unsupported version %d.%d.%d.\n"
+	fn un maj min rev
   | Sys_error m -> sprintf "System error:\n%s\n" m
   | exn -> raise exn
 
