@@ -1,13 +1,13 @@
 {
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": { "copyright": [ "", 2012, "" ] },
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
     {
-      "require": [ "version 100" ],
+      "vdir": 100,
       "outsym": [ "main" ],
       "source": "#line 3 GLOC_0\nvoid main() { }"
     }
   ],
-  "linkmap": { "0": "<stdin>#u=0" }
+  "linkmap": { "0": "<stdin>#n=0" }
 }

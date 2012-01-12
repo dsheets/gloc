@@ -1,7 +1,7 @@
 {
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": { "copyright": [ "", 2012, "" ] },
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
     {
       "insym": [ "s4" ],
@@ -10,5 +10,5 @@
         "#line 1 GLOC_0\nstruct s { int f; } q = s(1);\n\nstruct s6 { int f; } fun(struct s2 { int f; } a) {\n  struct s3 { int f; } b = s3(3);\n  struct s4 { int f; } c;\n  struct s5 { int f; } d;\n  s2 g = a;\n  return s6(g.f);\n}\n\ns4 el;"
     }
   ],
-  "linkmap": { "0": "<stdin>#u=0" }
+  "linkmap": { "0": "<stdin>#n=0" }
 }

@@ -1,7 +1,7 @@
 {
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": { "copyright": [ "", 2012, "" ] },
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
     {
       "insym": [ "prod", "sum" ],
@@ -11,5 +11,5 @@
         "#line 1 GLOC_0\n#define GP(t) t gp(t a,t b) {/*\\\n*/              return sum(prod(a,b),prod(b,a));/*\\\n*/            }\n\nGP(vec2)"
     }
   ],
-  "linkmap": { "0": "<stdin>#u=0" }
+  "linkmap": { "0": "<stdin>#n=0" }
 }

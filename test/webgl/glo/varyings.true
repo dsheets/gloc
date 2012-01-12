@@ -1,7 +1,7 @@
 {
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": { "copyright": [ "", 2012, "" ] },
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
     {
       "outsym": [ "set_gP", "get_gP", "gP" ],
@@ -9,5 +9,5 @@
         "#line 1 GLOC_0\nvarying vec3 gP;\n\nvec3 get_gP() { return gP; }\nvoid set_gP(vec3 p) { gP = p; }"
     }
   ],
-  "linkmap": { "0": "<stdin>#u=0" }
+  "linkmap": { "0": "<stdin>#n=0" }
 }
