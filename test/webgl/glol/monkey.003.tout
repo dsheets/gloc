@@ -1,12 +1,15 @@
-#line 1 0/* monkey_b.glsl#u=0 */
+// Copyright 2012  <> All rights reserved.
+#line 1 0/* monkey_b.glsl#n=0 */
 void foo() {
 
 }
-#line 1 1/* monkey_a.glsl#u=0 */
+// Copyright 2012  <> All rights reserved.
+#line 1 1/* monkey_a.glsl#n=0 */
 void main() {
   foo();
 }
-#line 1 2/* monkey_c.glsl#u=0 */
+// Copyright 2012  <> All rights reserved.
+#line 1 2/* monkey_c.glsl#n=0 */
 void bar() {
 
 }

@@ -1,11 +1,14 @@
-#line 1 0/* conflict_a.glsl#u=0 */
+// Copyright 2012  <> All rights reserved.
+#line 1 0/* conflict_a.glsl#n=0 */
 #define q 1
 void f() {}
 #undef q
-#line 1 1/* conflict_d.glsl#u=0 */
+// Copyright 2012  <> All rights reserved.
+#line 1 1/* conflict_d.glsl#n=0 */
 int q() { return 2; }
 void g() { }
-#line 1 2/* conflict.glsl#u=0 */
+// Copyright 2012  <> All rights reserved.
+#line 1 2/* conflict.glsl#n=0 */
 void main() {
      f();
      g();

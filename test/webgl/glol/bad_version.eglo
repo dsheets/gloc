@@ -1,9 +1,9 @@
 {
-  "glo": [ 0, 1, 1 ],
+  "glo": [ 0, 2, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": { "copyright": [ "", 2012, "" ] },
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
     { "outsym": [ "main" ], "source": "#line 1 GLOC_0\nvoid main(){}" }
   ],
-  "linkmap": { "0": "bad_version.eglo#u=0" }
+  "linkmap": { "0": "bad_version.eglo#n=0" }
 }

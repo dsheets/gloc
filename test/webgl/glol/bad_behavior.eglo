@@ -1,7 +1,7 @@
 {
   "glo": [ 0, 1, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": { "copyright": [ "", 2012, "" ] },
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
     {
       "edir": { "all": "fizz" },
@@ -9,5 +9,5 @@
       "source": "#line 2 GLOC_0\nvoid main(){}"
     }
   ],
-  "linkmap": { "0": "bad_behavior.eglo#u=0" }
+  "linkmap": { "0": "bad_behavior.eglo#n=0" }
 }

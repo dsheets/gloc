@@ -1,10 +1,12 @@
 #extension all : warn
 #extension GL_OES_standard_derivatives : require
-#line 4 0/* extension_b.glsl#u=0 */
+// Copyright 2012  <> All rights reserved.
+#line 4 0/* extension_b.glsl#n=0 */
 varying highp float v;
 
 void foo() { }
-#line 4 1/* extension_a.glsl#u=0 */
+// Copyright 2012  <> All rights reserved.
+#line 4 1/* extension_a.glsl#n=0 */
 varying highp float v;
 
 void main() {

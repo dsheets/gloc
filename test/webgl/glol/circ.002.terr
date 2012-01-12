@@ -1,5 +1,5 @@
 Circular dependency linking:
-circ_b.glsl#u=0
-circ_a.glsl#u=0
+circ_b.glsl#n=0
+circ_a.glsl#n=0
 
 Fatal: unrecoverable link error (9)
