@@ -1,5 +1,34 @@
 function GLOL() {
+  // Let's link some glo!
+
+  // There are a number of exceptions that the algorithm can emit
+  this.MissingMacro = function(addr,macro) {
+    this.addr = addr; this.macro = macro;
+  };
+  this.MissingSymbol = function(addr,sym) {
+    this.addr = addr; this.symbol = sym;
+  };
+  this.NotFound = function(key) {
+    this.key = key;
+  };
+  this.CircularDependency = function(addrl) {
+    this.addrs = addrl;
+  };
+  this.SymbolConflict = function(n,sym,addr,caddr) {
+    this.sym_a = n; this.sym_b = sym;
+    this.addr_a = addr; this.addr_b = caddr;
+  };
+  this.UnknownBehavior = function(addr, b) {
+    this.addr = addr; this.behavior = b;
+  };
+  this.UnknownGloVersion = function(path,version) {
+    this.path = path; this.version = version;
+  };
+
+  // Prepare the packaged source for concatenation.
   function armor(meta,linkmap,fs_ct,opmac,s) {
+    // Replace special symbols in line directives to satisfy linkmap
+    // (required regexp (greetz jwz) instead of macros due to ANGLE bug 183
     var intpatt = /GLOC_([0-9]+)/g;
     function f(s,n) {
       var anno = "";
@@ -34,6 +63,7 @@ function GLOL() {
 	      +"All rights reserved.\n"+license+authors+library+version+build);
     }
 
+    // Undefine local open macros so they do not leak
     var undefs = "";
     for (var i = 0; i < opmac.length; i++) {
       undefs += "\n#undef "+opmac[i];
@@ -41,26 +71,34 @@ function GLOL() {
     return head+s+undefs;
   }
 
+  // Search a glo for a unit satisfying the supplied predicate p.
+  function search(p, glo) {
+    for (var u = 0; u < glo.units.length; u++) {
+      var unit = glo.units[u];
+      if (p(unit)) return u;
+    }
+    return null;
+  }
+
+  // Linearly search for an exported macro.
   function satisfy_mac(addr, macro, glo_alist) {
     for (var i = 0; i < glo_alist.length; i++) {
       var name = glo_alist[i][0], glo = glo_alist[i][1];
-      for (var u = 0; u < glo.units.length; u++) {
-	var unit = glo.units[u];
-	if (unit.outmac.indexOf(macro) != -1) return [name, u];
-      }
+      var u = search(function (unit) { return unit.outmac.indexOf(macro) != -1; },
+		     glo);
+      if (u != null) return [name, u];
     }
     throw (new MissingMacro(addr,macro));
   }
 
+  // Linearly search for an export symbol.
   function satisfy_sym(addr, sym, glo_alist) {
     for (var i = 0; i < glo_alist.length; i++) {
       var name = glo_alist[i][0], glo = glo_alist[i][1];
-      for (var u = 0; u < glo.units.length; u++) {
-	var unit = glo.units[u];
-	if (unit.outmac.indexOf(sym) != -1 || unit.outsym.indexOf(sym) != -1) {
-	  return [name, u];
-	}
-      }
+      var u = search (function(unit) { return (unit.outmac.indexOf(sym) != -1
+					       || unit.outsym.indexOf(sym) != -1); },
+		      glo);
+      if (u != null) return [name, u];
     }
     throw (new MissingSymbol(addr, sym));
   }
@@ -71,10 +109,12 @@ function GLOL() {
     return m;
   }
 
+  // Construct the constraint data structure from a glo unit.
   function tooth(addr, u) {
     return {
-      "rsym":u.insym, "rmac":u.inmac,
-      "tsym":{}, "tmac":{},
+      "rsym":u.insym, "rmac":u.inmac, // Required: to be satisfied
+      "tsym":{}, "tmac":{}, // Top: locally satisfied
+      // Bottom: cumulatively satisfies
       "bsym":map_of_list(addr,u.outsym), "bmac":map_of_list(addr,u.outmac),
       "addr":addr
     };
@@ -98,6 +138,7 @@ function GLOL() {
     return tooth.addr == addr;
   }
 
+  // Advertize prior units to later units.
   function mergeb(b,top) {
     if (top.length == 0) return b;
     else {
@@ -108,24 +149,28 @@ function GLOL() {
     }
   }
 
+  // Satisfy a macro dependency with an already included dependency.
   function connect_mac(b,n,addr) {
     b.rmac=b.rmac.filter(function(m){ return m!=n; });
     b.tmac[n] = addr;
     return b;
   }
 
+  // Satisfy a symbol dependency with an already included dependency.
   function connect_sym(b,n,addr) {
     b.rsym=b.rsym.filter(function(m){ return m!=n; });
     b.tsym[n] = addr;
     return b;
   }
 
+  // Search for an already included macro.
   function provided_mac(n,top) {
     if (top.length == 0) return null;
     else if (n in top[0].bmac) return top[0].bmac[n];
     else return null;
   }
 
+  // Search for an already included symbol.
   function provided_sym(n,top) {
     if (top.length == 0) return null;
     else if (n in top[0].bmac) return top[0].bmac[n];
@@ -133,6 +178,7 @@ function GLOL() {
     else return null;
   }
 
+  // Given a tooth and a prefix tooth list, find conflicts.
   function conflicted(tooth,top) {
     if (top.length == 0) return null;
     else {
@@ -148,13 +194,7 @@ function GLOL() {
     return null;
   }
 
-  function check_circdep(addr,zipper) {
-    if (zipper[0].some(function (tooth){ return has_addr(addr,tooth); })) {
-      throw (new CircularDependency(
-	       zipper[0].map(function (t) { return t.addr; })));
-    }
-  }
-
+  // Check for symbol conflicts
   function check_conflicts(n,tooth,zipper) {
     var conflict = conflicted(tooth,zipper[1]);
     if (conflict != null) {
@@ -162,9 +202,20 @@ function GLOL() {
     }
   }
 
+  // Check for circular dependency
+  function check_circdep(addr,zipper) {
+    if (zipper[0].some(function (tooth){ return has_addr(addr,tooth); })) {
+      throw (new CircularDependency(
+	       zipper[0].map(function (t) { return t.addr; })));
+    }
+  }
+
+  // Build a list of units with internal requirements satisfied.
   // TODO: labelled loop + continue to avoid tail calls in TCO-less JS
   function satisfy_zipper(glo_alist,zipper) {
+    // At the bottom of the zipper, we must be done.
     if (zipper[0].length == 0) return zipper;
+    // Subsequent units require a macro.
     else if (zipper[0][0].rmac.length != 0) {
       var b = zipper[0][0], n = b.rmac[0];
       var addr = provided_mac(n,zipper[1]);
@@ -179,7 +230,8 @@ function GLOL() {
       connect_mac(b,n,addr);
       zipper[0].unshift(tooth);
       return satisfy_zipper(glo_alist,zipper);
-    } else if (zipper[0][0].rsym.length != 0) {
+    } else // Subsequent units require a symbol.
+    if (zipper[0][0].rsym.length != 0) {
       var b = zipper[0][0], n = b.rsym[0];
       var addr = provided_sym(n,zipper[1]);
       if (addr != null) {
@@ -193,13 +245,15 @@ function GLOL() {
       connect_sym(b,n,addr);
       zipper[0].unshift(tooth);
       return satisfy_zipper(glo_alist,zipper);
-    } else {
+    } else { // Without further needs from below, we are ready to descend.
       var b = zipper[0].shift();
       zipper[1].unshift(mergeb(b,zipper[1]));
       return satisfy_zipper(glo_alist,zipper);
     }
   }
 
+  // Generate a list of unit addresses from a list of required symbols and
+  // a search list
   function sort(reqsym,glo_alist) {
     var addrs = reqsym.reduce(function (al,sym) {
       var addr = satisfy_sym(["<-u "+sym+">",0],sym,glo_alist);
@@ -218,7 +272,9 @@ function GLOL() {
 			    },[]);
   }
 
+  // Generate the shader preamble.
   function preamble(glol) {
+    // Precedence for conflicting behaviors
     var b_order = ["require","warn","enable","disable"];
     function b_max(x,y) {
       return b_order[Math.min(b_order.indexOf(x),b_order.indexOf(y))];
@@ -273,6 +329,7 @@ function GLOL() {
     return l;
   }
 
+  // Zeros may be omitted for transport; add them back.
   function add_zero(o,f,z) { if (!(f in o)) { o[f] = z; } return o; }
 
   function add_zeros(alist) {
@@ -290,6 +347,8 @@ function GLOL() {
     });
   }
 
+  // Produce a string representing a valid SL program given a list of required
+  // symbols and a search list.
   this.link = function(prologue,reqsym,glom) {
     var glo_alist = add_zeros(filter(flatten("",glom)));
     var glol = (sort(reqsym,glo_alist)).map(function (addr) {
@@ -300,8 +359,9 @@ function GLOL() {
 	  pname=acc[1][0], o=acc[1][1];
       for (var k in glo.linkmap) { sup = Math.max(sup,parseInt(k)); }
       var u = glo.units[agp[0][1]];
-      return [(src+armor(name==pname?null:glo.meta,
-			glo.linkmap,o,u.opmac,u.source)),
+      var unit_begin = (name==pname||pname=="")?"":"// End: Copyright\n";
+      return [(src+unit_begin+armor(name==pname?null:glo.meta,
+				    glo.linkmap,o,u.opmac,u.source)+"\n"),
 	      [name,o+sup+1]];
     }, [preamble(glol)+prologue,["",0]])[0];
   };

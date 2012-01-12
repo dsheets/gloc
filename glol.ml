@@ -127,21 +127,21 @@ let conflicted a = function [] -> None
 	((M.bindings t.bsym)@(M.bindings t.bmac))
       with [] -> None | b::_ -> Some b end
 
-(* Check for circular dependency *)
-let check_circdep addr (b,t) =
-  if List.exists (has_addr addr) b
-  then raise (CircularDependency (List.map (fun {addr} -> addr) b))
-
 (* Check for symbol conflicts *)
 let check_conflicts n tooth (b,t) = match conflicted tooth t with
   | Some (sym, caddr) -> raise (SymbolConflict (n,sym,tooth.addr,caddr))
   | None -> ()
 
+(* Check for circular dependency *)
+let check_circdep addr (b,t) =
+  if List.exists (has_addr addr) b
+  then raise (CircularDependency (List.map (fun {addr} -> addr) b))
+
 (* Build a list of units with internal requirements satisfied. *)
 let rec satisfy_zipper glo_alist = function
     (* At the bottom of the zipper, we must be done. *)
   | ([],t) -> ([],t)
-    (* Without further requirements from below, we must be ready to descend. *)
+    (* Without further needs from below, we must be ready to descend. *)
   | (({rmac=[]; rsym=[]} as b)::r,t) ->
       satisfy_zipper glo_alist (r,(mergeb b t)::t)
     (* Subsequent units require a macro. *)
@@ -230,7 +230,9 @@ let link prologue required glo_alist =
 	  in
 	  let meta = if name=pname then None else glo.meta in
 	  let u = glo.units.(u) in
-	    (src^(armor meta (glo.linkmap, o) u.opmac u.source)^"\n",
-	     (name,o+sup+1))
+	  let unit_begin = if name=pname || pname=""
+	  then "" else "// End: Copyright\n"
+	  in (src^unit_begin^(armor meta (glo.linkmap, o) u.opmac u.source)^"\n",
+	      (name,o+sup+1))
 	end ((preamble glol)^prologue,("",0)) glol
     end
