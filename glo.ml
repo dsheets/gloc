@@ -135,7 +135,7 @@ let compile ?meta target fn origexpr ~inmac ~opmac tokslst =
   let body_unit, file_nums = create_body origexpr envs in
   let linkmap = Hashtbl.create (List.length file_nums) in
     List.iter
-      (fun n -> Hashtbl.add linkmap (string_of_int n) (sprintf "%s#u=%d" fn n))
+      (fun n -> Hashtbl.add linkmap (string_of_int n) (sprintf "%s#n=%d" fn n))
       file_nums;
     {glo=glo_version; target; meta;
      units=[|{body_unit with inmac=inmac@body_unit.inmac;

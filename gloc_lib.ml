@@ -81,7 +81,7 @@ let default_lang = { Lang.dialect=Lang.WebGL;
 		     Lang.bond=Lang.Warn }
 
 let default_meta =
-  { copyright=("",((Unix.gmtime (Unix.time())).Unix.tm_year + 1900),"");
+  { copyright=((Unix.gmtime (Unix.time())).Unix.tm_year + 1900,("",""));
     author=[]; license=None; library=None; version=None; build=None }
 
 let exec_state = { stage=ref Link;
@@ -196,7 +196,10 @@ let link required glo_alist =
   try Glol.link required glo_alist
   with e -> raise (CompilerError (Linker,[e]))
 
-let file_extp ext fn = (Str.last_chars fn ((String.length ext)+1))="."^ext
+let file_extp ext fn =
+  if (String.length fn)<((String.length ext)+1)
+  then false
+  else (Str.last_chars fn ((String.length ext)+1))="."^ext
 let file_ext ext fn = (* TODO: paths with dots but no file extension *)
   let dotre = Str.regexp_string "." in
   let parts = List.rev (Str.split dotre fn) in

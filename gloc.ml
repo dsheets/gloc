@@ -31,6 +31,29 @@ let set_stage stage = fun () ->
 					(arg_of_stage !(exec_state.stage),
 					 arg_of_stage stage)]))
 
+let string_of_inchan inchan =
+  let s = String.create 1024 in
+  let b = Buffer.create 1024 in
+  let rec consume pos =
+    let k = input inchan s 0 1024 in
+      if k=0 then Buffer.contents b
+      else begin Buffer.add_substring b s 0 k; consume (pos+k) end
+  in consume 0
+
+let out_of_filename fn fdf =
+  let fd = if fn="-" then stdout else open_out fn in
+    try (let r = fdf fd in (close_out fd; r)) with e -> (close_out fd; raise e)
+
+let in_of_filename fn fdf =
+  let fd = if fn="-" then stdin else open_in fn in
+    try (let r = fdf fd in (close_in fd; r)) with e -> (close_in fd; raise e)
+
+let meta_of_path p = in_of_filename p
+  (fun fd -> match (Glo_lib.glo_of_json
+		      (Json_io.json_of_string
+			 (string_of_inchan fd))).Glo_lib.meta
+   with None -> default_meta | Some meta -> meta)
+
 (* TODO: add per warning check args *)
 (* TODO: add partial preprocess (only ambiguous conds with dep macros) *)
 (* TODO: add partial preprocess (maximal preprocess without semantic change) *)
@@ -60,6 +83,8 @@ let arguments =
 		   fun s -> set_outlang (Language.with_dialect s) ()),
    " target language";
    "-v", A.Set exec_state.verbose, "verbose compilation or version information";
+   "--meta", A.String (fun m -> exec_state.metadata := (meta_of_path m)),
+   "the prototypical glo file to use for metadata";
    (* TODO: do *)
    (*"--edit-meta", A.Unit (fun () -> ()), "interactive glo meta segment mutator";*)
    (* TODO: do *)
@@ -162,20 +187,20 @@ let string_of_error = function
       sprintf "Source '%s' is a glo with multiple source units.\n" fn
   | Glol.CircularDependency ual -> List.fold_left
       (fun s (fn,un) ->
-	 sprintf "%s%s#u=%d\n" s fn un
+	 sprintf "%s%s#n=%d\n" s fn un
       ) "Circular dependency linking:\n" ual
   | Glol.MissingMacro ((fn,un),mn) ->
-      sprintf "%s#u=%d requires macro '%s' which cannot be found.\n" fn un mn
+      sprintf "%s#n=%d requires macro '%s' which cannot be found.\n" fn un mn
   | Glol.MissingSymbol ((fn,un),mn) ->
-      sprintf "%s#u=%d requires symbol '%s' which cannot be found.\n" fn un mn
+      sprintf "%s#n=%d requires symbol '%s' which cannot be found.\n" fn un mn
   | Glol.SymbolConflict (ssym,csym,(sfn,sun),(cfn,cun)) ->
-      sprintf "%s#u=%d provides '%s' but exposes '%s' which conflicts with %s#u=%d\n"
+      sprintf "%s#n=%d provides '%s' but exposes '%s' which conflicts with %s#n=%d\n"
 	sfn sun ssym csym cfn cun
   | Glol.UnknownBehavior ((fn,un),b) ->
-      sprintf "%s#u=%d uses unknown extension behavior '%s'.\n" fn un b
-  | Glol.UnknownGloVersion ((fn,un),(maj,min,rev)) ->
-      sprintf "%s#u=%d declares unsupported version %d.%d.%d.\n"
-	fn un maj min rev
+      sprintf "%s#n=%d uses unknown extension behavior '%s'.\n" fn un b
+  | Glol.UnknownGloVersion (fn,(maj,min,rev)) ->
+      sprintf "%s declares unsupported version %d.%d.%d.\n"
+	fn maj min rev
   | Sys_error m -> sprintf "System error:\n%s\n" m
   | exn -> raise exn
 
@@ -189,19 +214,6 @@ let compiler_error k errs =
       (string_of_component_error k) code;
   exit code
 
-let string_of_inchan inchan =
-  let s = String.create 1024 in
-  let b = Buffer.create 1024 in
-  let rec consume pos =
-    let k = input inchan s 0 1024 in
-      if k=0 then Buffer.contents b
-      else begin Buffer.add_substring b s 0 k; consume (pos+k) end
-  in consume 0
-
-let chan_of_filename fn fdf =
-  let fd = if fn="-" then stdout else open_out fn in
-    try (fdf fd; close_out fd) with e -> (close_out fd; raise e)
-
 let rec write_glo fn fd = function
   | Source s -> write_glo fn fd (make_glo fn s)
   | Glo glo -> output_string fd
@@ -214,12 +226,12 @@ let rec source_of_fmt fn = function
   | Source s -> begin try source_of_fmt fn (glo_of_string s)
     with Json_type.Json_error _ -> s end
   | Glo glo -> if (Array.length glo.Glo_lib.units)=1
-    then Glol.armor (glo.Glo_lib.linkmap,0) []
+    then Glol.armor glo.Glo_lib.meta (glo.Glo_lib.linkmap,0) []
       glo.Glo_lib.units.(0).Glo_lib.source
     else raise (CompilerError (PPDiverge, [MultiUnitGloPPOnly fn]))
   | Glom glom -> let glo = snd (List.hd glom) in if ((List.length glom)=1
 	&& (Array.length glo.Glo_lib.units)=1)
-    then Glol.armor (glo.Glo_lib.linkmap,0) []
+    then Glol.armor glo.Glo_lib.meta (glo.Glo_lib.linkmap,0) []
       glo.Glo_lib.units.(0).Glo_lib.source
     else raise (CompilerError (PPDiverge, [GlomPPOnly fn]))
 
@@ -269,7 +281,7 @@ in try begin match (!(exec_state.output),
     then List.iter
       (function (fn,Define d) -> ()
 	 | (fn,Stream s) -> if not (is_glo_file fn)
-	   then chan_of_filename (glo_file_name fn)
+	   then out_of_filename (glo_file_name fn)
 	     (fun fd -> write_glo fn fd s)) inputs
     else write_glo (fst (List.hd inputs)) stdout
       (fmt_of_input (snd (List.hd inputs)))
@@ -278,14 +290,14 @@ in try begin match (!(exec_state.output),
       then List.iter
 	(function (fn,Define d) -> () (* TODO: use -D in PP only as well *)
 	   | (fn,Stream s) -> if not (is_glopp_file fn)
-	     then chan_of_filename (glopp_file_name fn)
+	     then out_of_filename (glopp_file_name fn)
 	       (fun fd -> write_glopp fn fd s)) inputs
       else write_glopp (fst (List.hd inputs)) stdout
 	(fmt_of_input (snd (List.hd inputs)))
   | Some fn, Link -> let glom = make_glom inputs in
     let src = try link "" req_sym glom
     with e -> raise (CompilerError (Linker,[e])) in
-      chan_of_filename fn
+      out_of_filename fn
 	(fun fd ->
 	   output_string fd
 	     ((if !(exec_state.accuracy)=Lang.Preprocess
@@ -293,14 +305,14 @@ in try begin match (!(exec_state.output),
 		 (check_pp_divergence (preprocess (parse src)))
 	       else src)^"\n"))
   | Some fn, Compile -> (* TODO: consolidate glo *)
-      chan_of_filename fn
+      out_of_filename fn
 	(fun fd ->
 	   if stream_inputp !(exec_state.inputs)
 	   then let glom = make_glom inputs in
 	     write_glo fn fd (Glom glom)
 	   else write_glo fn fd (fmt_of_input (snd (List.hd inputs))))
   | Some fn, Preprocess | Some fn, ParsePP ->
-      chan_of_filename fn
+      out_of_filename fn
 	(fun fd ->
 	   if (List.length (List.filter streamp !(exec_state.inputs)))=1
 	   then List.iter

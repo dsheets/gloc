@@ -18,21 +18,15 @@ type tooth = { rsym : string list;   rmac : string list;
     (* Bottom * Top *)
 type zipper = tooth list * tooth list
 
-(* Link state *)
-type state = { version : (unit_addr * int) option;
-	       invariant : (unit_addr * string) option;
-	       extensions : (unit_addr * string) M.t
-	     }
-
 exception MissingSymbol of unit_addr * string
 exception MissingMacro of unit_addr * string
 exception CircularDependency of unit_addr list
 exception SymbolConflict of string * string * unit_addr * unit_addr
 exception UnknownBehavior of unit_addr * string
-exception UnknownGloVersion of unit_addr * version
+exception UnknownGloVersion of string * version
 
-(* Prepare the packaged source for concatenation. *)
-let armor (linkmap,fs_ct) opmac s =
+(* Prepare the packaged source for string concatenation. *)
+let armor meta (linkmap,fs_ct) opmac s =
   (* Replace special symbols in line directives to satisfy linkmap *)
   (*required regexp (greetz jwz) instead of macros due to ANGLE bug 183*)
   let intpatt = Str.regexp "GLOC_\\([0-9]+\\)" in
@@ -43,33 +37,53 @@ let armor (linkmap,fs_ct) opmac s =
     in (string_of_int (fn + fs_ct))^anno
   in
   let s = Str.global_substitute intpatt offset s in
-    (* Undefine open macros so they do not bleed *)
+  let head = match meta with None -> "" | Some meta ->
+    let field name (entity,href) = "// "^name^": "^entity^" <"^href^">\n" in
+    let authors = List.fold_left
+      (fun s link -> s^(field "Author" link))
+      "" meta.author in
+    let license = match meta.license with None -> ""
+      | Some link -> field "License" link in
+    let library = match meta.library with None -> ""
+      | Some link -> field "Library" link in
+    let version = match meta.version with None -> ""
+      | Some (maj,min,rev) ->
+	  "// Version: "^(string_of_int maj)^"."^(string_of_int min)^"."
+	  ^(string_of_int rev)^"\n" in
+    let build = match meta.build with None -> ""
+      | Some buildstring -> "// Build: "^buildstring^"\n" in
+    let (year,(holder,url)) = meta.copyright in
+      "// Copyright "^(string_of_int year)^" "^holder^" <"^url^"> "
+      ^"All rights reserved.\n"^license^authors^library^version^build
+  in let s = head^s in
+    (* Undefine local open macros so they do not leak *)
     List.fold_left (fun s mac -> s^"\n#undef "^mac) s opmac
 
+(* Search a glo for a unit satisfying the supplied predicate p. *)
+let search p glo =
+  let rec loop = function
+    | [] -> None
+    | (i,u)::r -> if p u then Some i else loop r
+  in loop (Array.to_list (Array.mapi (fun i u -> (i,u)) glo.units))
+
 (* Linearly search for an exported macro. *)
-let rec satisfy_macro addr macro = function
-  | (name,glo)::rest -> begin match Array.fold_left
-      (fun uo (i,u) -> match uo with Some u -> Some u
-	 | None -> if List.mem macro u.outmac
-	   then Some i else None
-      ) None (Array.mapi (fun i u -> (i,u)) glo.units) with
-	| Some u -> (name,u)
-	| None -> satisfy_macro addr macro rest
-    end
+let rec satisfy_mac addr macro = function
+  | (name,glo)::rest ->
+      begin match search (fun u -> List.mem macro u.outmac) glo with
+	| Some i -> (name,i)
+	| None -> satisfy_mac addr macro rest
+      end
   | [] -> raise (MissingMacro (addr, macro))
 
-(* Linearly search for an exported symbol.
-   Macros take precedence to SL symbols in every glo. *)
+(* Linearly search for an exported symbol or macro. *)
 let rec satisfy_sym addr sym = function
-  | (name,glo)::rest -> begin match Array.fold_left
-      (fun uo (i,u) -> match uo with Some u -> Some u
-	 | None -> if List.mem sym u.outmac
-	   then Some i else if List.mem sym u.outsym
-	   then Some i else None
-      ) None (Array.mapi (fun i u -> (i,u)) glo.units) with
-	| Some u -> (name,u)
+  | (name,glo)::rest ->
+      begin match search
+	(fun u -> (List.mem sym u.outmac) || (List.mem sym u.outsym)) glo
+      with
+	| Some i -> (name,i)
 	| None -> satisfy_sym addr sym rest
-    end
+      end
   | [] -> raise (MissingSymbol (addr, sym))
 
 let map_of_list v = List.fold_left (fun m n -> M.add n v m) M.empty
@@ -113,6 +127,16 @@ let conflicted a = function [] -> None
 	((M.bindings t.bsym)@(M.bindings t.bmac))
       with [] -> None | b::_ -> Some b end
 
+(* Check for circular dependency *)
+let check_circdep addr (b,t) =
+  if List.exists (has_addr addr) b
+  then raise (CircularDependency (List.map (fun {addr} -> addr) b))
+
+(* Check for symbol conflicts *)
+let check_conflicts n tooth (b,t) = match conflicted tooth t with
+  | Some (sym, caddr) -> raise (SymbolConflict (n,sym,tooth.addr,caddr))
+  | None -> ()
+
 (* Build a list of units with internal requirements satisfied. *)
 let rec satisfy_zipper glo_alist = function
     (* At the bottom of the zipper, we must be done. *)
@@ -124,38 +148,28 @@ let rec satisfy_zipper glo_alist = function
   | (({rmac=n::_} as b)::r,t) ->
       begin match provided_mac n t with
 	| Some addr -> satisfy_zipper glo_alist ((connect_mac b n addr)::r,t)
-	| None -> let addr = satisfy_macro b.addr n glo_alist in
-	    if List.exists (has_addr addr) (b::r)
-	    then raise (CircularDependency
-			  (List.map (fun {addr} -> addr) (b::r)))
-	    else let tooth = tooth_of_addr glo_alist addr in
-	      begin match conflicted tooth t with
-		| Some (sym, caddr) -> raise (SymbolConflict (n,sym,addr,caddr))
-		| None -> satisfy_zipper glo_alist
-		    (tooth::(connect_mac b n addr)::r,t)
-	      end
+	| None -> let addr = satisfy_mac b.addr n glo_alist in
+	    check_circdep addr (b::r,t);
+	    let tooth = tooth_of_addr glo_alist addr in
+	      check_conflicts n tooth (b::r,t);
+	      satisfy_zipper glo_alist(tooth::(connect_mac b n addr)::r,t)
       end
     (* Subsequent units require a symbol. *)
   | (({rmac=[]; rsym=n::_} as b)::r,t) ->
       begin match provided_sym n t with
 	| Some addr -> satisfy_zipper glo_alist ((connect_sym b n addr)::r,t)
 	| None -> let addr = satisfy_sym b.addr n glo_alist in
-	    if List.exists (has_addr addr) (b::r)
-	    then raise (CircularDependency
-			  (List.map (fun {addr} -> addr) (b::r)))
-	    else let tooth = tooth_of_addr glo_alist addr in
-	      begin match conflicted tooth t with
-		| Some (sym, caddr) -> raise (SymbolConflict (n,sym,addr,caddr))
-		| None -> satisfy_zipper glo_alist
-		    (tooth::(connect_sym b n addr)::r,t)
-	      end
+	    check_circdep addr (b::r,t);
+	    let tooth = tooth_of_addr glo_alist addr in
+	      check_conflicts n tooth (b::r,t);
+	      satisfy_zipper glo_alist (tooth::(connect_sym b n addr)::r,t)
       end
 
 (* Generate a list of unit addresses from a list of required symbols and
    a search list. *)
 let sort required glo_alist =
   let addrs = List.fold_left
-    (fun al sym -> let addr = satisfy_sym ("<-u>",0) sym glo_alist in
+    (fun al sym -> let addr = satisfy_sym ("<-u "^sym^">",0) sym glo_alist in
        if List.mem addr al then al else addr::al)
     [] required in
   let z = satisfy_zipper glo_alist
@@ -172,11 +186,11 @@ let preamble glol =
     | _::r -> b_max x y r
   in
   let ext_merge addr m (ext,b) =
-    match b,(try Some (M.find ext m) with Not_found -> None) with
-      | b, None -> if List.mem b b_order
+    match (try Some (M.find ext m) with Not_found -> None) with
+      | None -> if List.mem b b_order
 	then M.add ext b m
 	else raise (UnknownBehavior (addr, b))
-      | b, Some pb -> M.add ext (b_max b pb b_order) m
+      | Some pb -> M.add ext (b_max b pb b_order) m
   in
   let ext_decl ext b = "#extension "^ext^" : "^b^"\n" in
   let ext_segment m =
@@ -194,29 +208,29 @@ let preamble glol =
 	List.fold_left (ext_merge (name,i)) exts u.edir
        )
     ) (None,"",M.empty) glol
-  in match version with
-    | Some v -> "#version "^(string_of_int v)^"\n"^pragmas^(ext_segment exts)
-    | None -> pragmas^(ext_segment exts)
+  in (match version with Some v -> "#version "^(string_of_int v)^"\n"
+	| None -> "")^pragmas^(ext_segment exts)
 
 (* Produce a string representing a valid SL program given a list of required
    symbols and a search list. *)
 let link prologue required glo_alist =
-  let support = [|[|[||];[|true|]|]|] in
+  let support = [|[|false;true|]|] in
+  let () = List.iter
+    (fun (name,glo) -> let (maj,min,_) = glo.glo in
+       if try not support.(maj).(min) with Invalid_argument _ -> true
+       then raise (UnknownGloVersion (name,glo.glo))) glo_alist in
   let glol = List.map
-    (fun (name,u) -> let glo = List.assoc name glo_alist in
-     let (maj,min,rev) = glo.glo in
-       if try support.(maj).(min).(rev) with Invalid_argument _ -> false
-       then ((name,u),glo)
-       else raise (UnknownGloVersion ((name,u),glo.glo))
-    ) (sort required glo_alist)
+    (fun (name,u) -> ((name,u),List.assoc name glo_alist))
+    (sort required glo_alist)
   in fst begin List.fold_left
-	begin fun (src,o) ((name,u),glo) ->
+	begin fun (src,(pname,o)) ((name,u),glo) ->
 	  let sup = Hashtbl.fold
 	    (fun is _ sup -> max sup (int_of_string is))
 	    glo.linkmap 0
 	  in
+	  let meta = if name=pname then None else glo.meta in
 	  let u = glo.units.(u) in
-	    (src^(armor (glo.linkmap, o) u.opmac u.source)^"\n",
-	     o+sup+1)
-	end ((preamble glol)^prologue,0) glol
+	    (src^(armor meta (glo.linkmap, o) u.opmac u.source)^"\n",
+	     (name,o+sup+1))
+	end ((preamble glol)^prologue,("",0)) glol
     end

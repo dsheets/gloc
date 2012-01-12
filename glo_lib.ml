@@ -8,10 +8,10 @@ type glo = {
   linkmap:(string,string) Hashtbl.t
 }
 and meta = {
-  copyright:string * year * url;
-  author:(string * url) list;
-  license:(string * url) option;
-  library:(string * url) option;
+  copyright:year * href;
+  author:href list;
+  license:href option;
+  library:href option;
   version:version option;
   build:string option;
 }
@@ -27,6 +27,7 @@ and u = {
   source:string;
 }
 and url = string
+and href = string * url
 and year = int
 and version = int * int * int
 and glom = (string * glo) list
@@ -76,7 +77,19 @@ let json_of_glo glo =
        json
 
 let json_of_glom glom =
-  Array (List.map (fun (n,glo) -> Array [String n;json_of_glo glo]) glom)
+  let rec group prefix prev = function
+    | ((_::[],_)::_) as glom -> (glom, List.rev prev)
+    | (x::xs,glo)::r when x=prefix -> group prefix ((xs,glo)::prev) r
+    | glom -> (glom,List.rev prev)
+  in
+  let rec nest prev = function
+    | [] -> Array (List.rev prev)
+    | (([],glo)::r) -> nest ((Array [String ""; json_of_glo glo])::prev) r
+    | ((x::[],glo)::r) -> nest ((Array [String x; json_of_glo glo])::prev) r
+    | ((x::_,_)::_) as r -> let (rest,g) = group x [] r in
+	nest ((Array [String x; nest [] g])::prev) rest
+  in let split s = Str.split (Str.regexp_string "/") s in
+    nest [] (List.map (fun (n,glo) -> (split n, glo)) glom)
 
 let string_of_glo ?(compact=true) glo =
   Json_io.string_of_json ~compact (json_of_glo glo)
@@ -87,7 +100,7 @@ let glo_of_json json = let id x = x in
 let json = add_zero_fields [
   "meta",Null,
   (add_zero_fields [
-     "author",Object [],id;
+     "author",Array [],id;
      "license",Null,id;
      "library",Null,id;
      "version",Null,id;
@@ -110,16 +123,22 @@ let json = add_zero_fields [
      | x -> x
   );
   "linkmap",Object [],id;
-] json in try glo_of_json json
-  with e -> (print_endline (Json_io.string_of_json json);
+] json in (*try*) glo_of_json json
+(*  with e -> (print_endline (Json_io.string_of_json json);
 	     print_endline (Printexc.to_string e);
 	     Printexc.print_backtrace stdout;
 	     exit 127)
-
-let glom_of_json = function
-  | Array jl -> List.map
-      (function
-	 | Array [String n; gloj] -> (n, glo_of_json gloj)
-	 | _ -> raise (Json_error "glom array elements must be string * glo")
-      ) jl
-  | _ -> raise (Json_error "glom must be array")
+*)
+let glom_of_json json =
+  let rec flat prefix = function
+    | Array jl -> List.fold_left
+	(fun p -> function
+	   | Array [String n; Object ol] ->
+	       (prefix^n, glo_of_json (Object ol))::p
+	   | Array [String n; Array al] ->
+	       (flat (prefix^n^"/") (Array al))@p
+	   | _ ->
+	       raise (Json_error "glom array elements must be string * (glo|glom)")
+	) [] jl
+    | _ -> raise (Json_error "glom must be array")
+  in List.rev (flat "" json)
