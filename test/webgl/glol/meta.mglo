@@ -1,0 +1,11 @@
+{
+  "glo": [ 0, 1, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": { "copyright": [ 2012, ["Ashima Arts", "http://ashimaarts.com/"] ],
+            "author": [["David Sheets", "https://github.com/dsheets/"]],
+            "license": ["BSD-3-Clause","http://www.spdx.org/licenses/BSD-3-Clause"],
+            "library": ["glol Test Suite","https://github.com/ashima/gloc/tree/master/test/webgl/glol"],
+            "version": [0,0,1],
+            "build": "9da7afcec5301211b879d021a6f73e2bf6023a89"
+  }
+}
