@@ -1,10 +1,9 @@
 add
  - extension support
- - compile-time macro defs
  - compile-time macro opens
  - warn on defined as a macro
  - warn on comment nesting
  - macro redef errors/warnings
  - function cost annotations via cg
  - ternary emulation in conditionals with warning
- - line continuation emulation using lexer lookaside and block comments
+
