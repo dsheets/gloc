@@ -1,3 +1,9 @@
+(* Copyright (c) 2012 Ashima Arts. All rights reserved.
+ * Author: David Sheets
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ *)
+
 type dialect = WebGL
 type version = int * int * int
 type accuracy = Best | Preprocess (*| Decomment | Minify | Pretty | Obfuscate *)

@@ -1,3 +1,9 @@
+(* Copyright (c) 2012 Ashima Arts. All rights reserved.
+ * Author: David Sheets
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ *)
+
 open Pp_lib
 module SymMap = Map.Make(struct type t=string let compare = compare end)
 
