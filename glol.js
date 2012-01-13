@@ -1,3 +1,8 @@
+/**
+ * @preserve Copyright 2012 Ashima Arts. All rights reserved.
+ * Author: David Sheets
+ * Licensed under BSD-3-Clause found at http://www.spdx.org/licenses/BSD-3-Clause
+ */
 function GLOL() {
   // Let's link some glo!
 
