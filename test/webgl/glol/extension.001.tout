@@ -5,6 +5,7 @@
 varying highp float v;
 
 void foo() { }
+// End: Copyright
 // Copyright 2012  <> All rights reserved.
 #line 4 1/* extension_a.glsl#n=0 */
 varying highp float v;
