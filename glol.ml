@@ -38,7 +38,7 @@ let armor meta (linkmap,fs_ct) opmac s =
   let intpatt = Str.regexp "GLOC_\\([0-9]+\\)" in
   let offset s =
     let fn = int_of_string (Str.string_after (Str.matched_string s) 5) in
-    let anno = try "/* "^(Hashtbl.find linkmap (string_of_int fn))^" */"
+    let anno = try "/* "^(List.assoc (string_of_int fn) linkmap)^" */"
     with Not_found -> ""
     in (string_of_int (fn + fs_ct))^anno
   in
@@ -230,9 +230,9 @@ let link prologue required glo_alist =
     (sort required glo_alist)
   in fst begin List.fold_left
 	begin fun (src,(pname,o)) ((name,u),glo) ->
-	  let sup = Hashtbl.fold
-	    (fun is _ sup -> max sup (int_of_string is))
-	    glo.linkmap 0
+	  let sup = List.fold_left
+	    (fun sup (is,_) -> max sup (int_of_string is))
+	    0 glo.linkmap
 	  in
 	  let meta = if name=pname then None else glo.meta in
 	  let u = glo.units.(u) in

@@ -67,7 +67,7 @@ exception GloppStageError of stage
 
 exception CompilerError of component * exn list
 
-type file_fmt = Glo of glo | Glom of glom | Source of string
+type file_fmt = Glo of glo | Glom of (string * glo) list | Source of string
 type 'a input = Stream of 'a | Define of 'a
 
 type state = {stage:stage ref;
@@ -102,12 +102,6 @@ let exec_state = { stage=ref Link;
 		   accuracy=ref Lang.Best;
 		 } (* one-shot monad *)
 
-let glo_of_string s = let json = Json_io.json_of_string s in
-  match json with
-    | Json_type.Object _ -> Glo (Glo_lib.glo_of_json json)
-    | Json_type.Array _ -> Glom (Glo_lib.glom_of_json json)
-    | _ -> raise UnrecognizedJsonFormat
-
 let builtin_macros = List.fold_left
   (fun map (n,f) -> Env.add n f map)
   Env.empty [
@@ -120,6 +114,13 @@ let builtin_macros = List.fold_left
     "__VERSION__",(fun _ _ -> omacro "__VERSION__" (synth_int (Dec,100)));
     "GL_ES",(fun _ _ -> omacro "GL_ES" (synth_int (Dec,1)))
   ]
+
+let fmt_of_string s =
+  let glom = Glo_j.glom_of_string s in
+  match glom with
+    | `Assoc _ -> Glo (Glo_j.glo_of_string s)
+    | `List _ -> Glom (Glo_lib.glom_of_json glom)
+    | _ -> raise UnrecognizedJsonFormat
 
 let maybe_fatal_error k =
   if (List.length !errors) > 0
@@ -234,19 +235,19 @@ let make_define_unit ds =
     | m::d::_ -> u m ("#define "^m^" "^d^"\n")
 
 let glo_of_u meta target u =
-  {glo=glo_version; target; meta=Some meta; units=[|u|]; linkmap=Hashtbl.create 0}
+  {glo=glo_version; target; meta=Some meta; units=[|u|]; linkmap=[]}
 
 let make_glo fn s =
-  try glo_of_string s
+  try fmt_of_string s
   with UnrecognizedJsonFormat as
       e -> raise (CompilerError (Format,[e])) (* TODO: msg *)
-    | Json_type.Json_error _ -> Glo (compile fn s)
+    | Yojson.Json_error _ -> Glo (compile fn s)
 
 let make_glom inputs = let lst = List.fold_left
   (fun al -> function
      | (fn, Stream (Source s)) | (fn, Define (Source s)) -> 
 	 if is_glo_file fn
-	 then try begin match glo_of_string s with
+	 then try begin match fmt_of_string s with
 	   | Glo glo -> (fn,glo)::al (* TODO: order *)
 	   | Glom glom -> glom@al (* TODO: order *)
 	   | Source _ -> al (* TODO: ? *)

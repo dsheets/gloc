@@ -1,14 +1,17 @@
+ATDGEN_SOURCES=glo.atd
+include atdgen-make/Atdgen.mk
+
 .PHONY: all clean
 
-all: glol_js.js gloc.d.byte
+all: gloc.d.byte # glol_js.js
 
 %.js: %.byte
 	js_of_ocaml $*.byte
 
-glol_js.byte: glol_js.ml
+glol_js.byte: glol_js.ml $(ATDGEN_OUTFILES)
 	ocamlbuild -use-ocamlfind glol_js.byte
 
-gloc.d.byte: standard.mly gloc.ml
+gloc.d.byte: standard.mly gloc.ml $(ATDGEN_OUTFILES)
 	ocamlbuild -use-ocamlfind -use-menhir -menhir "menhir --stdlib .." gloc.d.byte
 
 standard.mly: standard.mly.orig pptok.mly
@@ -19,4 +22,4 @@ standard.mly: standard.mly.orig pptok.mly
 clean:
 	ocamlbuild -clean
 	@echo ""
-	rm -f standard.mly glol_js.js
+	rm -f standard.mly glol_js.js $(ATDGEN_OUTFILES)
