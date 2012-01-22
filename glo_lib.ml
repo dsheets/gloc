@@ -4,43 +4,12 @@
  * found in the LICENSE file.
  *)
 
-open Json_type
+open Yojson
 
-type glo = {
-  glo:version;
-  target:string * version;
-  meta:meta option;
-  units: u array;
-  linkmap:(string,string) Hashtbl.t
-}
-and meta = {
-  copyright:year * href;
-  author:href list;
-  license:href option;
-  library:href option;
-  version:version option;
-  build:string option;
-}
-and u = {
-  pdir: string list;
-  edir: (string * string) list;
-  vdir: int option;
-  insym:string list;
-  outsym:string list;
-  inmac:string list;
-  opmac:string list;
-  outmac:string list;
-  source:string;
-}
-and url = string
-and href = string * url
-and year = int
-and version = int * int * int
-and glom = (string * glo) list
-with json
+include Glo_t
 
 let glo_version = (0,1,0)
-
+(*
 let set_field fld value = function
   | Object f_alist ->
       Object (List.map
@@ -81,7 +50,7 @@ let json_of_glo glo =
   in set_field "units"
        (Array (Array.to_list (Array.map json_of_u glo.units)))
        json
-
+*)
 let json_of_glom glom =
   let rec group prefix prev = function
     | ((_::[],_)::_) as glom -> (glom, List.rev prev)
@@ -89,14 +58,18 @@ let json_of_glom glom =
     | glom -> (glom,List.rev prev)
   in
   let rec nest prev = function
-    | [] -> Array (List.rev prev)
-    | (([],glo)::r) -> nest ((Array [String ""; json_of_glo glo])::prev) r
-    | ((x::[],glo)::r) -> nest ((Array [String x; json_of_glo glo])::prev) r
+    | [] -> `List (List.rev prev)
+    | (([],glo)::r) ->
+      nest ((`List [`String "";
+		    Safe.from_string (Glo_j.string_of_glo glo)])::prev) r
+    | ((x::[],glo)::r) ->
+      nest ((`List [`String x;
+		    Safe.from_string (Glo_j.string_of_glo glo)])::prev) r
     | ((x::_,_)::_) as r -> let (rest,g) = group x [] r in
-	nest ((Array [String x; nest [] g])::prev) rest
+	nest ((`List [`String x; nest [] g])::prev) rest
   in let split s = Str.split (Str.regexp_string "/") s in
     nest [] (List.map (fun (n,glo) -> (split n, glo)) glom)
-
+(*
 let string_of_glo ?(compact=true) glo =
   Json_io.string_of_json ~compact (json_of_glo glo)
 let string_of_glom ?(compact=true) glom =
@@ -135,16 +108,18 @@ let json = add_zero_fields [
 	     Printexc.print_backtrace stdout;
 	     exit 127)
 *)
+*)
 let glom_of_json json =
   let rec flat prefix = function
-    | Array jl -> List.fold_left
-	(fun p -> function
-	   | Array [String n; Object ol] ->
-	       (prefix^n, glo_of_json (Object ol))::p
-	   | Array [String n; Array al] ->
-	       (flat (prefix^n^"/") (Array al))@p
-	   | _ ->
-	       raise (Json_error "glom array elements must be string * (glo|glom)")
-	) [] jl
+    | `List jl -> List.fold_left
+      (fun p -> function
+	| `List [`String n; `Assoc al] ->
+	  (prefix^n,
+	   Glo_j.glo_of_string (Safe.to_string ~std:true (`Assoc al)))::p
+	| `List [`String n; `List al] ->
+	  (flat (prefix^n^"/") (`List al))@p
+	| _ ->
+	  raise (Json_error "glom array elements must be string * (glo|glom)")
+      ) [] jl
     | _ -> raise (Json_error "glom must be array")
   in List.rev (flat "" json)

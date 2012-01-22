@@ -49,10 +49,8 @@ let in_of_filename fn fdf =
     try (let r = fdf fd in (close_in fd; r)) with e -> (close_in fd; raise e)
 
 let meta_of_path p = in_of_filename p
-  (fun fd -> match (Glo_lib.glo_of_json
-		      (Json_io.json_of_string
-			 (string_of_inchan fd))).Glo_lib.meta
-   with None -> default_meta | Some meta -> meta)
+  (fun fd -> match (Glo_j.glo_of_string (string_of_inchan fd)).Glo_lib.meta
+    with None -> default_meta | Some meta -> meta)
 
 (* TODO: add per warning check args *)
 (* TODO: add partial preprocess (only ambiguous conds with dep macros) *)
@@ -216,15 +214,22 @@ let compiler_error k errs =
 
 let rec write_glo fn fd = function
   | Source s -> write_glo fn fd (make_glo fn s)
-  | Glo glo -> output_string fd
-      ((Glo_lib.string_of_glo ~compact:(not !(exec_state.verbose)) glo)^"\n")
-  | Glom glom -> output_string fd
-      ((Glo_lib.string_of_glom ~compact:(not !(exec_state.verbose)) glom)^"\n")
+  | Glo glo ->
+    let s = Glo_j.string_of_glo glo in
+    output_string fd
+      ((if !(exec_state.verbose)
+	then Yojson.Safe.prettify ~std:true s else s)^"\n")
+  | Glom glom ->
+    let json = Glo_lib.json_of_glom glom in
+    output_string fd
+      ((if !(exec_state.verbose)
+	then Yojson.Safe.pretty_to_string ~std:true json
+	else Yojson.Safe.to_string ~std:true json)^"\n")
 
 (* TODO: expose --source *)
 let rec source_of_fmt fn = function
-  | Source s -> begin try source_of_fmt fn (glo_of_string s)
-    with Json_type.Json_error _ -> s end
+  | Source s -> begin try source_of_fmt fn (fmt_of_string s)
+    with Yojson.Json_error _ -> s end
   | Glo glo -> if (Array.length glo.Glo_lib.units)=1
     then Glol.armor glo.Glo_lib.meta (glo.Glo_lib.linkmap,0) []
       glo.Glo_lib.units.(0).Glo_lib.source

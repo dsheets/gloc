@@ -139,12 +139,11 @@ let env_of_ppexpr ppexpr =
 let compile ?meta target fn origexpr ~inmac ~opmac tokslst =
   let envs = List.map env_of_ppexpr tokslst in
   let body_unit, file_nums = create_body origexpr envs in
-  let linkmap = Hashtbl.create (List.length file_nums) in
-    List.iter
-      (fun n -> Hashtbl.add linkmap (string_of_int n) (sprintf "%s#n=%d" fn n))
-      file_nums;
-    {glo=glo_version; target; meta;
-     units=[|{body_unit with inmac=inmac@body_unit.inmac;
-		opmac=opmac@body_unit.opmac}
-	   |];
-     linkmap}
+  let linkmap = List.map
+    (fun n -> (string_of_int n, sprintf "%s#n=%d" fn n))
+    file_nums
+  in {glo=glo_version; target; meta;
+      units=[|{body_unit with inmac=inmac@body_unit.inmac;
+	                      opmac=opmac@body_unit.opmac
+	      }|];
+      linkmap}
