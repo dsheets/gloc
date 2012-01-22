@@ -40,6 +40,7 @@ monkey.glo : monkey_a.glsl monkey_b.glsl monkey_c.glsl
 	@export N=1 && ./sym < $*.argset | while read -r args; do \
 		touch `printf "$*.%03d.tout" $$N`; \
 		touch `printf "$*.%03d.terr" $$N`; \
+		echo "making $$N for $*"; \
 		echo "$$args" > `printf "$*.%03d.args" $$N`; \
 		true $$[N++]; \
 	done
