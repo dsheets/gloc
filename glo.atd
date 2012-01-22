@@ -1,0 +1,34 @@
+type glo = {
+  glo:version;
+  target:(string * version);
+  ?meta:meta option;
+  ~units: u list <ocaml repr="array">;
+  ~linkmap: (string * string) list <json repr="object">
+}
+
+type meta = {
+  copyright:(year * href);
+  ~author:href list;
+  ?license:href option;
+  ?library:href option;
+  ?version:version option;
+  ?build:string option;
+}
+
+type u = {
+  ~pdir: string list;
+  ~edir: (string * string) list;
+  ?vdir: int option;
+  ~insym:string list;
+  ~outsym:string list;
+  ~inmac:string list;
+  ~opmac:string list;
+  ~outmac:string list;
+  source:string;
+}
+
+type url = string
+type href = (string * url)
+type year = int
+type version = (int * int * int)
+type glom <ocaml_json module="Yojson.Safe" t="json"> = abstract
