@@ -116,11 +116,12 @@ let builtin_macros = List.fold_left
   ]
 
 let fmt_of_string s =
-  let glom = Glo_j.glom_of_string s in
-  match glom with
-    | `Assoc _ -> Glo (Glo_j.glo_of_string s)
-    | `List _ -> Glom (Glo_lib.glom_of_json glom)
-    | _ -> raise UnrecognizedJsonFormat
+  try let glom = Glo_j.glom_of_string s in
+      match glom with
+	| `Assoc _ -> Glo (Glo_j.glo_of_string s)
+	| `List _ -> Glom (Glo_lib.glom_of_json glom)
+	| _ -> raise UnrecognizedJsonFormat
+  with Yojson.Json_error _ | Failure _ -> Source s
 
 let maybe_fatal_error k =
   if (List.length !errors) > 0
@@ -238,10 +239,11 @@ let glo_of_u meta target u =
   {glo=glo_version; target; meta=Some meta; units=[|u|]; linkmap=[]}
 
 let make_glo fn s =
-  try fmt_of_string s
+  try match fmt_of_string s with
+    | Source s -> Glo (compile fn s)
+    | fmt -> fmt
   with UnrecognizedJsonFormat as
       e -> raise (CompilerError (Format,[e])) (* TODO: msg *)
-    | Yojson.Json_error _ -> Glo (compile fn s)
 
 let make_glom inputs = let lst = List.fold_left
   (fun al -> function

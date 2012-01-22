@@ -228,8 +228,8 @@ let rec write_glo fn fd = function
 
 (* TODO: expose --source *)
 let rec source_of_fmt fn = function
-  | Source s -> begin try source_of_fmt fn (fmt_of_string s)
-    with Yojson.Json_error _ -> s end
+  | Source s -> begin match fmt_of_string s with Source s -> s
+      | fmt -> source_of_fmt fn fmt end
   | Glo glo -> if (Array.length glo.Glo_lib.units)=1
     then Glol.armor glo.Glo_lib.meta (glo.Glo_lib.linkmap,0) []
       glo.Glo_lib.units.(0).Glo_lib.source

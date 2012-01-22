@@ -4,7 +4,7 @@
   "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
     {
-      "edir": { "all": "fizz" },
+      "edir": [ ["all", "fizz"] ],
       "outsym": [ "main" ],
       "source": "#line 2 GLOC_0\nvoid main(){}"
     }
