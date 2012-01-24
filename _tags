@@ -1,9 +1,10 @@
-<esslpp_lex.*>: syntax(camlp4o), package(ulex)
-<gloc.*>: package(menhirLib), package(ulex), package(str), package(unix), package(atdgen)
-<gloc_lib.*>: package(menhirLib), package(ulex), package(atdgen)
-<glol.*>: package(str), package(atdgen)
-<glol_js.*>: syntax(camlp4o), package(js_of_ocaml), package(js_of_ocaml.syntax), package(str)
-<glo_*>: package(atdgen)
-<glo.*>: package(atdgen)
-<ce_lib.*>: package(menhirLib)
-<essl_lib.*>: package(menhirLib)
+<esslpp_lex.*>: syntax_camlp4o, pkg_ulex
+<gloc.*>: pkg_menhirLib, pkg_ulex, pkg_str, pkg_unix, pkg_atdgen
+<gloc_lib.*>: pkg_menhirLib, pkg_ulex, pkg_atdgen
+<glol.*>: pkg_str, pkg_atdgen
+<glol_js.*>: syntax_camlp4o, pkg_js_of_ocaml, pkg_js_of_ocaml.syntax, pkg_str
+<glo_*>: pkg_atdgen
+<glo.*>: pkg_atdgen
+<ce_lib.*>: pkg_menhirLib
+<essl_lib.*>: pkg_menhirLib
+true: use_menhir
