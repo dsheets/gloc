@@ -92,11 +92,11 @@ Forthcoming
 
 Commercial users of *gloc* include:
 
- - Ashima Arts' Ooman (http://ashimagames.com/)
+ - Ashima Arts' [Ooman](http://ashimagames.com/)
 
 *glo* shader libraries include:
 
- - Ashima Arts' webgl-noise
+ - Ashima Arts' [webgl-noise](https://github.com/ashima/webgl-noise)
 
 ## Contributors
 Special thanks to the WebGL working group for making this possible by
