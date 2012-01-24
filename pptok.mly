@@ -1,3 +1,5 @@
+%%
+
 %public fuse_sep_list(LEFT,X,sep,RIGHT)
   : l=LEFT; xs = option(fuse_sep_nonempty_list(X,sep)); r=RIGHT
     { match xs with
