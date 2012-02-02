@@ -11,5 +11,5 @@
         "#line 1 GLOC_0\n#if EXTMAC\n#define MYMAC vec4(1.)\n#else\n#define MYMAC vec4(0.)\n#endif\n\nvoid main() { gl_Position = MYMAC; }"
     }
   ],
-  "linkmap": { "0": "<stdin>#n=0" }
+  "linkmap": { "0": "[stdin]#n=0" }
 }

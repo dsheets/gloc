@@ -9,5 +9,5 @@
       "source": "#line 3 GLOC_0\nvoid main() { }"
     }
   ],
-  "linkmap": { "0": "<stdin>#n=0" }
+  "linkmap": { "0": "[stdin]#n=0" }
 }

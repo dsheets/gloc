@@ -1,10 +1,11 @@
 <esslpp_lex.*>: syntax_camlp4o, pkg_ulex
-<gloc.*>: pkg_menhirLib, pkg_ulex, pkg_str, pkg_unix, pkg_atdgen
+<gloc.*>: pkg_menhirLib, pkg_ulex, pkg_unix, pkg_atdgen, pkg_re.str
 <gloc_lib.*>: pkg_menhirLib, pkg_ulex, pkg_atdgen
-<glol.*>: pkg_str, pkg_atdgen
-<glol_js.*>: syntax_camlp4o, pkg_js_of_ocaml, pkg_js_of_ocaml.syntax, pkg_str
+<glol.*>: pkg_atdgen, pkg_re.str
+<glol_js.*>: syntax_camlp4o, pkg_js_of_ocaml, pkg_js_of_ocaml.syntax, pkg_re.str, pkg_atdgen
 <glo_*>: pkg_atdgen
 <glo.*>: pkg_atdgen
 <ce_lib.*>: pkg_menhirLib
 <essl_lib.*>: pkg_menhirLib
+
 true: use_menhir

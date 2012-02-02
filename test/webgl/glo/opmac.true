@@ -10,5 +10,5 @@
         "#line 1 GLOC_0\n#define MYMAIN main\n\nvoid MYMAIN() { gl_Position = vec4(0.); }"
     }
   ],
-  "linkmap": { "0": "<stdin>#n=0" }
+  "linkmap": { "0": "[stdin]#n=0" }
 }
