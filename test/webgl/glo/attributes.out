@@ -9,5 +9,5 @@
         "#line 1 GLOC_0\nattribute vec3 p;\n\nvec3 get_p() { return p; }"
     }
   ],
-  "linkmap": { "0": "<stdin>#n=0" }
+  "linkmap": { "0": "[stdin]#n=0" }
 }

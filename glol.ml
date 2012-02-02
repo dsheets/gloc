@@ -35,14 +35,14 @@ exception UnknownGloVersion of string * version
 let armor meta (linkmap,fs_ct) opmac s =
   (* Replace special symbols in line directives to satisfy linkmap *)
   (*required regexp (greetz jwz) instead of macros due to ANGLE bug 183*)
-  let intpatt = Str.regexp "GLOC_\\([0-9]+\\)" in
+  let intpatt = Re_str.regexp "GLOC_\\([0-9]+\\)" in
   let offset s =
-    let fn = int_of_string (Str.string_after (Str.matched_string s) 5) in
+    let fn = int_of_string (Re_str.string_after (Re_str.matched_string s) 5) in
     let anno = try "/* "^(List.assoc (string_of_int fn) linkmap)^" */"
     with Not_found -> ""
     in (string_of_int (fn + fs_ct))^anno
   in
-  let s = Str.global_substitute intpatt offset s in
+  let s = Re_str.global_substitute intpatt offset s in
   let head = match meta with None -> "" | Some meta ->
     let field name (entity,href) = "// "^name^": "^entity^" <"^href^">\n" in
     let authors = List.fold_left
@@ -53,9 +53,7 @@ let armor meta (linkmap,fs_ct) opmac s =
     let library = match meta.library with None -> ""
       | Some link -> field "Library" link in
     let version = match meta.version with None -> ""
-      | Some (maj,min,rev) ->
-	  "// Version: "^(string_of_int maj)^"."^(string_of_int min)^"."
-	  ^(string_of_int rev)^"\n" in
+      | Some v -> "// Version: "^(string_of_version v)^"\n" in
     let build = match meta.build with None -> ""
       | Some buildstring -> "// Build: "^buildstring^"\n" in
     let (year,(holder,url)) = meta.copyright in
@@ -175,7 +173,7 @@ let rec satisfy_zipper glo_alist = function
    a search list. *)
 let sort required glo_alist =
   let addrs = List.fold_left
-    (fun al sym -> let addr = satisfy_sym ("<-u "^sym^">",0) sym glo_alist in
+    (fun al sym -> let addr = satisfy_sym ("[-u "^sym^"]",0) sym glo_alist in
        if List.mem addr al then al else addr::al)
     [] required in
   let z = satisfy_zipper glo_alist
@@ -220,6 +218,7 @@ let preamble glol =
 (* Produce a string representing a valid SL program given a list of required
    symbols and a search list. *)
 let link prologue required glo_alist =
+  let required = if (List.length required) = 0 then ["main"] else required in
   let support = [|[|false;true|]|] in
   let () = List.iter
     (fun (name,glo) -> let (maj,min,_) = glo.glo in
@@ -242,3 +241,34 @@ let link prologue required glo_alist =
 	      (name,o+sup+1))
 	end ((preamble glol)^prologue,("",0)) glol
     end
+
+(* Flatten a glom into an association list and remove non-glo elements *)
+let flatten prefix glom =
+  let rec descend prefix glom = List.fold_left
+    (fun l -> function
+      | (n,Glo glo) -> (prefix^n, glo)::l
+      | (n,Glom glom) -> (descend (prefix^n^"/") glom)@l
+      | (n,Source _) | (n,Other _) -> l
+    ) [] glom
+  in List.rev (descend prefix glom)
+
+(*
+let nest glom =
+      let rec group prefix prev = function
+      | ((_::[],_)::_) as glom -> (glom, List.rev prev)
+      | (x::xs,glo)::r when x=prefix -> group prefix ((xs,glo)::prev) r
+      | glom -> (glom,List.rev prev)
+    in
+    let rec nest prev = function
+      | [] -> `List (List.rev prev)
+      | (([],glo)::r) ->
+	nest ((`List [`String "";
+		      Safe.from_string (Glo_j.string_of_glo glo)])::prev) r
+      | ((x::[],glo)::r) ->
+	nest ((`List [`String x;
+		      Safe.from_string (Glo_j.string_of_glo glo)])::prev) r
+      | ((x::_,_)::_) as r -> let (rest,g) = group x [] r in
+			      nest ((`List [`String x; nest [] g])::prev) rest
+    in let split s = Str.split (Str.regexp_string "/") s in
+       nest [] (List.map (fun (n,glo) -> (split n, glo)) glom)
+*)

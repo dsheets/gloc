@@ -23,7 +23,7 @@ module List = struct
 end
 
 (* TODO: harmonize? *)
-type stage = ParsePP | Preprocess | Compile | Link
+type stage = Contents | ParsePP | Preprocess | Compile | Link | XML
 type component =
   | Command
   | Format
@@ -67,7 +67,6 @@ exception GloppStageError of stage
 
 exception CompilerError of component * exn list
 
-type file_fmt = Glo of glo | Glom of (string * glo) list | Source of string
 type 'a input = Stream of 'a | Define of 'a
 
 type state = {stage:stage ref;
@@ -114,14 +113,6 @@ let builtin_macros = List.fold_left
     "__VERSION__",(fun _ _ -> omacro "__VERSION__" (synth_int (Dec,100)));
     "GL_ES",(fun _ _ -> omacro "GL_ES" (synth_int (Dec,1)))
   ]
-
-let fmt_of_string s =
-  try let glom = Glo_j.glom_of_string s in
-      match glom with
-	| `Assoc _ -> Glo (Glo_j.glo_of_string s)
-	| `List _ -> Glom (Glo_lib.glom_of_json glom)
-	| _ -> raise UnrecognizedJsonFormat
-  with Yojson.Json_error _ | Failure _ -> Source s
 
 let maybe_fatal_error k =
   if (List.length !errors) > 0
@@ -200,9 +191,12 @@ let compile fn source =
       raise err
     end
 
-let link required glo_alist =
-  try Glol.link required glo_alist
-  with e -> raise (CompilerError (Linker,[e]))
+let link required glom =
+  let glom = match glom with
+    | Glom glom -> glom
+    | glom -> ["",glom]
+  in try Glol.link "" required (Glol.flatten "" glom)
+    with e -> raise (CompilerError (Linker,[e]))
 
 let file_extp ext fn =
   if (String.length fn)<((String.length ext)+1)
@@ -239,27 +233,17 @@ let glo_of_u meta target u =
   {glo=glo_version; target; meta=Some meta; units=[|u|]; linkmap=[]}
 
 let make_glo fn s =
-  try match fmt_of_string s with
+  try match glom_of_string s with
     | Source s -> Glo (compile fn s)
-    | fmt -> fmt
-  with UnrecognizedJsonFormat as
-      e -> raise (CompilerError (Format,[e])) (* TODO: msg *)
+    | glom -> glom
+  with
+    | e -> raise (CompilerError (Format,[e])) (* TODO: msg *)
 
-let make_glom inputs = let lst = List.fold_left
-  (fun al -> function
-     | (fn, Stream (Source s)) | (fn, Define (Source s)) -> 
-	 if is_glo_file fn
-	 then try begin match fmt_of_string s with
-	   | Glo glo -> (fn,glo)::al (* TODO: order *)
-	   | Glom glom -> glom@al (* TODO: order *)
-	   | Source _ -> al (* TODO: ? *)
-	 end with e -> raise (CompilerError (Format,[e])) (* TODO: msg *)
-	 else begin match make_glo fn s with
-	   | Glo glo -> (fn,glo)::al (* TODO: order *)
-	   | Glom glom -> glom@al (* TODO: order *)
-	   | Source _ -> al (* TODO: ? *)
-	 end
-     | (fn, Stream (Glo glo)) | (fn, Define (Glo glo)) -> (fn,glo)::al
-     | (fn, Stream (Glom glom)) | (fn, Define (Glom glom)) ->
-	 glom@al
-  ) [] inputs in lst
+let make_glom inputs = Glom
+  (List.fold_left
+     (fun al -> function
+       | (fn, Stream (Source s)) | (fn, Define (Source s)) -> 
+	 begin try (fn,make_glo fn s)::al
+	   with e -> raise (CompilerError (Format,[e])) end (* TODO: msg *)
+       | (fn, Stream glom) | (fn, Define glom) -> (fn,glom)::al
+     ) [] inputs)

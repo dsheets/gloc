@@ -261,7 +261,7 @@ function GLOL() {
   // a search list
   function sort(reqsym,glo_alist) {
     var addrs = reqsym.reduce(function (al,sym) {
-      var addr = satisfy_sym(["<-u "+sym+">",0],sym,glo_alist);
+      var addr = satisfy_sym(["[-u "+sym+"]",0],sym,glo_alist);
       if (al.every(function (a) { return a[0]!=addr[0] || a[1]!=addr[1]; })) {
 	al.push(addr);
       }
@@ -355,6 +355,7 @@ function GLOL() {
   // Produce a string representing a valid SL program given a list of required
   // symbols and a search list.
   this.link = function(prologue,reqsym,glom) {
+    var reqsym = (reqsym.length==0) ? ["main"] : reqsym;
     var glo_alist = add_zeros(filter(flatten("",glom)));
     var glol = (sort(reqsym,glo_alist)).map(function (addr) {
       return [addr,assoc(addr[0],glo_alist)];

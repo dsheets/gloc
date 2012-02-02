@@ -10,5 +10,5 @@
         "#line 1 GLOC_0\nvoid main() {\n     gl_Position = vec3(incoming);\n}"
     }
   ],
-  "linkmap": { "0": "<stdin>#n=0" }
+  "linkmap": { "0": "[stdin]#n=0" }
 }

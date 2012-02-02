@@ -9,5 +9,5 @@
       "source": "#line 1 GLOC_0\nint x=2, y=x, z=q, h=z;"
     }
   ],
-  "linkmap": { "0": "<stdin>#n=0" }
+  "linkmap": { "0": "[stdin]#n=0" }
 }

@@ -12,5 +12,5 @@
         "#line 1 GLOC_0\n#if E\n#define X f\n#endif\n\nvoid main() { X(); }"
     }
   ],
-  "linkmap": { "0": "<stdin>#n=0" }
+  "linkmap": { "0": "[stdin]#n=0" }
 }
