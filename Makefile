@@ -14,4 +14,4 @@ gloc.d.byte: gloc.ml
 clean:
 	ocamlbuild -clean
 	@echo ""
-	rm -f glol_js.js
+	rm -f glol_js.d.js
