@@ -2,42 +2,56 @@
  * @preserve Copyright 2012 Ashima Arts. All rights reserved.
  * Author: David Sheets
  * Licensed under BSD-3-Clause found at http://www.spdx.org/licenses/BSD-3-Clause
+ *
+ * @constructor
  */
-function GLOL() {
+window['GLOL'] = function() {};
+
+(function() {
   // Let's link some glo!
 
   // There are a number of exceptions that the algorithm can emit
-  this.MissingMacro = function(addr,macro) {
-    this.addr = addr; this.macro = macro;
+  /** @constructor */
+  var MissingMacro = function(addr,macro) {
+    this.name = "MissingMacro"; this.addr = addr; this.macro = macro;
   };
-  this.MissingSymbol = function(addr,sym) {
-    this.addr = addr; this.symbol = sym;
+  /** @constructor */
+  var MissingSymbol = function(addr,sym) {
+    this.name = "MissingSymbol"; this.addr = addr; this.symbol = sym;
   };
-  this.NotFound = function(key) {
-    this.key = key;
+  /** @constructor */
+  var NotFound = function(key) {
+    this.name = "NotFound"; this.key = key;
   };
-  this.CircularDependency = function(addrl) {
-    this.addrs = addrl;
+  /** @constructor */
+  var CircularDependency = function(addrl) {
+    this.name = "CircularDependency"; this.addrs = addrl;
   };
-  this.SymbolConflict = function(n,sym,addr,caddr) {
-    this.sym_a = n; this.sym_b = sym;
+  /** @constructor */
+  var SymbolConflict = function(n,sym,addr,caddr) {
+    this.name = "SymbolConflict"; this.sym_a = n; this.sym_b = sym;
     this.addr_a = addr; this.addr_b = caddr;
   };
-  this.UnknownBehavior = function(addr, b) {
-    this.addr = addr; this.behavior = b;
+  /** @constructor */
+  var UnknownBehavior = function(addr, b) {
+    this.name = "UnknownBehavior"; this.addr = addr; this.behavior = b;
   };
-  this.UnknownGloVersion = function(path,version) {
-    this.path = path; this.version = version;
+  /** @constructor */
+  var UnknownGloVersion = function(path,version) {
+    this.name = "UnknownGloVersion"; this.path = path; this.version = version;
   };
 
   // Prepare the packaged source for concatenation.
+  /**
+   * @type {function({copyright: Array.<number|Array.<string>>},*,*,*,*) : string }
+   */
   function armor(meta,linkmap,fs_ct,opmac,s) {
     // Replace special symbols in line directives to satisfy linkmap
-    // (required regexp (greetz jwz) instead of macros due to ANGLE bug 183
+    // required regexp (greetz jwz) instead of macros due to ANGLE bug 183
     var intpatt = /GLOC_([0-9]+)/g;
     function f(s,n) {
       var anno = "";
-      var fn = parseInt(n);
+      var fn = parseInt(n,10);
       if (linkmap[n]) {
 	anno = "/* "+linkmap[n]+" */";
       }
@@ -51,9 +65,9 @@ function GLOL() {
       function field(name,link) {
 	return "// "+name+": "+link[0]+" <"+link[1]+">\n";
       }
-      if (meta.authors) {
-	for (var i=0; i < meta.authors.length; i++) {
-	  authors += field("Author",meta.authors[i]);
+      if (meta.author) {
+	for (var i=0; i < meta.author.length; i++) {
+	  authors += field("Author",meta.author[i]);
 	}
       }
       if (meta.license) license = field("License",meta.license);
@@ -115,6 +129,18 @@ function GLOL() {
   }
 
   // Construct the constraint data structure from a glo unit.
+  /** @type {function(Array.<string|number>,
+   *                  {insym: Array.<string>, outsym: Array.<string>,
+   *                   inmac: Array.<string>, outmac: Array.<string>,
+   *                   vdir: number, pdir: string, edir: Array.<Array.<string>>
+   *                   })
+   *         : {rsym: Array.<string>, rmac: Array.<string>,
+   *            tsym: Object.<string,Array.<string|number>>,
+   *            tmac: Object.<string,Array.<string|number>>,
+   *            bsym: Object.<string,Array.<string|number>>,
+   *            bmac: Object.<string,Array.<string|number>>,
+   *            addr: Array.<string|number> }}
+   */
   function tooth(addr, u) {
     return {
       "rsym":u.insym, "rmac":u.inmac, // Required: to be satisfied
@@ -140,7 +166,7 @@ function GLOL() {
   }
 
   function has_addr(addr,tooth) {
-    return tooth.addr == addr;
+    return tooth.addr[0] == addr[0] && tooth.addr[1] == addr[1];
   }
 
   // Advertize prior units to later units.
@@ -203,7 +229,7 @@ function GLOL() {
   function check_conflicts(n,tooth,zipper) {
     var conflict = conflicted(tooth,zipper[1]);
     if (conflict != null) {
-      throw (new SymbolConflict(n,conflict[0],addr,conflict[1]));
+      throw (new SymbolConflict(n,conflict[0],tooth.addr,conflict[1]));
     }
   }
 
@@ -287,7 +313,7 @@ function GLOL() {
     function ext_merge(addr,m,ext) {
       if (ext[0] in m) {
 	m[ext[0]] = b_max(ext[1],m[ext[0]]); return m;
-      } else if (ext[1] in b_order) {
+      } else if (b_order.indexOf(ext[1]) >= 0) {
 	m[ext[0]] = ext[1]; return m;
       } else throw (new UnknownBehavior(addr,ext[1]));
     }
@@ -323,7 +349,7 @@ function GLOL() {
   function filter(alist) {
     var l = [];
     for (var i = 0; i < alist.length; i++) {
-      var glo = alist[1][1];
+      var glo = alist[i][1];
       if (glo.glo) {
 	if (glo.glo[0] != 0 || glo.glo[1] != 1) {
 	  throw (new UnknownGloVersion(alist[i][0],glo.glo));
@@ -354,16 +380,17 @@ function GLOL() {
 
   // Produce a string representing a valid SL program given a list of required
   // symbols and a search list.
-  this.link = function(prologue,reqsym,glom) {
-    var reqsym = (reqsym.length==0) ? ["main"] : reqsym;
+  /** @type {function(string,Array.<string>,*) : string } */
+  window['GLOL'].prototype.link = function(prologue,reqsym,glom) {
+    var reqsym_ = (reqsym.length==0) ? ["main"] : reqsym.reverse();
     var glo_alist = add_zeros(filter(flatten("",glom)));
-    var glol = (sort(reqsym,glo_alist)).map(function (addr) {
+    var glol = (sort(reqsym_,glo_alist)).map(function (addr) {
       return [addr,assoc(addr[0],glo_alist)];
     });
     return glol.reduce(function (acc,agp) {
       var sup = 0, glo = agp[1], name=agp[0][0], src=acc[0],
 	  pname=acc[1][0], o=acc[1][1];
-      for (var k in glo.linkmap) { sup = Math.max(sup,parseInt(k)); }
+      for (var k in glo.linkmap) { sup = Math.max(sup,parseInt(k,10)); }
       var u = glo.units[agp[0][1]];
       var unit_begin = (name==pname||pname=="")?"":"// End: Copyright\n";
       return [(src+unit_begin+armor(name==pname?null:glo.meta,
@@ -371,4 +398,4 @@ function GLOL() {
 	      [name,o+sup+1]];
     }, [preamble(glol)+prologue,["",0]])[0];
   };
-}
+})();
