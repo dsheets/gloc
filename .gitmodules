@@ -1,0 +1,3 @@
+[submodule "Pretty-Diff"]
+	path = Pretty-Diff
+	url = https://github.com/austincheney/Pretty-Diff.git

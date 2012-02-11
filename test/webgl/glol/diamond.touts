@@ -13,4 +13,3 @@ void f1b() { f2(); }
 // Copyright 2012  <> All rights reserved.
 #line 1 3/* diamond_0.glsl#n=0 */
 void main() { f1a(); f1b(); }
-

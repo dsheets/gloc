@@ -13,4 +13,3 @@ varying highp float v;
 void main() {
      foo();
 }
-
