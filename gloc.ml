@@ -100,110 +100,6 @@ let usage_msg = sprintf "gloc version %s (%s)"
 
 let () = A.parse arguments anon_fun usage_msg
 
-let string_of_tokpos
-    ({span={a={file=af; line=al; col=ac};
-	    z={file=zf; line=zl; col=zc}}}) =
-  let af,al,zf,zl = if !(exec_state.linectrl)
-  then (af.src,al.src,zf.src,zl.src)
-  else (af.input,al.input,zf.input,zl.input)
-  in if af=zf then
-      if al=zl
-      then if ac=zc
-      then sprintf "File %d, line %d, col %d" af al ac
-      else sprintf "File %d, line %d, col %d - %d" af al ac zc
-      else sprintf "File %d, l%d c%d - l%d c%d" af al ac zl zc
-    else sprintf "F%d l%d c%d - F%d l%d c%d" af al ac zf zl zc
-
-let string_of_error = function
-  | UnknownBehavior t ->
-      sprintf "%s:\nunknown behavior \"%s\"\n" (string_of_tokpos t) t.v
-  | UnterminatedComment t ->
-      sprintf "%s:\nunterminated comment\n" (string_of_tokpos t)
-  | UnterminatedConditional t ->
-      sprintf "%s:\nunterminated conditional \"%s\"\n" (string_of_tokpos t)
-	(snd (t.scan t.span.a))
-  | UnknownCharacter t ->
-      sprintf "%s:\nunknown character '%s'\n" (string_of_tokpos t)
-	(snd (t.scan t.span.a))
-  | LineContinuationUnsupported t ->
-      sprintf "%s:\nline continuation officially unsupported\n" (string_of_tokpos t)
-  | InvalidDirectiveLocation t ->
-      sprintf "%s:\ninvalid directive location\n" (string_of_tokpos t)
-  | InvalidDirective t ->
-      sprintf "%s:\ninvalid directive \"%s\"\n" (string_of_tokpos t) t.v
-  | InvalidOctal t ->
-      sprintf "%s:\ninvalid octal constant \"%s\"\n" (string_of_tokpos t) t.v
-  | HolyVersion t ->
-      sprintf "%s:\nversion must be first semantic token\n" (string_of_tokpos t)
-  | UnsupportedVersion t ->
-      sprintf "%s:\nversion %d is unsupported\n" (string_of_tokpos t) t.v
-  | InvalidVersionBase t ->
-      sprintf "%s:\nversion must be specified in decimal\n" (string_of_tokpos t)
-  | InvalidLineBase t ->
-      sprintf "%s:\nline control arguments must be specified in decimal\n"
-	(string_of_tokpos t)
-  | InvalidVersionArg t ->
-      sprintf "%s:\ninvalid version argument\n" (string_of_tokpos t)
-  | InvalidLineArg t ->
-      sprintf "%s:\ninvalid line argument\n" (string_of_tokpos t)
-  | MacroArgUnclosed t ->
-      sprintf "%s:\nunclosed macro argument list\n" (string_of_tokpos t)
-  | MacroArgInnerParenUnclosed t ->
-      sprintf "%s:\nunclosed inner parenthesis in macro argument list\n"
-	(string_of_tokpos t)
-  | MacroArgTooFew (t,a,e) ->
-      sprintf "%s:\ntoo few macro arguments: expected %d, got %d\n"
-	(string_of_tokpos t) e a
-  | MacroArgTooMany (t,a,e) ->
-      sprintf "%s:\ntoo many macro arguments: expected %d, got %d\n"
-	(string_of_tokpos t) e a
-  | ReservedKeyword t ->
-      sprintf "%s:\n\"%s\" is a reserved keyword and may not be used\n"
-	(string_of_tokpos t) t.v
-  | RedefineReservedMacro t ->
-      sprintf "%s:\n\"%s\" is a reserved macro and may not be redefined\n"
-	(string_of_tokpos t) t.v
-  | UndefineReservedMacro t ->
-      sprintf "%s:\n\"%s\" is a reserved macro and may not be undefined\n"
-	(string_of_tokpos t) t.v
-  | ErrorDirective t ->
-      sprintf "%s:\n%s\n" (string_of_tokpos t) (snd (t.scan t.span.a))
-  | UnsupportedPPOp t ->
-      sprintf "%s:\n\"%s\" is not supported in preprocessor expressions\n"
-	(string_of_tokpos t) (snd (t.scan t.span.a))
-  | FloatUnsupported t ->
-      sprintf "%s:\nfloating point is not supported in preprocessor expressions\n"
-	(string_of_tokpos t)
-  | PPCondExprParseError t ->
-      sprintf "%s:\nerror parsing conditional expression \"%s\"\n"
-	(string_of_tokpos t) (snd (t.scan t.span.a))
-  | UncaughtException e -> sprintf "Uncaught exception:\n%s\n" (Printexc.to_string e)
-  | AmbiguousPreprocessorConditional t ->
-      sprintf "%s:\nambiguous preprocessor conditional branch: %s\n"
-	(string_of_tokpos t) t.v
-  | GlomPPOnly fn ->
-      sprintf "Source '%s' is a glom with multiple source units.\n" fn
-  | MultiUnitGloPPOnly fn -> (* TODO: test *)
-      sprintf "Source '%s' is a glo with multiple source units.\n" fn
-  | Glol.CircularDependency ual -> List.fold_left
-      (fun s (fn,un) ->
-	 sprintf "%s%s#n=%d\n" s fn un
-      ) "Circular dependency linking:\n" ual
-  | Glol.MissingMacro ((fn,un),mn) ->
-      sprintf "%s#n=%d requires macro '%s' which cannot be found.\n" fn un mn
-  | Glol.MissingSymbol ((fn,un),mn) ->
-      sprintf "%s#n=%d requires symbol '%s' which cannot be found.\n" fn un mn
-  | Glol.SymbolConflict (ssym,csym,(sfn,sun),(cfn,cun)) ->
-      sprintf "%s#n=%d provides '%s' but exposes '%s' which conflicts with %s#n=%d\n"
-	sfn sun ssym csym cfn cun
-  | Glol.UnknownBehavior ((fn,un),b) ->
-      sprintf "%s#n=%d uses unknown extension behavior '%s'.\n" fn un b
-  | Glol.UnknownGloVersion (fn,(maj,min,rev)) ->
-      sprintf "%s declares unsupported version %d.%d.%d.\n"
-	fn maj min rev
-  | Sys_error m -> sprintf "System error:\n%s\n" m
-  | exn -> raise exn
-
 let print_errors errors =
   List.iter (fun e -> eprintf "%s\n" (string_of_error e)) (List.rev errors)
 
@@ -217,9 +113,9 @@ let compiler_error k errs =
 let rec write_glom fn fd = function
   | Source s -> write_glom fn fd (make_glo fn s)
   | Other o ->
-    output_string fd ((if !(exec_state.verbose)
+    output_string fd (if !(exec_state.verbose)
       then Yojson.Safe.pretty_to_string ~std:true o
-      else Yojson.Safe.to_string ~std:true o)^"\n")
+      else Yojson.Safe.to_string ~std:true o)
   | Glo glo ->
     let s = Glo_j.string_of_glo glo in
     output_string fd
@@ -248,10 +144,10 @@ let write_glopp fn fd glom =
     output_string fd
       ((string_of_ppexpr start_loc
 	  (match !(exec_state.stage) with
-	     | ParsePP -> ppexpr
-	     | Preprocess -> check_pp_divergence (preprocess ppexpr)
-	     | s -> (* TODO: stage? error message? tests? *)
-		 raise (CompilerError (PPDiverge, [GloppStageError s]))
+	    | ParsePP -> ppexpr
+	    | Preprocess -> check_pp_divergence (preprocess ppexpr)
+	    | s -> (* TODO: stage? error message? tests? *)
+	      raise (CompilerError (PPDiverge, [GloppStageError s]))
 	  ))^"\n")
 
 let streamp = function Stream _ -> true | _ -> false
@@ -259,7 +155,7 @@ let stream_inputp il = List.exists streamp il
 let glom_of_input = function Stream f -> f | Define f -> f
 ;;
 
-let req_sym = !(exec_state.symbols) in
+let req_sym = List.rev !(exec_state.symbols) in
 let stdin_input () = ("[stdin]", Stream (Source (string_of_inchan stdin))) in
 let inputs = match !(exec_state.inputs) with [] -> [stdin_input ()]
   | il -> List.map
@@ -286,10 +182,10 @@ in try begin match (!(exec_state.output),
     let glom = make_glom inputs in
     let src = link req_sym glom in
     output_string stdout
-      ((if !(exec_state.accuracy)=Lang.Preprocess
-	then string_of_ppexpr start_loc
+      (if !(exec_state.accuracy)=Lang.Preprocess
+       then string_of_ppexpr start_loc
 	  (check_pp_divergence (preprocess (parse src)))
-	else src)^"\n")
+       else src)
   | None, Compile -> if stream_inputp !(exec_state.inputs)
     then List.iter
       (function (fn,Define d) -> ()
@@ -323,7 +219,7 @@ in try begin match (!(exec_state.output),
 	  ((if !(exec_state.accuracy)=Lang.Preprocess
 	    then string_of_ppexpr start_loc
 	      (check_pp_divergence (preprocess (parse src)))
-	    else src)^"\n"))
+	    else src)))
   | Some fn, Compile -> (* TODO: consolidate glo *)
     out_of_filename fn
       (fun fd ->

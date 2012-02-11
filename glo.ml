@@ -16,7 +16,7 @@ let unique lst =
     | x::y::r when x=y -> dedupe prev (x::r)
     | x::r -> dedupe (x::prev) r
     | [] -> prev
-  in dedupe [] (List.sort compare lst)
+  in dedupe [] (List.rev (List.sort compare lst))
 
 let create_body expr envs =
   (* TODO: abstract *)

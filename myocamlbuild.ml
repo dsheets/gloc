@@ -461,7 +461,7 @@ Ocamlbuild_plugin.dispatch dispatch_default;;
 open Ocamlbuild_plugin;;
 
 let atdgen t env builder =
-  Cmd(S[A"atdgen";A("-"^t);A(env "%.atd")])
+  Cmd(S[A"atdgen";A("-j-std");A("-"^t);A(env "%.atd")])
 ;;
 rule "atd: atd -> _t.ml & _t.mli"
   ~prods:["%_t.mli"; "%_t.ml"]

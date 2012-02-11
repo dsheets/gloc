@@ -31,6 +31,25 @@ exception SymbolConflict of string * string * unit_addr * unit_addr
 exception UnknownBehavior of unit_addr * string
 exception UnknownGloVersion of string * version
 
+let string_of_error = function
+  | CircularDependency ual -> List.fold_left
+    (fun s (fn,un) ->
+      Printf.sprintf "%s%s#n=%d\n" s fn un
+    ) "Circular dependency linking:\n" ual
+  | MissingMacro ((fn,un),mn) ->
+    Printf.sprintf "%s#n=%d requires macro '%s' which cannot be found.\n" fn un mn
+  | MissingSymbol ((fn,un),mn) ->
+    Printf.sprintf "%s#n=%d requires symbol '%s' which cannot be found.\n" fn un mn
+  | SymbolConflict (ssym,csym,(sfn,sun),(cfn,cun)) ->
+    Printf.sprintf "%s#n=%d provides '%s' but exposes '%s' which conflicts with %s#n=%d\n"
+      sfn sun ssym csym cfn cun
+  | UnknownBehavior ((fn,un),b) ->
+    Printf.sprintf "%s#n=%d uses unknown extension behavior '%s'.\n" fn un b
+  | UnknownGloVersion (fn,(maj,min,rev)) ->
+    Printf.sprintf "%s declares unsupported version %d.%d.%d.\n"
+      fn maj min rev
+  | exn -> raise exn
+
 (* Prepare the packaged source for string concatenation. *)
 let armor meta (linkmap,fs_ct) opmac s =
   (* Replace special symbols in line directives to satisfy linkmap *)
@@ -102,7 +121,7 @@ let tooth addr u =
     bmac=map_of_list addr u.outmac;
     addr }
 
-let lookup glo_alist (n,u) = (List.assoc n glo_alist).units.(u)
+let lookup glo_alist (n,u) = try (List.assoc n glo_alist).units.(u) with _ -> raise (Failure "lookup")
 let tooth_of_addr glo_alist addr = tooth addr (lookup glo_alist addr)
 let has_addr addr_a ({addr=addr_b}) = addr_a = addr_b
 (* Advertize prior units to later units. *)
@@ -175,7 +194,7 @@ let sort required glo_alist =
   let addrs = List.fold_left
     (fun al sym -> let addr = satisfy_sym ("[-u "^sym^"]",0) sym glo_alist in
        if List.mem addr al then al else addr::al)
-    [] required in
+    [] (List.rev required) in
   let z = satisfy_zipper glo_alist
     (List.rev_map (tooth_of_addr glo_alist) addrs,[])
   in List.rev_map (fun tooth -> tooth.addr) (snd z)
@@ -202,7 +221,7 @@ let preamble glol =
     ^(M.fold (fun ext b s -> if ext="all" then s else s^(ext_decl ext b)) m "")
   in
   let (version,pragmas,exts) = List.fold_left
-    (fun (version,pragmas,exts) ((name,i),glo) -> let u = glo.units.(i) in
+    (fun (version,pragmas,exts) ((name,i),glo) -> let u = try glo.units.(i) with _ -> raise (Failure "preamble") in
        (begin match u.vdir,version with
 	  | None,v -> v
 	  | Some uv,None -> Some uv
@@ -234,7 +253,7 @@ let link prologue required glo_alist =
 	    0 glo.linkmap
 	  in
 	  let meta = if name=pname then None else glo.meta in
-	  let u = glo.units.(u) in
+	  let u = try glo.units.(u) with _ -> raise (Failure "u") in
 	  let unit_begin = if name=pname || pname=""
 	  then "" else "// End: Copyright\n"
 	  in (src^unit_begin^(armor meta (glo.linkmap, o) u.opmac u.source)^"\n",
@@ -242,33 +261,35 @@ let link prologue required glo_alist =
 	end ((preamble glol)^prologue,("",0)) glol
     end
 
+(* Some link-time functions *)
+
 (* Flatten a glom into an association list and remove non-glo elements *)
 let flatten prefix glom =
-  let rec descend prefix glom = List.fold_left
-    (fun l -> function
-      | (n,Glo glo) -> (prefix^n, glo)::l
-      | (n,Glom glom) -> (descend (prefix^n^"/") glom)@l
-      | (n,Source _) | (n,Other _) -> l
-    ) [] glom
-  in List.rev (descend prefix glom)
+  let rec descend prefix l = function
+    | (n,Glo glo) -> (prefix^n, glo)::l
+    | (n,Glom glom) -> List.fold_left
+      (fun l p -> descend (prefix^n^"/") l p) l glom
+    | (n,Source _) | (n,Other _) -> l
+  in match glom with
+    | Glom glom -> List.rev
+      (List.fold_left
+	 (fun l p -> descend prefix l p) [] glom)
+    | Glo glo -> [prefix,glo]
+    | Source _ | Other _ -> []
 
-(*
-let nest glom =
-      let rec group prefix prev = function
-      | ((_::[],_)::_) as glom -> (glom, List.rev prev)
-      | (x::xs,glo)::r when x=prefix -> group prefix ((xs,glo)::prev) r
-      | glom -> (glom,List.rev prev)
-    in
-    let rec nest prev = function
-      | [] -> `List (List.rev prev)
-      | (([],glo)::r) ->
-	nest ((`List [`String "";
-		      Safe.from_string (Glo_j.string_of_glo glo)])::prev) r
-      | ((x::[],glo)::r) ->
-	nest ((`List [`String x;
-		      Safe.from_string (Glo_j.string_of_glo glo)])::prev) r
-      | ((x::_,_)::_) as r -> let (rest,g) = group x [] r in
-			      nest ((`List [`String x; nest [] g])::prev) rest
-    in let split s = Str.split (Str.regexp_string "/") s in
-       nest [] (List.map (fun (n,glo) -> (split n, glo)) glom)
-*)
+(* Nest a glo alist back into a glom *)
+let nest glo_alist =
+  let rec group prefix prev = function
+    | ((_::[],_)::_) as glom -> (glom, List.rev prev)
+    | (x::xs,glo)::r when x=prefix -> group prefix ((xs,glo)::prev) r
+    | glom -> (glom,List.rev prev)
+  in
+  let rec nest prev = function
+    | [] -> Glom (List.rev prev)
+    | (([],glo)::r) -> nest (("", glo)::prev) r
+    | ((x::[],glo)::r) -> nest ((x, glo)::prev) r
+    | ((x::_,_)::_) as r ->
+      let (rest,g) = group x [] r in
+      nest ((x, nest [] g)::prev) rest
+  in let split s = Re_str.split (Re_str.regexp_string "/") s in
+     nest [] (List.map (fun (n,glo) -> (split n, glo)) glo_alist)
