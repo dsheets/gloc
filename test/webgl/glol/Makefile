@@ -8,12 +8,19 @@ OUTS  := $(TESTS:.tout=.out)
 ERRS  := $(TESTS:.tout=.err)
 DOUTS := $(TESTS:.tout=.dout)
 DERRS := $(TESTS:.tout=.derr)
+XMLS  := $(TESTS:.tout=.xml)
 
-.PHONY : all test args clean
+.PHONY : all test args clean html
 all :
 	@$(MAKE) clean
 	@$(MAKE) args
 	@$(MAKE) test
+
+html : $(XMLS)
+	xsltproc \
+	--stringparam suite "`pwd`" \
+	--stringparam tests "$(XMLS)" \
+	html_of_tests.xsl test_page.xml > test_page.html
 
 sym: sym.ml
 	ocamlc -o sym sym.ml
@@ -58,9 +65,20 @@ monkey.glo : monkey_a.glsl monkey_b.glsl monkey_c.glsl
 	else cat $*.derr; \
 	fi
 
+%.xml : %.tout %.terr %.out %.err %.args
+	$(GLOC) --xml `cat $*.args` -o $*.glom.xml
+	xsltproc \
+	--stringparam name "$*" \
+	--stringparam args "`cat $*.args`" \
+	--stringparam tout "`awk '{ printf \"%s\\\\n\", $$0 }' $*.tout`" \
+	--stringparam terr "`awk '{ printf \"%s\\\\n\", $$0 }' $*.terr`" \
+	--stringparam out  "`awk '{ printf \"%s\\\\n\", $$0 }' $*.out`"  \
+	--stringparam err  "`awk '{ printf \"%s\\\\n\", $$0 }' $*.err`"  \
+	annotate_glom.xsl $*.glom.xml > $*.xml
+
 args : $(ARGSYMS)
 test : $(OUTS) $(DOUTS) $(ERRS) $(DERRS)
 	@printf "Test failures: "
 	@ls *.dout *.derr 2> /dev/null | file -f - | grep -v empty | wc -l
 clean :
-	@rm -f *.argsym *.out *.err *.dout *.derr *.glo
+	@rm -f *.argsym *.out *.err *.dout *.derr *.glo *.???.xml *.glom.xml *.html

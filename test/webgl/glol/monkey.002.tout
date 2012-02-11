@@ -13,4 +13,3 @@ void bar() {
 void main() {
   foo();
 }
-
