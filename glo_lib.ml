@@ -38,11 +38,11 @@ let rec glom_of_json = function
   | `List jl -> Glom
     (List.map
        (function
-	 | `List [`String n; (`List _) as v]
-	 | `List [`String n; (`Assoc _) as v] ->
-	   (n, (glom_of_json v))
-	 | _ ->
-	   raise (InvalidGlom "glom array type must be (string * (glo|glom)) list")
+         | `List [`String n; (`List _) as v]
+         | `List [`String n; (`Assoc _) as v] ->
+           (n, (glom_of_json v))
+         | _ ->
+           raise (InvalidGlom "glom array type must be (string * (glo|glom)) list")
        ) jl)
   | `Assoc al -> Glo (glo_of_json (`Assoc al))
   | _ -> raise (Json_error "expected glom array or glo object")

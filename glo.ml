@@ -33,8 +33,8 @@ let create_body expr envs =
   let apply_to_list fn ({v=ppel}) =
     let ml, ppel = List.fold_left
       (fun (ml,ppel) ppe -> match fn ppe with
-	 | sml, None -> (sml@ml,ppel)
-	 | sml, Some ppe -> (sml@ml,ppe::ppel)
+        | sml, None -> (sml@ml,ppel)
+        | sml, Some ppe -> (sml@ml,ppe::ppel)
       )
       ([],[]) ppel
     in ml, Some (fuse_pptok_expr (List.rev ppel))
@@ -54,13 +54,13 @@ let create_body expr envs =
     | Comments _ | Chunk _ | Def _ | Fun _ | Undef _
     | Err _ | Line _ -> [], Some e
     | Extension {v=({v=name},{v=behavior})} ->
-	[Edir (name, behavior)], None
+      [Edir (name, behavior)], None
     | Pragma ({v=[Word {v=("STDGL",_)};
-		  Word {v=("invariant",_)};
-		  Leftp _;
-		  Word {v=("all",_)};
-		  Rightp _;
-		 ]} as t) -> [Pdir (snd (t.scan t.span.a))], None
+                  Word {v=("invariant",_)};
+                  Leftp _;
+                  Word {v=("all",_)};
+                  Rightp _;
+                 ]} as t) -> [Pdir (snd (t.scan t.span.a))], None
     | Pragma {v} -> [], Some e
     | Version itt -> [Vdir itt.v.v], None
     | If t -> apply_to_if process_requires t
@@ -70,7 +70,7 @@ let create_body expr envs =
     | Comments _ | Chunk _ | Def _ | Fun _ | Undef _
     | Err _ | Pragma _ | Extension _ | Version _ -> [], Some e
     | Line ({ v=(Some ft,_) } as t) ->
-	let linedir = synth_pp_line_armored t in [ft.v], Some linedir
+      let linedir = synth_pp_line_armored t in [ft.v], Some linedir
     | Line _ -> [], Some e
     | If t -> apply_to_if process_line t
     | List t -> apply_to_list process_line t
@@ -78,63 +78,63 @@ let create_body expr envs =
   let directives_of_requires requires =
     List.fold_left
       (fun (pl,el,vo) -> function
-	 | Pdir s -> (s::pl,el,vo)
-	 | Edir (n,Require) -> (pl,(n,"require")::el,vo)
-	 | Edir (n,Enable) -> (pl,(n,"enable")::el,vo)
-	 | Edir (n,Warn) -> (pl,(n,"warn")::el,vo)
-	 | Edir (n,Disable) -> (pl,(n,"disable")::el,vo)
-	 | Vdir n -> (pl,el,Some n)
+        | Pdir s -> (s::pl,el,vo)
+        | Edir (n,Require) -> (pl,(n,"require")::el,vo)
+        | Edir (n,Enable) -> (pl,(n,"enable")::el,vo)
+        | Edir (n,Warn) -> (pl,(n,"warn")::el,vo)
+        | Edir (n,Disable) -> (pl,(n,"disable")::el,vo)
+        | Vdir n -> (pl,el,Some n)
       ) ([],[],None) requires
   in
   let file_nums, expr = match process_line expr with
     | file_nums, Some e -> file_nums, e
     | file_nums, None -> file_nums, empty_pptok_expr expr
   in
-    (* TODO: enforce ESSL 1-declare, 1-define rule *)
+  (* TODO: enforce ESSL 1-declare, 1-define rule *)
   let prototypes = List.fold_left
     (fun l e -> Sl_lib.SymMap.fold
-       (fun k bindings l ->
-	  if List.for_all (fun b -> not (Sl_lib.definitionp b)) bindings
-	  then k::l else l
-       ) (List.hd (List.rev e.Sl_lib.ctxt)) l)
+      (fun k bindings l ->
+        if List.for_all (fun b -> not (Sl_lib.definitionp b)) bindings
+        then k::l else l
+      ) (List.hd (List.rev e.Sl_lib.ctxt)) l)
     [] envs
   in
   let file_nums, start = match expr with
     | List {v=(Line {v=(Some _,_)})::_}
     | Line {v=(Some _,_)} ->
-	file_nums, {file={src=0;input=0}; line={src=1;input=1}; col=0}
+      file_nums, {file={src=0;input=0}; line={src=1;input=1}; col=0}
     | _ ->
-	(0::file_nums), {file={src=(-1);input=(-1)}; line={src=1;input=1}; col=0}
+      (0::file_nums), {file={src=(-1);input=(-1)}; line={src=1;input=1}; col=0}
   in
   let (pdir,edir,vdir),expr = match process_requires expr with
     | requires, Some e -> directives_of_requires requires, e
     | requires, None -> directives_of_requires requires, empty_pptok_expr expr
   in
-  (* TODO: rename GLOC_* to GLOC_GLOC_* *)
-    ({pdir; edir; vdir;
-      insym=List.fold_left
-	 (fun l e -> List.fold_left
-	    (fun l s -> (* TODO: inference *)
-	       if List.mem s l then l
-	       else if List.mem_assoc s builtins then l
-	       else s::l)
-	    l e.Sl_lib.opensyms)
-	 prototypes envs;
-      outsym=List.fold_left
-	 (fun l e -> Sl_lib.SymMap.fold
-	    (fun k bindings l -> (* TODO: inference *)
-	       if (List.mem k l) or not (List.exists Sl_lib.definitionp bindings)
-	       then l else k::l)
-	    (List.hd (List.rev e.Sl_lib.ctxt)) l)
-	 [] envs;
-      inmac=[]; opmac=[]; outmac=[];
-      source=(snd ((proj_pptok_expr expr).scan start))},
-     unique file_nums)
+    (* TODO: rename GLOC_* to GLOC_GLOC_* *)
+  ({pdir; edir; vdir;
+    insym=List.fold_left
+      (fun l e -> List.fold_left
+        (fun l s -> (* TODO: inference *)
+          if List.mem s l then l
+          else if List.mem_assoc s builtins then l
+          else s::l)
+        l e.Sl_lib.opensyms)
+      prototypes envs;
+    outsym=List.fold_left
+      (fun l e -> Sl_lib.SymMap.fold
+        (fun k bindings l -> (* TODO: inference *)
+          if (List.mem k l) or not (List.exists Sl_lib.definitionp bindings)
+          then l else k::l)
+        (List.hd (List.rev e.Sl_lib.ctxt)) l)
+      [] envs;
+    inmac=[]; opmac=[]; outmac=[];
+    source=(snd ((proj_pptok_expr expr).scan start))},
+   unique file_nums)
 
 let env_of_ppexpr ppexpr =
   let s = stream_of_pptok_expr ppexpr in
   let ts = essl_tokenize s in
-    parse_essl (essl_lexerfn ts)
+  parse_essl (essl_lexerfn ts)
 
 let compile ?meta target fn origexpr ~inmac ~opmac tokslst =
   let envs = List.map env_of_ppexpr tokslst in
@@ -143,7 +143,9 @@ let compile ?meta target fn origexpr ~inmac ~opmac tokslst =
     (fun n -> (string_of_int n, sprintf "%s#n=%d" fn n))
     file_nums
   in {glo=glo_version; target; meta;
-      units=[|{body_unit with inmac=inmac@body_unit.inmac;
-	                      opmac=opmac@body_unit.opmac
-	      }|];
+      units=[|{body_unit with
+        inmac=inmac@body_unit.inmac;
+        opmac=opmac@body_unit.opmac
+      }|];
       linkmap}
+
