@@ -1,11 +1,15 @@
-<esslpp_lex.*>: syntax_camlp4o, pkg_ulex
-<gloc.*>: pkg_menhirLib, pkg_ulex, pkg_unix, pkg_atdgen, pkg_re.str
-<gloc_lib.*>: pkg_menhirLib, pkg_ulex, pkg_atdgen
-<glol.*>: pkg_atdgen, pkg_re.str
-<glol_js.*>: syntax_camlp4o, pkg_js_of_ocaml, pkg_js_of_ocaml.syntax, pkg_re.str, pkg_atdgen
-<glo_*>: pkg_atdgen
-<glo.*>: pkg_atdgen
-<ce_lib.*>: pkg_menhirLib
-<essl_lib.*>: pkg_menhirLib
+<pp.*>: package(re.str)
+<esslpp_lex.*>: syntax(camlp4o), package(ulex)
+<gloc.*>: package(atdgen)
+<gloc_posix.*>: package(ulex), package(atdgen), package(menhirLib), package(re.str), package(unix)
+<gloc_js.*>: syntax(camlp4o), package(ulex), package(atdgen), package(menhirLib), package(re.str), package(js_of_ocaml), package(js_of_ocaml.syntax)
+<platform_js.*>: syntax(camlp4o), package(js_of_ocaml), package(js_of_ocaml.syntax)
+<gloc_lib.*>: package(menhirLib), package(ulex), package(atdgen), package(re.str)
+<glol.*>: package(atdgen), package(re.str)
+<glol_js.*>: syntax(camlp4o), package(js_of_ocaml), package(js_of_ocaml.syntax), package(re.str), package(atdgen)
+<glo_*>: package(atdgen)
+<glo.*>: package(atdgen)
+<ce_lib.*>: package(menhirLib)
+<essl_lib.*>: package(menhirLib)
 
 true: use_menhir

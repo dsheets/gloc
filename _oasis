@@ -1,6 +1,6 @@
 OASISFormat: 0.2
 Name:        gloc
-Version:     0.1.0
+Version:     1.0.0
 Synopsis:    WebGLSL/ESSL shader tools
 Authors:     David Sheets
 License:     BSD3
@@ -8,5 +8,5 @@ License:     BSD3
 Executable gloc
   Path:       .
   BuildTools: ocamlbuild
-  MainIs:     gloc.ml
+  MainIs:     gloc_posix.ml
 
