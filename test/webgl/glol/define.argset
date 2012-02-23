@@ -1,0 +1,7 @@
+--define foo=bar
+
+--define baz=quux
+
+-D mymain=main -u mymain
+
+define.glsl

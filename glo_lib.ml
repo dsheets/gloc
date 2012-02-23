@@ -18,7 +18,7 @@ exception UnserializableGlom of string
 exception InvalidGlom of string
 exception InvalidGlo of string
 
-let glo_version = (0,1,0)
+let glo_version = (1,0,0)
 
 let rec json_of_glom = function
   (* TODO: don't serialize! *)

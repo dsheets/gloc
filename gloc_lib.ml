@@ -13,14 +13,14 @@ open Esslpp
 open Glo_lib
 
 module List = struct
-    include List
-    let unique l =
-      let h = Hashtbl.create (List.length l) in
-      let l = List.fold_left
-	(fun l v -> if Hashtbl.mem h v
-	 then l else begin Hashtbl.replace h v (); v::l end)
-	[] l
-      in List.rev l
+  include List
+  let unique l =
+    let h = Hashtbl.create (List.length l) in
+    let l = List.fold_left
+      (fun l v -> if Hashtbl.mem h v
+        then l else begin Hashtbl.replace h v (); v::l end)
+      [] l
+    in List.rev l
 end
 
 (* TODO: harmonize? *)
@@ -71,46 +71,45 @@ exception CompilerError of component * exn list
 type 'a input = Stream of 'a | Define of 'a
 
 type state = {stage:stage ref;
-	      verbose:bool ref;
-	      linectrl:bool ref;
-	      metadata:meta ref;
-	      symbols:string list ref;
-	      output:string option ref;
-	      inputs:string input list ref;
-	      inlang:Lang.language ref;
-	      outlang:Lang.language ref;
-	      accuracy:Lang.accuracy ref;
-	     }
+              verbose:bool ref;
+              linectrl:bool ref;
+              metadata:meta ref;
+              symbols:string list ref;
+              output:string ref;
+              inputs:string input list ref;
+              prologue:string list ref;
+              inlang:Lang.language ref;
+              outlang:Lang.language ref;
+              accuracy:Lang.accuracy ref;
+             }
 
 let default_lang = { Lang.dialect=Lang.WebGL;
-		     Lang.version=(1,0,0);
-		     Lang.bond=Lang.Warn }
+                     Lang.version=(1,0,0);
+                     Lang.bond=Lang.Warn }
 
-let default_meta =
-  { copyright=((Unix.gmtime (Unix.time())).Unix.tm_year + 1900,("",""));
-    author=[]; license=None; library=None; version=None; build=None }
-
-let exec_state = { stage=ref Link;
-		   verbose=ref false;
-		   linectrl=ref true;
-		   metadata=ref default_meta;
-		   symbols=ref [];
-		   output=ref None;
-		   inputs=ref [];
-		   inlang=ref default_lang;
-		   outlang=ref default_lang;
-		   accuracy=ref Lang.Best;
-		 } (* one-shot monad *)
+let new_exec_state meta = {
+  stage=ref Link;
+  verbose=ref false;
+  linectrl=ref true;
+  metadata=ref meta;
+  symbols=ref [];
+  output=ref "-";
+  inputs=ref [];
+  prologue=ref [];
+  inlang=ref default_lang;
+  outlang=ref default_lang;
+  accuracy=ref Lang.Best;
+} (* one-shot monad *)
 
 let builtin_macros = List.fold_left
   (fun map (n,f) -> Env.add n f map)
   Env.empty [
     "__LINE__",(fun e w ->
-		  {name=None; args=None;
-		   stream=fun _ -> [int_replace_word w w.span.a.line.src]});
+      {name=None; args=None;
+       stream=fun _ -> [int_replace_word w w.span.a.line.src]});
     "__FILE__",(fun e w ->
-		  {name=None; args=None;
-		   stream=fun _ -> [int_replace_word w w.span.a.file.src]});
+      {name=None; args=None;
+       stream=fun _ -> [int_replace_word w w.span.a.file.src]});
     "__VERSION__",(fun _ _ -> omacro "__VERSION__" (synth_int (Dec,100)));
     "GL_ES",(fun _ _ -> omacro "GL_ES" (synth_int (Dec,1)))
   ]
@@ -118,11 +117,11 @@ let builtin_macros = List.fold_left
 let maybe_fatal_error k =
   if (List.length !errors) > 0
   then begin let errs = !errors in
-    errors := [];
-    raise (CompilerError (k,errs))
+             errors := [];
+             raise (CompilerError (k,errs))
   end
 
-let parse source =
+let parse exec_state source =
   let () = reset () in
   let lexbuf = Ulexing.from_utf8_string source in
   let parse = MenhirLib.Convert.traditional2revised
@@ -133,39 +132,39 @@ let parse source =
   let ppexpr = try parse (fun () -> lex !(exec_state.inlang) lexbuf) with
     | err -> raise (CompilerError (Parser, [UncaughtException err]))
   in maybe_fatal_error PPParser;
-    normalize_ppexpr ppexpr
+  normalize_ppexpr ppexpr
 
 let preprocess ppexpr =
   let ppl = preprocess_ppexpr {macros=Env.empty;
-			       builtin_macros;
-			       extensions=Env.empty;
-			       inmacros=[]} ppexpr in
-    maybe_fatal_error PPError;
-    ppl
+                               builtin_macros;
+                               extensions=Env.empty;
+                               inmacros=[]} ppexpr in
+  maybe_fatal_error PPError;
+  ppl
 
 let check_pp_divergence ppl =
   if List.length ppl > 1
   then let o = List.fold_left
-    (fun dl pp -> List.fold_left
-       (fun dl om ->
-	  if List.exists (fun m -> om.v=m.v) dl then dl else om::dl)
-       dl (fst pp).inmacros)
-    [] ppl
-  in raise (CompilerError
-	      (PPDiverge, List.rev_map (fun t -> AmbiguousPreprocessorConditional t) o))
+         (fun dl pp -> List.fold_left
+           (fun dl om ->
+             if List.exists (fun m -> om.v=m.v) dl then dl else om::dl)
+           dl (fst pp).inmacros)
+         [] ppl
+       in raise (CompilerError
+                   (PPDiverge, List.rev_map (fun t -> AmbiguousPreprocessorConditional t) o))
   else match ppl with (_,e)::_ -> e
     | [] -> Chunk { span={a=start_loc;z=start_loc};
-		    scan=(fun loc -> (loc,""));
-		    comments=([],ref []);
-		    v=[] }
+                    scan=(fun loc -> (loc,""));
+                    comments=([],ref []);
+                    v=[] }
 
-let compile fn source =
-  let ppexpr = parse source in
+let compile exec_state fn source =
+  let ppexpr = parse exec_state source in
   let ppl = preprocess ppexpr in
 
   let slexpr =
     if (!(exec_state.accuracy)=Lang.Preprocess
-	&& !(exec_state.stage)=Compile)
+       && !(exec_state.stage)=Compile)
     then check_pp_divergence ppl
     else ppexpr
   in
@@ -179,157 +178,154 @@ let compile fn source =
 
   let outlang = !(exec_state.outlang) in
   let target = (Lang.string_of_dialect outlang.Lang.dialect,
-		outlang.Lang.version) in
+                outlang.Lang.version) in
   let meta = !(exec_state.metadata) in
-    try Glo.compile ~meta target fn slexpr
-      ~inmac:(List.unique (List.flatten inmac))
-      ~opmac:(List.unique (List.flatten opmac))
-      (List.map snd ppl)
-    with err -> begin
-      error (Essl_lib.EsslParseError ((Printexc.to_string err),
-				      !(Pp_lib.file),!(Pp_lib.line)));
-      maybe_fatal_error SLParser;
-      raise err
-    end
+  try Glo.compile ~meta target fn slexpr
+        ~inmac:(List.unique (List.flatten inmac))
+        ~opmac:(List.unique (List.flatten opmac))
+        (List.map snd ppl)
+  with err -> begin
+    error (Essl_lib.EsslParseError ((Printexc.to_string err),
+                                    !(Pp_lib.file),!(Pp_lib.line)));
+    maybe_fatal_error SLParser;
+    raise err
+  end
 
-let link required glom =
-  try Glol.link "" required (Glol.flatten "" glom)
+let link prologue required glom =
+  try Glol.link prologue required (Glol.flatten "" glom)
   with e -> raise (CompilerError (Linker,[e]))
 
-let file_extp ext fn =
-  if (String.length fn)<((String.length ext)+1)
-  then false
-  else (Str.last_chars fn ((String.length ext)+1))="."^ext
-let file_ext ext fn = (* TODO: paths with dots but no file extension *)
-  let dotre = Str.regexp_string "." in
-  let parts = List.rev (Str.split dotre fn) in
-    if (List.length parts) = 1 then fn^"."^ext
-    else List.fold_left
-      (fun a s -> if a="" then s else a^"."^s)
-      "" (List.rev (ext::(List.tl parts)))
-
-let is_glo_file = file_extp "glo"
-let glo_file_name = file_ext "glo"
-let is_glopp_file = file_extp "glopp"
-let glopp_file_name = file_ext "glopp"
-
 let macro_name m = (* TODO: parser? *)
-  let fn_patt = Str.regexp "\\([^(]+\\)\\(([^)]+)\\)?" in
-  let _ = Str.search_forward fn_patt m 0 in
-    Str.matched_group 1 m
+  let fn_patt = Re_str.regexp "\\([^(]+\\)\\(([^)]+)\\)?" in
+  let _ = Re_str.search_forward fn_patt m 0 in
+  Re_str.matched_group 1 m
+
+let make_define_line ds =
+  match Re_str.bounded_split (Re_str.regexp_string "=") ds 2 with
+    | [] -> ""
+    | bare::[] -> "#define "^bare^"\n"
+    | m::d::_ -> "#define "^m^" "^d^"\n"
 
 let make_define_unit ds =
   let u m source =
     {pdir=[]; edir=[]; vdir=None; insym=[]; outsym=[]; inmac=[]; opmac=[];
      outmac=if m="" then [] else [macro_name m]; source}
-  in match Str.bounded_split (Str.regexp_string "=") ds 2 with
-    | [] -> u "" ""
-    | bare::[] -> u bare ("#define "^bare^"\n")
-    | m::d::_ -> u m ("#define "^m^" "^d^"\n")
+  in match Re_str.bounded_split (Re_str.regexp_string "=") ds 2 with
+    | [] -> u "" (make_define_line ds)
+    | bare::[] -> u bare (make_define_line ds)
+    | m::d::_ -> u m (make_define_line ds)
 
 let glo_of_u meta target u =
   {glo=glo_version; target; meta=Some meta; units=[|u|]; linkmap=[]}
 
-let make_glo fn s =
+let make_glo exec_state fn s =
   try match glom_of_string s with
-    | Source s -> Glo (compile fn s)
+    | Source s -> Glo (compile exec_state fn s)
     | glom -> glom
   with
-    | e -> raise (CompilerError (Format,[e])) (* TODO: msg *)
+    | e -> raise e (*raise (CompilerError (Format,[e])) (* TODO: msg *)*)
 
-let make_glom inputs = Glom
-  (List.fold_left
-     (fun al -> function
-       | (fn, Stream (Source s)) | (fn, Define (Source s)) -> 
-	 begin try (fn,make_glo fn s)::al
-	   with e -> raise (CompilerError (Format,[e])) end (* TODO: msg *)
-       | (fn, Stream glom) | (fn, Define glom) -> (fn,glom)::al
-     ) [] inputs)
+let make_glom exec_state inputs =
+  let glo_alist = List.fold_left
+    (fun al -> function
+      | (fn, Stream (Source s)) | (fn, Define (Source s)) ->
+        begin try (fn,make_glo exec_state fn s)::al
+          with e -> raise (CompilerError (Format,[e])) end (* TODO: msg *)
+      | (fn, Stream glom) | (fn, Define glom) -> (fn,glom)::al
+    ) [] inputs
+  in Glol.nest glo_alist
 
-let string_of_tokpos
+let minimize_glom = function
+  | Glom [_,Glo glo] -> Glo glo
+  | x -> x
+
+let string_of_tokpos linectrl
     ({span={a={file=af; line=al; col=ac};
-	    z={file=zf; line=zl; col=zc}}}) =
-  let af,al,zf,zl = if !(exec_state.linectrl)
-  then (af.src,al.src,zf.src,zl.src)
-  else (af.input,al.input,zf.input,zl.input)
+            z={file=zf; line=zl; col=zc}}}) =
+  let af,al,zf,zl = if linectrl
+    then (af.src,al.src,zf.src,zl.src)
+    else (af.input,al.input,zf.input,zl.input)
   in if af=zf then
       if al=zl
       then if ac=zc
-      then sprintf "File %d, line %d, col %d" af al ac
-      else sprintf "File %d, line %d, col %d - %d" af al ac zc
+        then sprintf "File %d, line %d, col %d" af al ac
+        else sprintf "File %d, line %d, col %d - %d" af al ac zc
       else sprintf "File %d, l%d c%d - l%d c%d" af al ac zl zc
     else sprintf "F%d l%d c%d - F%d l%d c%d" af al ac zf zl zc
 
-let string_of_error = function
+let string_of_error linectrl = function
   | UnknownBehavior t ->
-      sprintf "%s:\nunknown behavior \"%s\"\n" (string_of_tokpos t) t.v
+    sprintf "%s:\nunknown behavior \"%s\"\n" (string_of_tokpos linectrl t) t.v
   | UnterminatedComment t ->
-      sprintf "%s:\nunterminated comment\n" (string_of_tokpos t)
+    sprintf "%s:\nunterminated comment\n" (string_of_tokpos linectrl t)
   | UnterminatedConditional t ->
-      sprintf "%s:\nunterminated conditional \"%s\"\n" (string_of_tokpos t)
-	(snd (t.scan t.span.a))
+    sprintf "%s:\nunterminated conditional \"%s\"\n" (string_of_tokpos linectrl t)
+      (snd (t.scan t.span.a))
   | UnknownCharacter t ->
-      sprintf "%s:\nunknown character '%s'\n" (string_of_tokpos t)
-	(snd (t.scan t.span.a))
+    sprintf "%s:\nunknown character '%s'\n" (string_of_tokpos linectrl t)
+      (snd (t.scan t.span.a))
   | LineContinuationUnsupported t ->
-      sprintf "%s:\nline continuation officially unsupported\n" (string_of_tokpos t)
+    sprintf "%s:\nline continuation officially unsupported\n"
+      (string_of_tokpos linectrl t)
   | InvalidDirectiveLocation t ->
-      sprintf "%s:\ninvalid directive location\n" (string_of_tokpos t)
+    sprintf "%s:\ninvalid directive location\n" (string_of_tokpos linectrl t)
   | InvalidDirective t ->
-      sprintf "%s:\ninvalid directive \"%s\"\n" (string_of_tokpos t) t.v
+    sprintf "%s:\ninvalid directive \"%s\"\n" (string_of_tokpos linectrl t) t.v
   | InvalidOctal t ->
-      sprintf "%s:\ninvalid octal constant \"%s\"\n" (string_of_tokpos t) t.v
+    sprintf "%s:\ninvalid octal constant \"%s\"\n" (string_of_tokpos linectrl t) t.v
   | HolyVersion t ->
-      sprintf "%s:\nversion must be first semantic token\n" (string_of_tokpos t)
+    sprintf "%s:\nversion must be first semantic token\n"
+      (string_of_tokpos linectrl t)
   | UnsupportedVersion t ->
-      sprintf "%s:\nversion %d is unsupported\n" (string_of_tokpos t) t.v
+    sprintf "%s:\nversion %d is unsupported\n" (string_of_tokpos linectrl t) t.v
   | InvalidVersionBase t ->
-      sprintf "%s:\nversion must be specified in decimal\n" (string_of_tokpos t)
+    sprintf "%s:\nversion must be specified in decimal\n"
+      (string_of_tokpos linectrl t)
   | InvalidLineBase t ->
-      sprintf "%s:\nline control arguments must be specified in decimal\n"
-	(string_of_tokpos t)
+    sprintf "%s:\nline control arguments must be specified in decimal\n"
+      (string_of_tokpos linectrl t)
   | InvalidVersionArg t ->
-      sprintf "%s:\ninvalid version argument\n" (string_of_tokpos t)
+    sprintf "%s:\ninvalid version argument\n" (string_of_tokpos linectrl t)
   | InvalidLineArg t ->
-      sprintf "%s:\ninvalid line argument\n" (string_of_tokpos t)
+    sprintf "%s:\ninvalid line argument\n" (string_of_tokpos linectrl t)
   | MacroArgUnclosed t ->
-      sprintf "%s:\nunclosed macro argument list\n" (string_of_tokpos t)
+    sprintf "%s:\nunclosed macro argument list\n" (string_of_tokpos linectrl t)
   | MacroArgInnerParenUnclosed t ->
-      sprintf "%s:\nunclosed inner parenthesis in macro argument list\n"
-	(string_of_tokpos t)
+    sprintf "%s:\nunclosed inner parenthesis in macro argument list\n"
+      (string_of_tokpos linectrl t)
   | MacroArgTooFew (t,a,e) ->
-      sprintf "%s:\ntoo few macro arguments: expected %d, got %d\n"
-	(string_of_tokpos t) e a
+    sprintf "%s:\ntoo few macro arguments: expected %d, got %d\n"
+      (string_of_tokpos linectrl t) e a
   | MacroArgTooMany (t,a,e) ->
-      sprintf "%s:\ntoo many macro arguments: expected %d, got %d\n"
-	(string_of_tokpos t) e a
+    sprintf "%s:\ntoo many macro arguments: expected %d, got %d\n"
+      (string_of_tokpos linectrl t) e a
   | ReservedKeyword t ->
-      sprintf "%s:\n\"%s\" is a reserved keyword and may not be used\n"
-	(string_of_tokpos t) t.v
+    sprintf "%s:\n\"%s\" is a reserved keyword and may not be used\n"
+      (string_of_tokpos linectrl t) t.v
   | RedefineReservedMacro t ->
-      sprintf "%s:\n\"%s\" is a reserved macro and may not be redefined\n"
-	(string_of_tokpos t) t.v
+    sprintf "%s:\n\"%s\" is a reserved macro and may not be redefined\n"
+      (string_of_tokpos linectrl t) t.v
   | UndefineReservedMacro t ->
-      sprintf "%s:\n\"%s\" is a reserved macro and may not be undefined\n"
-	(string_of_tokpos t) t.v
+    sprintf "%s:\n\"%s\" is a reserved macro and may not be undefined\n"
+      (string_of_tokpos linectrl t) t.v
   | ErrorDirective t ->
-      sprintf "%s:\n%s\n" (string_of_tokpos t) (snd (t.scan t.span.a))
+    sprintf "%s:\n%s\n" (string_of_tokpos linectrl t) (snd (t.scan t.span.a))
   | UnsupportedPPOp t ->
-      sprintf "%s:\n\"%s\" is not supported in preprocessor expressions\n"
-	(string_of_tokpos t) (snd (t.scan t.span.a))
+    sprintf "%s:\n\"%s\" is not supported in preprocessor expressions\n"
+      (string_of_tokpos linectrl t) (snd (t.scan t.span.a))
   | FloatUnsupported t ->
-      sprintf "%s:\nfloating point is not supported in preprocessor expressions\n"
-	(string_of_tokpos t)
+    sprintf "%s:\nfloating point is not supported in preprocessor expressions\n"
+      (string_of_tokpos linectrl t)
   | PPCondExprParseError t ->
-      sprintf "%s:\nerror parsing conditional expression \"%s\"\n"
-	(string_of_tokpos t) (snd (t.scan t.span.a))
+    sprintf "%s:\nerror parsing conditional expression \"%s\"\n"
+      (string_of_tokpos linectrl t) (snd (t.scan t.span.a))
   | UncaughtException e -> sprintf "Uncaught exception:\n%s\n" (Printexc.to_string e)
   | AmbiguousPreprocessorConditional t ->
-      sprintf "%s:\nambiguous preprocessor conditional branch: %s\n"
-	(string_of_tokpos t) t.v
+    sprintf "%s:\nambiguous preprocessor conditional branch: %s\n"
+      (string_of_tokpos linectrl t) t.v
   | GlomPPOnly fn ->
-      sprintf "Source '%s' is a glom with multiple source units.\n" fn
+    sprintf "Source '%s' is a glom with multiple source units.\n" fn
   | MultiUnitGloPPOnly fn -> (* TODO: test *)
-      sprintf "Source '%s' is a glo with multiple source units.\n" fn
+    sprintf "Source '%s' is a glo with multiple source units.\n" fn
   | Sys_error m -> sprintf "System error:\n%s\n" m
   | exn -> try Glol.string_of_error exn with e -> raise e

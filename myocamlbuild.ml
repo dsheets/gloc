@@ -38,7 +38,6 @@ let _ = dispatch begin function
         Cmd(S[A"js_of_ocaml";A"-pretty";A"-noinline";P byte])
       end;
     flag ["ocaml"; "byte"; "link"] (S[A"-custom"]);
-    (*dep ["file:ooman/jsgoo.ml"] ["libgloc.o"];*)
     dep ["ocaml"; "link"] ["libgloc.o"]
   | _ -> ()
 end

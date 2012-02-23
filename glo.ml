@@ -140,7 +140,7 @@ let compile ?meta target fn origexpr ~inmac ~opmac tokslst =
   let envs = List.map env_of_ppexpr tokslst in
   let body_unit, file_nums = create_body origexpr envs in
   let linkmap = List.map
-    (fun n -> (string_of_int n, sprintf "%s#n=%d" fn n))
+    (fun n -> (string_of_int n, sprintf "#n=%d" n))
     file_nums
   in {glo=glo_version; target; meta;
       units=[|{body_unit with

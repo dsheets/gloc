@@ -45,7 +45,7 @@ window['GLOL'] = function() {};
   /**
    * @type {function({copyright: Array.<number|Array.<string>>},*,*,*,*) : string }
    */
-  function armor(meta,linkmap,fs_ct,opmac,s) {
+  function armor(meta,name,linkmap,fs_ct,opmac,s) {
     // Replace special symbols in line directives to satisfy linkmap
     // required regexp (greetz jwz) instead of macros due to ANGLE bug 183
     var intpatt = /GLOC_([0-9]+)/g;
@@ -53,7 +53,7 @@ window['GLOL'] = function() {};
       var anno = "";
       var fn = parseInt(n,10);
       if (linkmap[n]) {
-	anno = "/* "+linkmap[n]+" */";
+	anno = "/* "+name+linkmap[n]+" */";
       }
       return (""+(fn+fs_ct)+anno);
     }
@@ -74,9 +74,10 @@ window['GLOL'] = function() {};
       if (meta.library) library = field("Library",meta.library);
       if (meta.version) {
 	var v = meta.version;
-	version = "// Version: "+v[0]+"."+v[1]+"."+v[2]+"\n";
+	version = "// Version: "+v[0][0]+"."+v[0][1]+"."+v[0][2];
+        version+= " <"+v[1]+">\n";
       }
-      if (meta.build) build="// Build: "+meta.build+"\n";
+      if (meta.build) build = field("Build",meta.build);
       head = ("// Copyright "+meta.copyright[0]+" "
 	      +meta.copyright[1][0]+" <"+meta.copyright[1][1]+"> "
 	      +"All rights reserved.\n"+license+authors+library+version+build);
@@ -351,7 +352,7 @@ window['GLOL'] = function() {};
     for (var i = 0; i < alist.length; i++) {
       var glo = alist[i][1];
       if (glo.glo) {
-	if (glo.glo[0] != 0 || glo.glo[1] != 1) {
+	if (glo.glo[0] != 1 || glo.glo[1] != 0) {
 	  throw (new UnknownGloVersion(alist[i][0],glo.glo));
 	}
 	l.push(alist[i]);
@@ -393,7 +394,7 @@ window['GLOL'] = function() {};
       for (var k in glo.linkmap) { sup = Math.max(sup,parseInt(k,10)); }
       var u = glo.units[agp[0][1]];
       var unit_begin = (name==pname||pname=="")?"":"// End: Copyright\n";
-      return [(src+unit_begin+armor(name==pname?null:glo.meta,
+      return [(src+unit_begin+armor(name==pname?null:glo.meta,name,
 				    glo.linkmap,o,u.opmac,u.source)+"\n"),
 	      [name,o+sup+1]];
     }, [preamble(glol)+prologue,["",0]])[0];

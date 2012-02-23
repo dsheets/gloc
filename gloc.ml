@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  *)
 
-open Printf
+(*open Printf*)
 module A = Arg
 
 open Pp_lib
@@ -13,228 +13,236 @@ open Esslpp_lex
 open Glo_lib
 open Gloc_lib
 
-let gloc_version = (0,1,0)
+module type Platform = sig
+  val id : [> `POSIX | `JS ]
+  val get_year : unit -> int
+  val eprint : string -> unit
+  val out_of_filename : string -> (Buffer.t -> 'a) -> 'a
+  val in_of_filename : string -> (string -> 'a) -> 'a
+end
+
+exception Exit of int
+
+let gloc_version = (1,0,0)
 let gloc_distributor = "Ashima Arts"
 
-let arg_of_stage = function
-  | Contents -> "--source"
-  | ParsePP -> "-e"
-  | Preprocess -> "-E"
-  | Compile -> "-c"
-  | XML -> "--xml"
-  | Link -> "<default>"
-
-let set_inlang map = fun () -> exec_state.inlang := (map !(exec_state.inlang))
-let set_outlang map = fun () -> exec_state.outlang := (map !(exec_state.outlang))
-let set_accuracy a = exec_state.accuracy := a
-let set_stage stage = fun () ->
-  if !(exec_state.stage)=Link
-  then exec_state.stage := stage
-  else raise (CompilerError (Command,[IncompatibleArguments
-					(arg_of_stage !(exec_state.stage),
-					 arg_of_stage stage)]))
-
-let string_of_inchan inchan =
-  let s = String.create 1024 in
-  let b = Buffer.create 1024 in
-  let rec consume pos =
-    let k = input inchan s 0 1024 in
-      if k=0 then Buffer.contents b
-      else begin Buffer.add_substring b s 0 k; consume (pos+k) end
-  in consume 0
-
-let out_of_filename fn fdf =
-  let fd = if fn="-" then stdout else open_out fn in
-    try (let r = fdf fd in (close_out fd; r)) with e -> (close_out fd; raise e)
-
-let in_of_filename fn fdf =
-  let fd = if fn="-" then stdin else open_in fn in
-    try (let r = fdf fd in (close_in fd; r)) with e -> (close_in fd; raise e)
-
-let meta_of_path p = in_of_filename p
-  (fun fd -> match (Glo_j.glo_of_string (string_of_inchan fd)).meta
-    with None -> default_meta | Some meta -> meta)
+type group = Stage of stage
+type set = LinkSymbols | LinkDefines | LinkGlobalMacros
+type option = DisableLineControl | Verbose
+type filetype = Output | Meta | Input
+type iface =
+    Group of group
+  | StringList of set
+  | Filename of filetype
+  | Option of option
+  | Choice of string list * (state -> string -> unit)
 
 (* TODO: add per warning check args *)
 (* TODO: add partial preprocess (only ambiguous conds with dep macros) *)
 (* TODO: add partial preprocess (maximal preprocess without semantic change) *)
 (* TODO: make verbose more... verbose *)
-let arguments =
-  ["-c", A.Unit (set_stage Compile),
-   "produce glo and halt; do not link";
-   "-E", A.Unit (set_stage Preprocess),
-   "preprocess and halt; do not parse SL";
-   "-e", A.Unit (set_stage ParsePP),
-   "parse preprocessor and halt; do not preprocess";
-   "-u", A.String (fun u -> exec_state.symbols := u::!(exec_state.symbols)),
-   "required symbol (default ['main'])";
-   "-D", A.String (fun m -> exec_state.inputs := (Define m)::!(exec_state.inputs)),
-   "define a macro";
-   "-o", A.String (fun o -> exec_state.output := Some o), "output file";
-   (*"-w", A.Unit (set_inlang (with_bond Ignore)), "inhibit all warning messages";*)
-   "--accuracy", A.Symbol (["best";"preprocess"],
-			   fun s -> set_accuracy (Language.accuracy_of_string s)),
-   " output accuracy";
-   "-L", A.Clear exec_state.linectrl,
-   "disregard incoming line control for errors";
-   "-x", A.Symbol (["webgl"],
-		   fun s -> set_inlang (Language.with_dialect s) ()),
-   " input language";
-   "-t", A.Symbol (["webgl"],
-		   fun s -> set_outlang (Language.with_dialect s) ()),
-   " target language";
-   "-v", A.Set exec_state.verbose, "verbose compilation or version information";
-   "--meta", A.String (fun m -> exec_state.metadata := (meta_of_path m)),
-   "the prototypical glo file to use for metadata";
-   "--xml", A.Unit (set_stage XML),
-   "produce glo XML documents from source or glo";
-   "--source", A.Unit (set_stage Contents),
-   "strip the glo format and return the contained source";
-  ]
-let anon_fun arg = exec_state.inputs := (Stream arg)::!(exec_state.inputs)
+let cli = [
+  "-c", Group (Stage Compile), "produce glo and halt; do not link";
+  "--xml", Group (Stage XML), "produce glo XML documents";
+  "-E", Group (Stage Preprocess), "preprocess and halt; do not parse SL";
+  "-e", Group (Stage ParsePP), "parse preprocessor and halt; do not preprocess";
+  "--source", Group (Stage Contents),
+  "strip the glo format and return the contained source";
+  "-u", StringList LinkSymbols, "required symbol (default ['main'])";
+  "--define", StringList LinkDefines, "define a macro unit";
+  "-D", StringList LinkGlobalMacros, "define a global macro";
+  "-o", Filename Output, "output file";
+  "--accuracy", Choice (["best";"preprocess"],
+                        fun exec_state s ->
+                          exec_state.accuracy := (Language.accuracy_of_string s)),
+  "output accuracy";
+  "-L", Option DisableLineControl, "disregard incoming line directives";
+  "-x", Choice (["webgl"],
+                fun exec_state s ->
+                  exec_state.inlang :=
+                    (Language.with_dialect s !(exec_state.inlang))),
+  "source language";
+  "-t", Choice (["webgl"],
+                fun exec_state s ->
+                  exec_state.outlang :=
+                    (Language.with_dialect s !(exec_state.outlang))),
+  "target language";
+  "-v", Option Verbose, "verbose";
+  "--meta", Filename Meta, "prototypical glo file to use for metadata";
+  "", Filename Input, "source input";
+]
 
-let string_of_version (maj,min,rev) = sprintf "%d.%d.%d" maj min rev
-let usage_msg = sprintf "gloc version %s (%s)"
+let arg_of_stage cli stage =
+  let rec search = function
+    | (arg,Group (Stage x),_)::_ when x=stage -> arg
+    | _::r -> search r
+    | [] -> "<default>"
+  in search cli
+
+let set_of_group state cli =
+  let set_stage stage = fun () ->
+    if !(state.stage)=Link
+    then state.stage := stage
+    else raise (CompilerError (Command,[IncompatibleArguments
+                                           (arg_of_stage cli !(state.stage),
+                                            arg_of_stage cli stage)])) in
+  function Stage s -> set_stage s
+
+let string_of_version (maj,min,rev) = Printf.sprintf "%d.%d.%d" maj min rev
+let usage_msg = Printf.sprintf "gloc version %s (%s)"
   (string_of_version gloc_version)
   gloc_distributor
 
-let () = A.parse arguments anon_fun usage_msg
+module Make(P : Platform) = struct
 
-let print_errors errors =
-  List.iter (fun e -> eprintf "%s\n" (string_of_error e)) (List.rev errors)
+  let default_meta =
+    { copyright=(P.get_year (),("",""));
+      author=[]; license=None; library=None; version=None; build=None }
 
-let compiler_error k errs =
-  let code = exit_code_of_component k in
-    print_errors errs;
-    eprintf "Fatal: %s (%d)\n"
-      (string_of_component_error k) code;
-  exit code
+  let meta_of_path p = P.in_of_filename p
+    (fun s -> match (Glo_j.glo_of_string s).meta
+      with None -> default_meta | Some meta -> meta)
 
-let rec write_glom fn fd = function
-  | Source s -> write_glom fn fd (make_glo fn s)
-  | Other o ->
-    output_string fd (if !(exec_state.verbose)
-      then Yojson.Safe.pretty_to_string ~std:true o
-      else Yojson.Safe.to_string ~std:true o)
-  | Glo glo ->
-    let s = Glo_j.string_of_glo glo in
-    output_string fd
-      ((if !(exec_state.verbose)
-	then Yojson.Safe.prettify ~std:true s else s)^"\n")
-  | Glom glom ->
-    let json = json_of_glom (Glom glom) in
-    output_string fd
-      ((if !(exec_state.verbose)
-	then Yojson.Safe.pretty_to_string ~std:true json
-	else Yojson.Safe.to_string ~std:true json)^"\n")
+  let spec_of_iface exec_state cli = function
+    | Group g -> A.Unit (set_of_group exec_state cli g)
+    | StringList LinkSymbols ->
+      A.String (fun u -> exec_state.symbols := u::!(exec_state.symbols))
+    | StringList LinkDefines ->
+      A.String (fun m -> exec_state.inputs := (Define m)::!(exec_state.inputs))
+    | StringList LinkGlobalMacros ->
+      A.String (fun m -> exec_state.prologue := m::!(exec_state.prologue))
+    | Filename Output ->
+      A.String (fun m -> exec_state.output := m)
+    | Filename Input ->
+      A.String (fun m -> exec_state.inputs := (Stream m)::!(exec_state.inputs))
+    | Filename Meta ->
+      A.String (fun m -> exec_state.metadata := (meta_of_path m))
+    | Option DisableLineControl -> A.Clear exec_state.linectrl
+    | Option Verbose -> A.Set exec_state.verbose
+    | Choice (syms, setfn) -> A.Symbol (syms, setfn exec_state)
 
-let rec source_of_glom fn = function
-  | Source s -> begin match glom_of_string s with Source s -> s
-      | glom -> source_of_glom fn glom end
-  | Glo glo -> if (Array.length glo.units)=1
-    then Glol.armor glo.meta (glo.linkmap,0) []
-      glo.units.(0).source
-    else raise (CompilerError (PPDiverge, [MultiUnitGloPPOnly fn]))
-  | Glom ((n,glom)::[]) -> source_of_glom (fn^"/"^n) glom
-  | Glom _ -> raise (CompilerError (PPDiverge, [GlomPPOnly fn]))
-  | Other o -> raise (Failure "cannot get source of unknown json") (* TODO *)
+  let arg_of_cli exec_state cli = List.fold_right
+    (fun (flag, iface, descr) (argl, anon) ->
+      if flag="" then (argl, match spec_of_iface exec_state cli iface with
+        | A.String sfn -> sfn
+        | _ -> fun _ -> ()
+      ) else ((flag, spec_of_iface exec_state cli iface, descr)::argl, anon)
+    ) cli ([], fun _ -> ())
 
-let write_glopp fn fd glom =
-  let ppexpr = parse (source_of_glom fn glom) in
-    output_string fd
+  let print_errors linectrl errors =
+    List.iter (fun e -> P.eprint ((string_of_error linectrl e)^"\n"))
+      (List.rev errors)
+
+  let compiler_error exec_state k errs =
+    let code = exit_code_of_component k in
+    print_errors !(exec_state.linectrl) errs;
+    P.eprint ("Fatal: "^(string_of_component_error k)
+              ^" ("^(string_of_int code)^")\n");
+    raise (Exit code)
+
+  let rec write_glom exec_state fn b = function
+    | Source s -> write_glom exec_state fn b (make_glo exec_state fn s)
+    | Other o ->
+      Buffer.add_string b (if !(exec_state.verbose)
+        then Yojson.Safe.pretty_to_string ~std:true o
+        else Yojson.Safe.to_string ~std:true o)
+    | Glo glo ->
+      let s = Glo_j.string_of_glo glo in
+      Buffer.add_string b
+        ((if !(exec_state.verbose)
+          then Yojson.Safe.prettify ~std:true s else s)^"\n")
+    | Glom glom ->
+      let json = json_of_glom (Glom glom) in
+      Buffer.add_string b
+        ((if !(exec_state.verbose)
+          then Yojson.Safe.pretty_to_string ~std:true json
+          else Yojson.Safe.to_string ~std:true json)^"\n")
+
+  let rec source_of_glom fn = function
+    | Source s -> begin match glom_of_string s with Source s -> s
+        | glom -> source_of_glom fn glom end
+    | Glo glo -> if (Array.length glo.units)=1
+      then Glol.armor glo.meta (fn,glo.linkmap,0) []
+        glo.units.(0).source
+      else raise (CompilerError (PPDiverge, [MultiUnitGloPPOnly fn]))
+    | Glom ((n,glom)::[]) -> source_of_glom (fn^"/"^n) glom
+    | Glom _ -> raise (CompilerError (PPDiverge, [GlomPPOnly fn]))
+    | Other o -> raise (Failure "cannot get source of unknown json") (* TODO *)
+
+  let write_glopp exec_state fn b prologue glom =
+    let ppexpr = parse exec_state (source_of_glom fn glom) in
+    Buffer.add_string b
       ((string_of_ppexpr start_loc
-	  (match !(exec_state.stage) with
-	    | ParsePP -> ppexpr
-	    | Preprocess -> check_pp_divergence (preprocess ppexpr)
-	    | s -> (* TODO: stage? error message? tests? *)
-	      raise (CompilerError (PPDiverge, [GloppStageError s]))
-	  ))^"\n")
+          (match !(exec_state.stage) with
+            | ParsePP -> ppexpr
+            | Preprocess -> check_pp_divergence (preprocess ppexpr)
+            | s -> (* TODO: stage? error message? tests? *)
+              raise (CompilerError (PPDiverge, [GloppStageError s]))
+          ))^"\n")
 
-let streamp = function Stream _ -> true | _ -> false
-let stream_inputp il = List.exists streamp il
-let glom_of_input = function Stream f -> f | Define f -> f
-;;
+  let streamp = function Stream _ -> true | _ -> false
+  let stream_inputp il = List.exists streamp il
+  let glom_of_input = function Stream f -> f | Define f -> f
 
-let req_sym = List.rev !(exec_state.symbols) in
-let stdin_input () = ("[stdin]", Stream (Source (string_of_inchan stdin))) in
-let inputs = match !(exec_state.inputs) with [] -> [stdin_input ()]
-  | il -> List.map
-      (function
-	 | Stream fn ->
-	     begin try (fn, Stream (Source (string_of_inchan (open_in fn))))
-	     with e -> compiler_error Command [e] end
-	 | Define ds -> if ds="" then ("[-D]", Define (Source ""))
-	   else ("[-D "^ds^"]",
-		 Define (Glo (glo_of_u !(exec_state.metadata)
-				(Lang.target_of_language !(exec_state.outlang))
-				(make_define_unit ds))))
-      )	il
-in let inputs = if stream_inputp (List.map snd inputs) then inputs
-  else (stdin_input ())::inputs
-in try begin match (!(exec_state.output),
-		    !(exec_state.stage)) with
-  | None, Contents ->
-    output_string stdout (source_of_glom "" (make_glom inputs))
-  | None, XML ->
-    output_string stdout
-      (Glo_xml.xml_of_glom ~xsl:"glosse.xsl" ~pretty:true (make_glom inputs))
-  | None, Link ->
-    let glom = make_glom inputs in
-    let src = link req_sym glom in
-    output_string stdout
-      (if !(exec_state.accuracy)=Lang.Preprocess
-       then string_of_ppexpr start_loc
-	  (check_pp_divergence (preprocess (parse src)))
-       else src)
-  | None, Compile -> if stream_inputp !(exec_state.inputs)
-    then List.iter
-      (function (fn,Define d) -> ()
-	 | (fn,Stream s) -> if not (is_glo_file fn)
-	   then out_of_filename (glo_file_name fn)
-	     (fun fd -> write_glom fn fd s)) inputs
-    else write_glom (fst (List.hd inputs)) stdout
-      (glom_of_input (snd (List.hd inputs)))
-  | None, Preprocess | None, ParsePP ->
-      if stream_inputp !(exec_state.inputs)
-      then List.iter
-	(function (fn,Define d) -> () (* TODO: use -D in PP only as well *)
-	   | (fn,Stream s) -> if not (is_glopp_file fn)
-	     then out_of_filename (glopp_file_name fn)
-	       (fun fd -> write_glopp fn fd s)) inputs
-      else write_glopp (fst (List.hd inputs)) stdout
-	(glom_of_input (snd (List.hd inputs)))
-  | Some fn, Contents ->
-    out_of_filename fn
-      (fun fd -> output_string fd (source_of_glom fn (make_glom inputs)))
-  | Some fn, XML ->
-    out_of_filename fn
-      (fun fd ->
-	output_string fd
-	  (Glo_xml.xml_of_glom ~xsl:"glo.xsl" ~pretty:true (make_glom inputs)))
-  | Some fn, Link -> let glom = make_glom inputs in
-    let src = link req_sym glom in
-    out_of_filename fn
-      (fun fd ->
-	output_string fd
-	  ((if !(exec_state.accuracy)=Lang.Preprocess
-	    then string_of_ppexpr start_loc
-	      (check_pp_divergence (preprocess (parse src)))
-	    else src)))
-  | Some fn, Compile -> (* TODO: consolidate glo *)
-    out_of_filename fn
-      (fun fd ->
-	if stream_inputp !(exec_state.inputs)
-	then let glom = make_glom inputs in
-	     write_glom fn fd glom
-	else write_glom fn fd (glom_of_input (snd (List.hd inputs))))
-  | Some fn, Preprocess | Some fn, ParsePP ->
-    out_of_filename fn
-      (fun fd ->
-	if (List.length (List.filter streamp !(exec_state.inputs)))=1
-	then List.iter
-	  (function (_,Define d) -> () (* TODO: use -D in PP only as well *)
-	    | (_,Stream s) -> write_glopp fn fd s) inputs
-	else write_glopp (fst (List.hd inputs)) stdout
-	  (glom_of_input (snd (List.hd inputs))))
+  let prologue exec_state = List.fold_left
+    (fun s ds -> (make_define_line ds)^s) "" !(exec_state.prologue)
+
+  let gloc exec_state strin =
+    let req_sym = List.rev !(exec_state.symbols) in
+    let stdin_input () = ("[stdin]", Stream (Source (strin ()))) in
+    let inputs = match !(exec_state.inputs) with [] -> [stdin_input ()]
+      | il -> List.map
+        (function
+          | Stream fn ->
+            begin try (fn, Stream (Source (P.in_of_filename fn (fun s -> s))))
+              with e -> compiler_error exec_state Command [e] end
+          | Define ds -> if ds="" then ("[--define]", Define (Source ""))
+            else ("[--define "^ds^"]",
+                  Define (Glo (glo_of_u !(exec_state.metadata)
+                                 (Language.target_of_language !(exec_state.outlang))
+                                 (make_define_unit ds))))
+        ) il
+    in let inputs = if stream_inputp (List.map snd inputs) then inputs
+      else (stdin_input ())::inputs
+       in let fn = !(exec_state.output)
+          in try begin match !(exec_state.stage) with
+            | Contents ->
+              P.out_of_filename fn
+                (fun b -> Buffer.add_string b (source_of_glom fn
+                                                 (make_glom exec_state inputs)))
+            | XML ->
+              P.out_of_filename fn
+                (fun b ->
+                  Buffer.add_string b
+                    (Glo_xml.xml_of_glom ~xsl:"glocide.xsl" ~pretty:true
+                       (make_glom exec_state inputs)))
+            | Link -> let glom = make_glom exec_state inputs in
+                      let prologue = prologue exec_state in
+                      let src = link prologue req_sym glom in
+                      P.out_of_filename fn
+                        (fun b ->
+                          Buffer.add_string b
+                            ((if !(exec_state.accuracy)=Language.Preprocess
+                              then string_of_ppexpr start_loc
+                                (check_pp_divergence
+                                   (preprocess (parse exec_state src)))
+                              else src)))
+            | Compile -> (* TODO: consolidate glo *)
+              P.out_of_filename fn
+                (fun b ->
+                  let glom = make_glom exec_state inputs in
+                  write_glom exec_state fn b (minimize_glom glom))
+            | Preprocess | ParsePP ->
+              P.out_of_filename fn
+                (fun b ->
+                  if (List.length (List.filter (fun (_,i) -> streamp i) inputs))=1
+                  then List.iter
+                    (function (_,Define d) -> ()
+                      | (_,Stream s) ->
+                        let prologue = prologue exec_state in
+                        write_glopp exec_state fn b prologue s) inputs
+                  else (* TODO: real exception *)
+                    raise (Failure "too many input streams to preprocess"))
+          end
+            with CompilerError (k,errs) -> compiler_error exec_state k errs
 end
-  with CompilerError (k,errs) -> compiler_error k errs

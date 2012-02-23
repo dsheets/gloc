@@ -21,7 +21,7 @@ let format_naked fl = List (("","\n","",naked),fl)
 
 let format_tag name attributes b = Label
   ((List (("<"^name,"",">",attrs),
-	  List.map (fun (a,v) -> Atom (" "^a^"='"^v^"'",atom)) attributes),
+          List.map (fun (a,v) -> Atom (" "^a^"='"^v^"'",atom)) attributes),
     tag),
    List (("","","</"^name^">",block),b))
 
@@ -31,18 +31,19 @@ let format_link name attrs (a,href) =
 let format_meta meta =
   format_tag "meta" []
     ([format_link "copyright" ["year",string_of_int (fst meta.copyright)]
-	 (snd meta.copyright)]
+         (snd meta.copyright)]
      @(List.map
-	 (fun lnk -> format_link "author" [] lnk)
-	 meta.author)
+         (fun lnk -> format_link "author" [] lnk)
+         meta.author)
      @(match meta.license with None -> []
        | Some lnk -> [format_link "license" [] lnk])
      @(match meta.library with None -> []
        | Some lnk -> [format_link "library" [] lnk])
      @(match meta.version with None -> []
-       | Some v -> [format_tag "version" [] [Atom (string_of_version v,atom)]])
+       | Some (v,url) -> [format_tag "version"
+                             ["href",url] [Atom (string_of_version v,atom)]])
      @(match meta.build with None -> []
-       | Some b -> [format_tag "build" [] [Atom (b,atom)]]))
+       | Some lnk -> [format_link "build" [] lnk]))
 
 let format_unit u =
   format_tag "unit" []
@@ -70,7 +71,7 @@ let attr_of_nameopt = function
 let format_glo attrs glo =
   format_tag "glo" (("version",string_of_version glo.glo)::attrs)
     ([format_tag "target" ["version",string_of_version (snd glo.target)]
-	 [Atom (fst glo.target,atom)]]
+         [Atom (fst glo.target,atom)]]
      @(match glo.meta with None -> []
        | Some meta -> [format_meta meta])
      @(List.map format_unit (Array.to_list glo.units))
