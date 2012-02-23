@@ -3,13 +3,13 @@
 
 // End: Copyright
 // Copyright 2012  <> All rights reserved.
-#line 1 1/* monkey_a.glsl#n=0 */
+#line 1 1/* monkey.glo/monkey_a.glsl#n=0 */
 void main() {
   foo();
 }
 // End: Copyright
 // Copyright 2012  <> All rights reserved.
-#line 1 2/* monkey_c.glsl#n=0 */
+#line 1 2/* monkey.glo/monkey_c.glsl#n=0 */
 void bar() {
 
 }

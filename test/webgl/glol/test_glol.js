@@ -29,7 +29,7 @@ function run_tests() {
 	return message;
     }
 
-    var envs = ["posix","js_of_ocaml","javascript"];
+    var envs = ["posix","js_of_ocaml","javascript"]; // minjs_of_ocaml, minjs
     for (var test in tests) {
 	var row = document.getElementById("test-"+test);
 	var posix = row.getElementsByClassName("posix")[0];
@@ -52,6 +52,11 @@ function run_tests() {
 	    }
 	}
 
+        function define_line(ds) {
+            var l = ds.split("=");
+            return "#define "+l.shift()+" "+l.join("=")+"\n";
+        }
+
 	var js_of_ocaml = row.getElementsByClassName("js_of_ocaml")[0];
 	var args = tests[test].args.split(' ');
 	var syms = [];
@@ -62,7 +67,7 @@ function run_tests() {
 		syms[syms.length]=args[i+1];
 		i++;
 	    } else if (args[i]=="-D") {
-		defs[defs.length]=args[i+1];
+		defs[defs.length]=define_line(args[i+1]);
 		i++;
 	    } else {
 		paths[paths.length]=args[i];
@@ -71,7 +76,7 @@ function run_tests() {
 	var err = "";
 	var out = "";
 	try {
-	    out = ocaml.link("",syms,JSON.stringify(tests[test].glom));
+	    out = ocaml.link(defs.join(""),syms,JSON.stringify(tests[test].glom));
 	} catch (e) {
 	    err = ocaml.string_of_error(e)+"\nFatal: unrecoverable link error (9)\n";
 	};
@@ -100,7 +105,7 @@ function run_tests() {
 	out = "";
 	var glol = new GLOL();
 	try {
-	    out = glol.link("",syms,tests[test].glom);
+	    out = glol.link(defs.join(""),syms,tests[test].glom);
 	} catch (e) {
 	    if (e.hasOwnProperty("name")) {
 		err = ocaml.string_of_js_exc(e);
