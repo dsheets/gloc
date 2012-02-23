@@ -21,7 +21,7 @@ let format_naked fl = List (("","\n","",naked),fl)
 
 let format_tag name attributes b = Label
   ((List (("<"^name,"",">",attrs),
-          List.map (fun (a,v) -> Atom (" "^a^"='"^v^"'",atom)) attributes),
+          List.map (fun (a,v) -> Atom (" "^a^"=\""^v^"\"",atom)) attributes),
     tag),
    List (("","","</"^name^">",block),b))
 

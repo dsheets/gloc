@@ -32,7 +32,8 @@ type option = DisableLineControl | Verbose
 type filetype = Output | Meta | Input
 type iface =
     Group of group
-  | StringList of set
+  | Set of set
+  | List of iface
   | Filename of filetype
   | Option of option
   | Choice of string list * (state -> string -> unit)
@@ -42,15 +43,17 @@ type iface =
 (* TODO: add partial preprocess (maximal preprocess without semantic change) *)
 (* TODO: make verbose more... verbose *)
 let cli = [
+  "", List (Filename Input), "source input";
+  "", Group (Stage Link), "produce linked SL";
   "-c", Group (Stage Compile), "produce glo and halt; do not link";
   "--xml", Group (Stage XML), "produce glo XML documents";
   "-E", Group (Stage Preprocess), "preprocess and halt; do not parse SL";
   "-e", Group (Stage ParsePP), "parse preprocessor and halt; do not preprocess";
   "--source", Group (Stage Contents),
   "strip the glo format and return the contained source";
-  "-u", StringList LinkSymbols, "required symbol (default ['main'])";
-  "--define", StringList LinkDefines, "define a macro unit";
-  "-D", StringList LinkGlobalMacros, "define a global macro";
+  "-u", List (Set LinkSymbols), "required symbol (default ['main'])";
+  "--define", List (Set LinkDefines), "define a macro unit";
+  "-D", List (Set LinkGlobalMacros), "define a global macro";
   "-o", Filename Output, "output file";
   "--accuracy", Choice (["best";"preprocess"],
                         fun exec_state s ->
@@ -69,7 +72,6 @@ let cli = [
   "target language";
   "-v", Option Verbose, "verbose";
   "--meta", Filename Meta, "prototypical glo file to use for metadata";
-  "", Filename Input, "source input";
 ]
 
 let arg_of_stage cli stage =
@@ -105,21 +107,24 @@ module Make(P : Platform) = struct
 
   let spec_of_iface exec_state cli = function
     | Group g -> A.Unit (set_of_group exec_state cli g)
-    | StringList LinkSymbols ->
+    | List (Set LinkSymbols) ->
       A.String (fun u -> exec_state.symbols := u::!(exec_state.symbols))
-    | StringList LinkDefines ->
+    | List (Set LinkDefines) ->
       A.String (fun m -> exec_state.inputs := (Define m)::!(exec_state.inputs))
-    | StringList LinkGlobalMacros ->
+    | List (Set LinkGlobalMacros) ->
       A.String (fun m -> exec_state.prologue := m::!(exec_state.prologue))
     | Filename Output ->
       A.String (fun m -> exec_state.output := m)
-    | Filename Input ->
+    | List (Filename Input) ->
       A.String (fun m -> exec_state.inputs := (Stream m)::!(exec_state.inputs))
     | Filename Meta ->
       A.String (fun m -> exec_state.metadata := (meta_of_path m))
     | Option DisableLineControl -> A.Clear exec_state.linectrl
     | Option Verbose -> A.Set exec_state.verbose
     | Choice (syms, setfn) -> A.Symbol (syms, setfn exec_state)
+    | Set _ -> raise (Failure "no untagged set symbols") (* TODO: real exn *)
+    | List _ -> raise (Failure "other lists unimplemented") (* TODO: real exn *)
+    | Filename Input -> raise (Failure "input files always list") (* TODO: real exn *)
 
   let arg_of_cli exec_state cli = List.fold_right
     (fun (flag, iface, descr) (argl, anon) ->

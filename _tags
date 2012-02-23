@@ -4,6 +4,8 @@
 <gloc_posix.*>: package(ulex), package(atdgen), package(menhirLib), package(re.str), package(unix)
 <gloc_js.*>: syntax(camlp4o), package(ulex), package(atdgen), package(menhirLib), package(re.str), package(js_of_ocaml), package(js_of_ocaml.syntax)
 <platform_js.*>: syntax(camlp4o), package(js_of_ocaml), package(js_of_ocaml.syntax)
+
+<gloc_xml.*>: package(atdgen), package(ulex), package(menhirLib), package(re.str)
 <gloc_lib.*>: package(menhirLib), package(ulex), package(atdgen), package(re.str)
 <glol.*>: package(atdgen), package(re.str)
 <glol_js.*>: syntax(camlp4o), package(js_of_ocaml), package(js_of_ocaml.syntax), package(re.str), package(atdgen)
