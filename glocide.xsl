@@ -35,7 +35,7 @@
         <meta charset="utf-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
 
-        <link rel="stylesheet" type="text/css" href="glosse.css" />
+        <link rel="stylesheet" type="text/css" href="glocide.css" />
         <link rel="stylesheet" type="text/css" href="../CodeMirror2/lib/codemirror.css" />
         <script src="../CodeMirror2/lib/codemirror.js"></script>
         <script src="../CodeMirror2/mode/clike/clike.js"></script>

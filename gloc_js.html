@@ -1,0 +1,47 @@
+<html>
+<body>
+<script type="text/javascript">
+var MissingEnvVar = function(name) {
+  this.message = "Missing environment variable '"+name+"'";
+  this.name = name;
+};
+
+function caml_sys_getenv(env) {
+  if (env.fullBytes=="TMPDIR") return new MlString("/tmp");
+  if (env.fullBytes=="TEMP") return new MlString("/tmp");
+  console.dir(env);
+  throw (new MissingEnvVar(env.string));
+}
+
+var ocaml = {};
+var register_ocaml_fn = (function(m) {
+  return function(name, fn) { m[name] = fn; };
+})(ocaml);
+
+function gloc_stdout(s) {
+  alert("stdout:\n"+s);
+}
+
+function gloc_stderr(s) {
+  alert("stderr:\n"+s);
+}
+
+function gloc_stdin() {
+  return prompt("stdin");
+}
+
+function gloc_fs_read(fn) {
+  return prompt(fn);
+}
+
+function gloc_fs_write(fn, s) {
+  alert(fn+":\n"+s);
+}
+</script>
+<script src="_build/gloc_js.d.js"></script>
+<script>
+var args = prompt("gloc ").split(" ");
+ocaml.gloc(args);
+</script>
+</body>
+</html>

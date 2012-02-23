@@ -1,0 +1,10 @@
+#define mymain main
+// Copyright 2012  <> All rights reserved.
+#define foo bar
+
+// End: Copyright
+// Copyright 2012  <> All rights reserved.
+#line 1 1/* define.glsl#n=0 */
+#if foo
+void mymain() {}
+#endif

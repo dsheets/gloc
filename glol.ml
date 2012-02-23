@@ -51,13 +51,13 @@ let string_of_error = function
   | exn -> raise exn
 
 (* Prepare the packaged source for string concatenation. *)
-let armor meta (linkmap,fs_ct) opmac s =
+let armor meta (url,linkmap,fs_ct) opmac s =
   (* Replace special symbols in line directives to satisfy linkmap *)
   (*required regexp (greetz jwz) instead of macros due to ANGLE bug 183*)
   let intpatt = Re_str.regexp "GLOC_\\([0-9]+\\)" in
   let offset s =
     let fn = int_of_string (Re_str.string_after (Re_str.matched_string s) 5) in
-    let anno = try "/* "^(List.assoc (string_of_int fn) linkmap)^" */"
+    let anno = try "/* "^url^(List.assoc (string_of_int fn) linkmap)^" */"
     with Not_found -> ""
     in (string_of_int (fn + fs_ct))^anno
   in
@@ -72,9 +72,10 @@ let armor meta (linkmap,fs_ct) opmac s =
     let library = match meta.library with None -> ""
       | Some link -> field "Library" link in
     let version = match meta.version with None -> ""
-      | Some v -> "// Version: "^(string_of_version v)^"\n" in
+      | Some (v,url) ->
+        "// Version: "^(string_of_version v)^" <"^url^">\n" in
     let build = match meta.build with None -> ""
-      | Some buildstring -> "// Build: "^buildstring^"\n" in
+      | Some link -> field "Build" link in
     let (year,(holder,url)) = meta.copyright in
       "// Copyright "^(string_of_int year)^" "^holder^" <"^url^"> "
       ^"All rights reserved.\n"^license^authors^library^version^build
@@ -238,7 +239,7 @@ let preamble glol =
    symbols and a search list. *)
 let link prologue required glo_alist =
   let required = if (List.length required) = 0 then ["main"] else required in
-  let support = [|[|false;true|]|] in
+  let support = [|[||];[|true|]|] in
   let () = List.iter
     (fun (name,glo) -> let (maj,min,_) = glo.glo in
        if try not support.(maj).(min) with Invalid_argument _ -> true
@@ -256,7 +257,7 @@ let link prologue required glo_alist =
           let u = try glo.units.(u) with _ -> raise (Failure "u") in
           let unit_begin = if name=pname || pname=""
           then "" else "// End: Copyright\n"
-          in (src^unit_begin^(armor meta (glo.linkmap, o) u.opmac u.source)^"\n",
+          in (src^unit_begin^(armor meta (name, glo.linkmap, o) u.opmac u.source)^"\n",
               (name,o+sup+1))
         end ((preamble glol)^prologue,("",0)) glol
     end

@@ -11,8 +11,8 @@ type meta = {
   ~author:href list;
   ?license:href option;
   ?library:href option;
-  ?version:version option;
-  ?build:string option;
+  ?version:(version * url) option;
+  ?build:href option;
 }
 
 type u = {
