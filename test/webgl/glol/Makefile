@@ -18,7 +18,7 @@ all :
 
 html : $(XMLS)
 	xsltproc \
-	--stringparam suite "`pwd`" \
+	--stringparam suite "`pwd | awk -F / '{ printf "%s/%s/%s/%s\n",$$5,$$6,$$7,$$8 }'`" \
 	--stringparam tests "$(XMLS)" \
 	html_of_tests.xsl test_page.xml > test_page.html
 

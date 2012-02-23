@@ -1,5 +1,5 @@
 {
-  "glo": [ 0, 1, 0 ],
+  "glo": [ 1, 0, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
   "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
@@ -8,5 +8,5 @@
       "source": "#line 1 GLOC_1\n#define K 3\n#line 1 GLOC_2\n#define Q 4"
     }
   ],
-  "linkmap": { "2": "[stdin]#n=2", "1": "[stdin]#n=1" }
+  "linkmap": { "1": "#n=1", "2": "#n=2" }
 }

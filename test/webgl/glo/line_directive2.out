@@ -1,5 +1,5 @@
 {
-  "glo": [ 0, 1, 0 ],
+  "glo": [ 1, 0, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
   "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
@@ -9,10 +9,5 @@
         "#line 1 GLOC_0\n#line 2\n/*if*/#if defined E\n/*A      very commented */ #line                 10/**/ GLOC_77/*  with trailing comment*/\nint foo() {\n#line 13 GLOC_3\n  return 1;\n}\n#else\n#line 15\n/* elif*/ #if defined F/*  comments trailing pp conditional*/\n#line 13 GLOC_4\nint foo() {\n  return 2;\n}\n#else\nint foo() {\n  return 3;\n}\n#endif/*  comments trailing endif*/\n#line 20\n#endif/*  comments trailing endif*/"
     }
   ],
-  "linkmap": {
-    "77": "[stdin]#n=77",
-    "4": "[stdin]#n=4",
-    "3": "[stdin]#n=3",
-    "0": "[stdin]#n=0"
-  }
+  "linkmap": { "0": "#n=0", "3": "#n=3", "4": "#n=4", "77": "#n=77" }
 }
