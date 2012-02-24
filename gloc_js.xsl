@@ -19,16 +19,25 @@
     <tr>
       <xsl:call-template name="flag" />
       <td class="input">
-	  <xsl:choose>
-	    <xsl:when test="position()=1">
-	      <input type="radio" name="{$name}" value="{@flag}">
-		<xsl:attribute name="checked" />
-	      </input>
-	    </xsl:when>
-	    <xsl:otherwise>
-	      <input type="radio" name="{$name}" value="{@flag}"/>
-	    </xsl:otherwise>
-	  </xsl:choose>
+        <xsl:choose>
+          <xsl:when test="position()=1">
+            <input type="radio" name="{$name}" value="{@flag}">
+              <xsl:attribute name="checked" />
+              <xsl:attribute name="onchange">
+                update_cmd('<xsl:value-of select="$name" />',
+                '<xsl:value-of select="@flag"/>')
+              </xsl:attribute>
+            </input>
+          </xsl:when>
+          <xsl:otherwise>
+            <input type="radio" name="{$name}" value="{@flag}">
+              <xsl:attribute name="onchange">
+                update_cmd('<xsl:value-of select="$name" />',
+                '<xsl:value-of select="@flag"/>')
+              </xsl:attribute>
+            </input>
+          </xsl:otherwise>
+        </xsl:choose>
       </td>
       <xsl:call-template name="descr" />
     </tr>
@@ -41,81 +50,159 @@
   </xsl:template>
 
   <xsl:template match="filelist">
-    <tr>
+    <xsl:variable name="id" select="generate-id()" />
+    <tr class="{$id}">
       <xsl:call-template name="flag" />
       <td class="input">
-	<input type="text" class="filelist" name="filelist{@flag}"/>
+        <input type="text" class="filelist" name="filelist{@flag}" />
       </td>
       <xsl:call-template name="descr" />
     </tr>
+    <script type="text/javascript">
+      expandable_list("<xsl:value-of select="$id" />",
+                      function (e) {
+                        var flag = '<xsl:value-of select="@flag" />';
+                        var id = '<xsl:value-of select="$id" />';
+                        var files = document.getElementsByClassName(id);
+                        var flags = [];
+                        for (var i = 0; i &lt; files.length; i++) {
+                          var f = files[i].getElementsByTagName("input")[0].value;
+                          if (f!="") flags[flags.length]=flag+" "+f;
+                        }
+                        update_cmd(flag,flags.join(" "));
+                        update_fs(e);
+                      });
+    </script>
   </xsl:template>
 
   <xsl:template match="setlist">
-    <tr>
+    <xsl:variable name="id" select="generate-id()" />
+    <tr class="{$id}">
       <xsl:call-template name="flag" />
       <td class="input">
-	<input type="text" class="setlist" name="setlist{@flag}"/>
+        <input type="text" class="setlist" name="setlist{@flag}"/>
       </td>
       <xsl:call-template name="descr" />
     </tr>
+    <script type="text/javascript">
+      expandable_list("<xsl:value-of select="$id" />",
+                      function (e) {
+                        var flag = '<xsl:value-of select="@flag" />';
+                        var id = '<xsl:value-of select="$id" />';
+                        var set = document.getElementsByClassName(id);
+                        var flags = [];
+                        for (var i = 0; i &lt; set.length; i++) {
+                          var s = set[i].getElementsByTagName("input")[0].value;
+                          if (s!="") flags[flags.length]=flag+" "+s;
+                        }
+                        update_cmd(flag,flags.join(" "));
+                      });
+    </script>
   </xsl:template>
 
   <xsl:template match="filename">
+    <xsl:variable name="id" select="generate-id()" />
     <tr>
       <xsl:call-template name="flag" />
       <td class="input">
-	<input type="text" class="filename" name="filename{@flag}"/>
+        <input type="text" class="filename" id="{$id}" name="filename{@flag}"/>
       </td>
       <xsl:call-template name="descr" />
     </tr>
+    <script type="text/javascript">
+      document.getElementById("<xsl:value-of select="$id"/>").onblur =
+      function (e) {
+        var flag = '<xsl:value-of select="@flag" />';
+        if (this.value!="") {
+          update_cmd(flag,flag+" "+this.value);
+        } else {
+          update_cmd(flag,"");
+        }
+        update_fs(e);
+      };
+    </script>
   </xsl:template>
 
   <xsl:template match="choice">
     <tr>
       <xsl:call-template name="flag" />
       <td class="input">
-	<select name="choice{@flag}">
-	  <xsl:for-each select="alt">
-	    <option><xsl:value-of select="@name" /></option>
-	  </xsl:for-each>
-	</select>
+        <select id="choice{@flag}">
+          <xsl:for-each select="alt">
+            <option><xsl:value-of select="@name" /></option>
+          </xsl:for-each>
+        </select>
       </td>
       <xsl:call-template name="descr" />
     </tr>
+    <script type="text/javascript">
+      document.getElementById("choice<xsl:value-of select="@flag"/>").onchange =
+      function (e) {
+        var flag = '<xsl:value-of select="@flag"/>';
+        update_cmd(flag,flag+" "+this.value);
+      };
+    </script>
   </xsl:template>
 
   <xsl:template match="option">
     <tr>
       <xsl:call-template name="flag" />
       <td class="input">
-	<input type="checkbox" name="option{@flag}" value="{@flag}" />
+        <input type="checkbox" id="option{@flag}" value="{@flag}" />
       </td>
       <xsl:call-template name="descr" />
     </tr>
+    <script type="text/javascript">
+      document.getElementById("option<xsl:value-of select="@flag"/>").onchange =
+      function (e) {
+        var flag = '<xsl:value-of select="@flag"/>';
+        if (this.checked) update_cmd(flag,flag); else update_cmd(flag,"");
+      };
+    </script>
   </xsl:template>
 
   <xsl:template match="cli">
     <html>
       <head>
-	<title>gloc links our creativity! carpe ignem!</title>
-	<script src="gloc_platform_js.js"></script>
-	<script src="_build/gloc_js.d.js"></script>
-	<style type="text/css">
-	  .flag, .input { text-align: right }
-	</style>
+        <title>gloc links our creativity! carpe ignem!</title>
+        <script src="gloc_platform_js.js"></script>
+        <script src="_build/gloc_js.d.js"></script>
+        <style type="text/css">
+          body { font-family: sans-serif }
+          .flag, .input { text-align: right }
+          #gloc { top: 20px; right: 10px; position: fixed }
+          .fs { width: 50% }
+          #gloc-cmd { font-size: 24pt }
+          h2 { display: inline }
+          .closefile { background-color: red }
+          .hidesource { background-color: yellow }
+          .showsource { background-color: green; color: white }
+        </style>
       </head>
-      <body>
-	<h1>gloc <xsl:value-of select="@version"/>
-	by <a href="http://ashimagroup.net/"><xsl:value-of select="@distributor"/></a>
-	</h1>
-	<form name="gloc">
-	  <table>
-	    <xsl:apply-templates />
-	    <tr><td />
-	    <td style="text-align: center"><input type="submit" value="gloc"/>
-	    </td><td /></tr>
-	  </table>
-	</form>
+      <body onload="init()">
+        <div id="gloc">
+          <h1>gloc <xsl:value-of select="@version"/>
+          by <a href="http://ashimagroup.net/"><xsl:value-of select="@distributor"/></a>
+          </h1>
+          <form name="gloc" id="gloc-cli">
+            <table>
+              <xsl:apply-templates />
+              <tr>
+                <td colspan="3" style="text-align: center">
+                  <input type="submit" value="gloc" id="gloc-cmd" />
+                </td>
+              </tr>
+              <tr>
+                <td colspan="3" style="text-align: center">
+                  <input type="text" value="gloc" id="gloc-cmd-copy"
+                         style="width: 100%" />
+                </td>
+              </tr>
+            </table>
+          </form>
+        </div>
+        <div id="fs">
+        </div>
       </body>
     </html>
   </xsl:template>
