@@ -31,15 +31,15 @@
   <xsl:template match="/">
     <html>
       <head>
-        <title>glosse : glo shader system editor</title>
+        <title>glocide : glo compiler ide</title>
         <meta charset="utf-8" />
         <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
 
         <link rel="stylesheet" type="text/css" href="glocide.css" />
-        <link rel="stylesheet" type="text/css" href="../CodeMirror2/lib/codemirror.css" />
-        <script src="../CodeMirror2/lib/codemirror.js"></script>
-        <script src="../CodeMirror2/mode/clike/clike.js"></script>
-        <script src="../CodeMirror2/keymap/emacs.js"></script>
+        <link rel="stylesheet" type="text/css" href="CodeMirror2/lib/codemirror.css" />
+        <script src="CodeMirror2/lib/codemirror.js"></script>
+        <script src="CodeMirror2/mode/clike/clike.js"></script>
+        <script src="CodeMirror2/keymap/emacs.js"></script>
       </head>
       <body>
         <xsl:choose>

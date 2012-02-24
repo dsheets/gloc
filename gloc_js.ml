@@ -31,7 +31,7 @@ let gloc args =
   let (specs, anon) = arg_of_cli exec_state Gloc.cli in
   let () = Arg.parse_argv ~current:(ref 0) args specs anon Gloc.usage_msg in
   begin try gloc exec_state (fun () -> to_string (stdin ()))
-    with Gloc.Exit c -> window##alert(string ("Exit code: "^(string_of_int c)))
+    with Gloc.Exit c -> ()
   end (* FIXME *)
 ;;
 reg "gloc" gloc

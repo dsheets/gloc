@@ -19,43 +19,40 @@ var fs = {};
 
 function gloc_stdout(s) {
     var f = fs["[stdout]"];
-    f.content.value=s;
+    f.editor.setValue(s);
     f.show();
 }
 
 function gloc_stderr(s) {
     var f = fs["[stderr]"];
-    f.content.value+=s;
+    f.editor.setValue(f.editor.getValue()+s);
     f.show();
 }
 
 function gloc_stdin() {
-    return fs["[stdin]"].content.value;
+    return fs["[stdin]"].editor.getValue();
 }
 
 function gloc_fs_read(fn) {
-    return fs[fn].content.value;
+    return fs[fn].editor.getValue();
 }
 
 function gloc_fs_write(fn, s) {
-    fs[fn].content.value=s;
+    fs[fn].editor.setValue(s);
     fs[fn].show();
 }
 
 var std = {"[stdout]": false, "[stdin]": false, "[stderr]": false};
-function File(name,content) {
+function File(name) {
     var fdiv = document.createElement("div");
     var fhead = document.createElement("div");
     var fdel = document.createElement("button");
     var ftitle = document.createElement("h2");
     var fhide = document.createElement("button");
-    var fcontent = document.createElement("textarea");
+
     fdiv.id = "fs"+name;
     fdiv.className = "fs";
     ftitle.innerText = name;
-
-    fcontent.rows = 10;
-    fcontent.cols = 80;
 
     fdel.innerText = "X";
     fdel.className = "closefile";
@@ -77,40 +74,46 @@ function File(name,content) {
     fhead.appendChild(ftitle);
     fhead.appendChild(fhide);
     fdiv.appendChild(fhead);
-    fdiv.appendChild(fcontent);
+
+    document.getElementById("fs").appendChild(fdiv);
 
     this.connect = function () { fdel.style.display="none"; return this; };
     this.disconnect = function() { fdel.style.display="inline"; return this; };
 
+    var readonly = false;
+    if (name=="[stdout]" || name=="[stderr]") readonly=true;
+
+    var feditor = CodeMirror(fdiv, {
+        lineNumbers: true,
+        mode: "text/x-csrc",
+        keyMap: "emacs",
+        readOnly: readonly,
+        lineWrapping: true
+    });
+
     this.show = function() {
         fhide.innerText = "-";
         fhide.className = "hidesource";
-        fcontent.style.display="block";
+        feditor.getWrapperElement().style.display="block";
         hidden = false;
     };
     this.hide = function() {
         fhide.innerText = "+";
         fhide.className = "showsource";
-        fcontent.style.display="none";
+        feditor.getWrapperElement().style.display="none";
         hidden = true;
     };
 
     this.name=name;
     this.dom=fdiv;
-    this.content=fcontent;
+    this.editor=feditor;
     fs[name] = this;
 }
 
 function init_fs() {
-    var stdin = new File("[stdin]","");
-    var stdout = new File("[stdout]","");
-    var stderr = new File("[stderr]","");
-    stdin.connect();
-    stdout.connect();
-    stderr.connect();
-
-    var fsel = document.getElementById("fs");
-    for (var fn in fs) { fsel.appendChild(fs[fn].dom); }
+    (new File("[stdin]")).connect();
+    (new File("[stdout]")).connect();
+    (new File("[stderr]")).connect();
 }
 
 var cmd = {};
@@ -123,7 +126,7 @@ function init_gloc() {
             args[args.length] = cmd[c].trim();
         }
         args = args.join(" ").split(" ").filter(function (s) { return s!=""; });
-        fs["[stderr]"].content.value="";
+        fs["[stderr]"].editor.setValue("");
         ocaml.gloc(args);
         return false;
     };
@@ -150,8 +153,7 @@ function update_fs(e) {
     if (e.target.value in fs) {
         fs[e.target.value].connect();
     } else if (e.target.value != "" && e.target.value != "-") {
-        var f = new File(e.target.value,"");
-        document.getElementById("fs").appendChild(f.connect().dom);
+        (new File(e.target.value)).connect();
     }
     var filelists = document.getElementsByClassName("filelist");
     var filenames = document.getElementsByClassName("filename");
