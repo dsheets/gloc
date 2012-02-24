@@ -1,3 +1,6 @@
 [submodule "Pretty-Diff"]
 	path = Pretty-Diff
 	url = https://github.com/austincheney/Pretty-Diff.git
+[submodule "CodeMirror2"]
+	path = CodeMirror2
+	url = https://github.com/marijnh/CodeMirror2.git
