@@ -46,7 +46,7 @@ let cli = [
   "", List (Filename Input), "source input";
   "", Group (Stage Link), "produce linked SL";
   "-c", Group (Stage Compile), "produce glo and halt; do not link";
-  "--xml", Group (Stage XML), "produce glo XML documents";
+  "--xml", Group (Stage XML), "produce glo XML document";
   "-E", Group (Stage Preprocess), "preprocess and halt; do not parse SL";
   "-e", Group (Stage ParsePP), "parse preprocessor and halt; do not preprocess";
   "--source", Group (Stage Contents),
@@ -208,46 +208,46 @@ module Make(P : Platform) = struct
                                  (make_define_unit ds))))
         ) il
     in let inputs = if stream_inputp (List.map snd inputs) then inputs
-      else (stdin_input ())::inputs
-       in let fn = !(exec_state.output)
-          in try begin match !(exec_state.stage) with
-            | Contents ->
-              P.out_of_filename fn
-                (fun b -> Buffer.add_string b (source_of_glom fn
-                                                 (make_glom exec_state inputs)))
-            | XML ->
-              P.out_of_filename fn
-                (fun b ->
-                  Buffer.add_string b
-                    (Glo_xml.xml_of_glom ~xsl:"glocide.xsl" ~pretty:true
-                       (make_glom exec_state inputs)))
-            | Link -> let glom = make_glom exec_state inputs in
-                      let prologue = prologue exec_state in
-                      let src = link prologue req_sym glom in
-                      P.out_of_filename fn
-                        (fun b ->
-                          Buffer.add_string b
-                            ((if !(exec_state.accuracy)=Language.Preprocess
-                              then string_of_ppexpr start_loc
-                                (check_pp_divergence
-                                   (preprocess (parse exec_state src)))
-                              else src)))
-            | Compile -> (* TODO: consolidate glo *)
-              P.out_of_filename fn
-                (fun b ->
-                  let glom = make_glom exec_state inputs in
-                  write_glom exec_state fn b (minimize_glom glom))
-            | Preprocess | ParsePP ->
-              P.out_of_filename fn
-                (fun b ->
-                  if (List.length (List.filter (fun (_,i) -> streamp i) inputs))=1
-                  then List.iter
-                    (function (_,Define d) -> ()
-                      | (_,Stream s) ->
-                        let prologue = prologue exec_state in
-                        write_glopp exec_state fn b prologue s) inputs
-                  else (* TODO: real exception *)
-                    raise (Failure "too many input streams to preprocess"))
-          end
-            with CompilerError (k,errs) -> compiler_error exec_state k errs
+      else (stdin_input ())::inputs in
+       let fn = !(exec_state.output) in
+       try begin match !(exec_state.stage) with
+         | Contents ->
+           P.out_of_filename fn
+             (fun b -> Buffer.add_string b (source_of_glom fn
+                                              (make_glom exec_state inputs)))
+         | XML ->
+           P.out_of_filename fn
+             (fun b ->
+               Buffer.add_string b
+                 (Glo_xml.xml_of_glom ~xsl:"glocide.xsl" ~pretty:true
+                    (make_glom exec_state inputs)))
+         | Link -> let glom = make_glom exec_state inputs in
+                   let prologue = prologue exec_state in
+                   let src = link prologue req_sym glom in
+                   P.out_of_filename fn
+                     (fun b ->
+                       Buffer.add_string b
+                         ((if !(exec_state.accuracy)=Language.Preprocess
+                           then string_of_ppexpr start_loc
+                             (check_pp_divergence
+                                (preprocess (parse exec_state src)))
+                           else src)))
+         | Compile -> (* TODO: consolidate glo *)
+           P.out_of_filename fn
+             (fun b ->
+               let glom = make_glom exec_state inputs in
+               write_glom exec_state fn b (minimize_glom glom))
+         | Preprocess | ParsePP ->
+           P.out_of_filename fn
+             (fun b ->
+               if (List.length (List.filter (fun (_,i) -> streamp i) inputs))=1
+               then List.iter
+                 (function (_,Define d) -> ()
+                   | (_,Stream s) ->
+                     let prologue = prologue exec_state in
+                     write_glopp exec_state fn b prologue s) inputs
+               else (* TODO: real exception *)
+                 raise (Failure "too many input streams to preprocess"))
+       end
+       with CompilerError (k,errs) -> compiler_error exec_state k errs
 end
