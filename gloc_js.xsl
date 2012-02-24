@@ -165,8 +165,12 @@
     <html>
       <head>
         <title>gloc links our creativity! carpe ignem!</title>
+        <script src="CodeMirror2/lib/codemirror.js"></script>
+        <script src="CodeMirror2/mode/clike/clike.js"></script>
+        <script src="CodeMirror2/keymap/emacs.js"></script>
         <script src="gloc_platform_js.js"></script>
         <script src="_build/gloc_js.d.js"></script>
+        <link rel="stylesheet" type="text/css" href="CodeMirror2/lib/codemirror.css" />
         <style type="text/css">
           body { font-family: sans-serif }
           .flag, .input { text-align: right }
@@ -177,6 +181,8 @@
           .closefile { background-color: red }
           .hidesource { background-color: yellow }
           .showsource { background-color: green; color: white }
+          .CodeMirror { border-right: 1px solid #ccc }
+          .CodeMirror-scroll { height: auto; overflow: visible; }
         </style>
       </head>
       <body onload="init()">
