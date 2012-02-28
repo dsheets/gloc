@@ -1,0 +1,13 @@
+{
+  "glo": [ 1, 0, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
+  "units": [
+    {
+      "outsym": [ "main" ],
+      "source":
+        "#line 1 GLOC_0\n/* Copyright: 2012 Foo <http://www.example.com/>*/\nvoid main() {}"
+    }
+  ],
+  "linkmap": { "0": "#n=0" }
+}
