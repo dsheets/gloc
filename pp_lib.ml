@@ -162,6 +162,20 @@ let proj_pptok_expr = function
   | Line t -> proj t
   | List t -> proj t
 
+let string_of_span linectrl
+    ({a={file=af; line=al; col=ac};
+      z={file=zf; line=zl; col=zc}}) =
+  let af,al,zf,zl = if linectrl
+    then (af.src,al.src,zf.src,zl.src)
+    else (af.input,al.input,zf.input,zl.input)
+  in if af=zf then
+      if al=zl
+      then if ac=zc
+        then sprintf "File %d, line %d, col %d" af al ac
+        else sprintf "File %d, line %d, col %d - %d" af al ac zc
+      else sprintf "File %d, l%d c%d - l%d c%d" af al ac zl zc
+    else sprintf "F%d l%d c%d - F%d l%d c%d" af al ac zf zl zc
+
 let start_loc = {file={src=0;input=0};line={src=1;input=1};col=0}
 
 let span_of_list : 'a pptok list -> span = function

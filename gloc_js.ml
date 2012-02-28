@@ -30,8 +30,12 @@ let gloc args =
   let exec_state = Gloc_lib.new_exec_state (Gloc_js.default_meta) in
   let (specs, anon) = arg_of_cli exec_state Gloc.cli in
   let () = Arg.parse_argv ~current:(ref 0) args specs anon Gloc.usage_msg in
-  begin try gloc exec_state (fun () -> to_string (stdin ()))
-    with Gloc.Exit c -> ()
+  begin try gloc exec_state (fun () -> to_string (stdin ())) with
+    | Gloc.Exit c -> ()
+    | Gloc_lib.CompilerError(_,el) -> (* TODO: FIXME *)
+      Platform_js.eprint "CompilerError:\n";
+      List.iter (fun exn -> Platform_js.eprint ((Printexc.to_string exn)^"\n")) el
+    | e -> Platform_js.eprint (Printexc.to_string e)
   end (* FIXME *)
 ;;
 reg "gloc" gloc

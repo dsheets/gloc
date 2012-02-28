@@ -22,7 +22,7 @@ let rec stream_of_pptok_expr = function
   | Line _ -> []
   | List {v=exprl} -> List.fold_left
       (fun ptl expr -> ptl@(stream_of_pptok_expr expr))
-	[] exprl
+        [] exprl
 
 let essl_token_of_word w = match w.v with
   | "highp" -> HIGH_PRECISION (proj w)
@@ -112,18 +112,17 @@ let essl_tokenize s = List.map
      | Float f -> FLOATCONSTANT f
      | Word w -> essl_token_of_word { w with v=(fst w.v) }
      | Call c ->
-	 raise (ParserError "Call token found in incoming essl stream")
+         raise (ParserError "Call token found in incoming essl stream")
      | Punc p -> essl_token_of_punc p
      | Comma c -> COMMA c
      | Leftp p -> LEFT_PAREN p
      | Rightp p -> RIGHT_PAREN p
   ) s
 
-let essl_lexerfn ts =
-  let s = ref ts in
-    fun () -> match !s with
-      | h::r -> s := r; h
-      | [] -> EOF
+let essl_lexerfn sr =
+  fun () -> match !sr with
+    | h::r -> sr := r; h
+    | [] -> EOF
 
 let parse_essl lex =
   let () = Sl_lib.reset_ctxt () in
@@ -154,14 +153,14 @@ let builtins = [ (* TODO: tests *)
   "gl_MaxDrawBuffers",               `int Sl_lib.Medium;
   (* uniforms *) (* TODO: only field names exist *)
   "gl_DepthRange",                   `record (Some "gl_DepthRangeParameters",
-					      ["near", `float Sl_lib.High;
-					       "far",  `float Sl_lib.High;
-					       "diff", `float Sl_lib.High]);
+                                              ["near", `float Sl_lib.High;
+                                               "far",  `float Sl_lib.High;
+                                               "diff", `float Sl_lib.High]);
   (* types *)
   "gl_DepthRangeParameters",         `record (Some "gl_DepthRangeParameters",
-					      ["near", `float Sl_lib.High;
-					       "far",  `float Sl_lib.High;
-					       "diff", `float Sl_lib.High]);
+                                              ["near", `float Sl_lib.High;
+                                               "far",  `float Sl_lib.High;
+                                               "diff", `float Sl_lib.High]);
   (* functions *) (* TODO: impl types, polymorphic product *)
   "radians",                         `univ;
   "degrees",                         `univ;

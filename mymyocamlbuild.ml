@@ -30,12 +30,19 @@ let _ = dispatch begin function
         Cmd(S[A"gcc";A"-c";A"-o";P o;P c])
       end
   | After_rules ->
+    rule "js_of_ocaml.d"
+      ~prod:"%.d.js"
+      ~dep:"%.d.byte"
+      begin fun env build ->
+        let byte = env "%.d.byte" in
+        Cmd(S[A"js_of_ocaml";A"-pretty";A"-noinline";P byte])
+      end;
     rule "js_of_ocaml"
       ~prod:"%.js"
       ~dep:"%.byte"
       begin fun env build ->
         let byte = env "%.byte" in
-        Cmd(S[A"js_of_ocaml";A"-pretty";A"-noinline";P byte])
+        Cmd(S[A"js_of_ocaml";P byte])
       end;
     flag ["ocaml"; "byte"; "link"] (S[A"-custom"]);
     dep ["ocaml"; "link"] ["libgloc.o"]
