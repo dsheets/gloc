@@ -183,11 +183,12 @@
           .showsource { background-color: green; color: white }
           .CodeMirror { border-right: 1px solid #ccc }
           .CodeMirror-scroll { height: auto; overflow: visible; }
+          .suffix { color: #999 }
         </style>
       </head>
       <body onload="init()">
         <div id="gloc">
-          <h1>gloc <xsl:value-of select="@version"/>
+          <h1>gloc<!--<span class="suffix">ode</span>-->&#xA0;<xsl:value-of select="@version"/>
           by <a href="http://ashimagroup.net/"><xsl:value-of select="@distributor"/></a>
           </h1>
           <form name="gloc" id="gloc-cli">
@@ -199,9 +200,8 @@
                 </td>
               </tr>
               <tr>
-                <td colspan="3" style="text-align: center">
-                  <input type="text" value="gloc" id="gloc-cmd-copy"
-                         style="width: 100%" />
+                <td colspan="3" style="text-align: center" id="gloc-cmd-copy">
+                  gloc
                 </td>
               </tr>
             </table>

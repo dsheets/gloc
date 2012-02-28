@@ -127,6 +127,7 @@ function init_gloc() {
         }
         args = args.join(" ").split(" ").filter(function (s) { return s!=""; });
         fs["[stderr]"].editor.setValue("");
+        fs["[stdout]"].editor.setValue("");
         ocaml.gloc(args);
         return false;
     };
@@ -146,7 +147,7 @@ function update_cmd(n,flag) {
     for (var c in cmd) {
         s += cmd[c].trim() + " ";
     }
-    btn.value = copy.value = s.trim();
+    btn.value = copy.innerText = s.trim();
 }
 
 function update_fs(e) {

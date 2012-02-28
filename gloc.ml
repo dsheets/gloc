@@ -219,7 +219,7 @@ module Make(P : Platform) = struct
            P.out_of_filename fn
              (fun b ->
                Buffer.add_string b
-                 (Glo_xml.xml_of_glom ~xsl:"glocide.xsl" ~pretty:true
+                 (Glo_xml.xml_of_glom ~xsl:"glocode.xsl" ~pretty:true
                     (make_glom exec_state inputs)))
          | Link -> let glom = make_glom exec_state inputs in
                    let prologue = prologue exec_state in
@@ -249,5 +249,6 @@ module Make(P : Platform) = struct
                else (* TODO: real exception *)
                  raise (Failure "too many input streams to preprocess"))
        end
-       with CompilerError (k,errs) -> compiler_error exec_state k errs
+       with CompilerError (k,errs) ->
+         compiler_error exec_state k errs
 end

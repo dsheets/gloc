@@ -42,4 +42,4 @@ let xml_of_cli ?xsl ?(pretty=false) cli =
     else Compact.to_string ez)
 ;;
 
-print_endline (xml_of_cli ~xsl:"gloc_js.xsl" ~pretty:true Gloc.cli)
+print_endline (xml_of_cli ~xsl:"glocode.xsl" ~pretty:true Gloc.cli)

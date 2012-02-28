@@ -185,10 +185,10 @@ let compile exec_state fn source =
         ~opmac:(List.unique (List.flatten opmac))
         (List.map snd ppl)
   with err -> begin
-    error (Essl_lib.EsslParseError ((Printexc.to_string err),
-                                    !(Pp_lib.file),!(Pp_lib.line)));
-    maybe_fatal_error SLParser;
-    raise err
+    raise (CompilerError
+             (SLParser, [Essl_lib.EsslParseError ((Printexc.to_string err),
+                                                  !(Pp_lib.file),!(Pp_lib.line))]
+             ))
   end
 
 let link prologue required glom =
@@ -219,18 +219,15 @@ let glo_of_u meta target u =
   {glo=glo_version; target; meta=Some meta; units=[|u|]; linkmap=[]}
 
 let make_glo exec_state fn s =
-  try match glom_of_string s with
+  match glom_of_string s with
     | Source s -> Glo (compile exec_state fn s)
     | glom -> glom
-  with
-    | e -> raise e (*raise (CompilerError (Format,[e])) (* TODO: msg *)*)
 
 let make_glom exec_state inputs =
   let glo_alist = List.fold_left
     (fun al -> function
       | (fn, Stream (Source s)) | (fn, Define (Source s)) ->
-        begin try (fn,make_glo exec_state fn s)::al
-          with e -> raise (CompilerError (Format,[e])) end (* TODO: msg *)
+        (fn,make_glo exec_state fn s)::al
       | (fn, Stream glom) | (fn, Define glom) -> (fn,glom)::al
     ) [] inputs
   in Glol.nest glo_alist
@@ -239,93 +236,81 @@ let minimize_glom = function
   | Glom [_,Glo glo] -> Glo glo
   | x -> x
 
-let string_of_tokpos linectrl
-    ({span={a={file=af; line=al; col=ac};
-            z={file=zf; line=zl; col=zc}}}) =
-  let af,al,zf,zl = if linectrl
-    then (af.src,al.src,zf.src,zl.src)
-    else (af.input,al.input,zf.input,zl.input)
-  in if af=zf then
-      if al=zl
-      then if ac=zc
-        then sprintf "File %d, line %d, col %d" af al ac
-        else sprintf "File %d, line %d, col %d - %d" af al ac zc
-      else sprintf "File %d, l%d c%d - l%d c%d" af al ac zl zc
-    else sprintf "F%d l%d c%d - F%d l%d c%d" af al ac zf zl zc
-
 let string_of_error linectrl = function
   | UnknownBehavior t ->
-    sprintf "%s:\nunknown behavior \"%s\"\n" (string_of_tokpos linectrl t) t.v
+    sprintf "%s:\nunknown behavior \"%s\"\n" (string_of_span linectrl t.span) t.v
   | UnterminatedComment t ->
-    sprintf "%s:\nunterminated comment\n" (string_of_tokpos linectrl t)
+    sprintf "%s:\nunterminated comment\n" (string_of_span linectrl t.span)
   | UnterminatedConditional t ->
-    sprintf "%s:\nunterminated conditional \"%s\"\n" (string_of_tokpos linectrl t)
+    sprintf "%s:\nunterminated conditional \"%s\"\n" (string_of_span linectrl t.span)
       (snd (t.scan t.span.a))
   | UnknownCharacter t ->
-    sprintf "%s:\nunknown character '%s'\n" (string_of_tokpos linectrl t)
+    sprintf "%s:\nunknown character '%s'\n" (string_of_span linectrl t.span)
       (snd (t.scan t.span.a))
   | LineContinuationUnsupported t ->
     sprintf "%s:\nline continuation officially unsupported\n"
-      (string_of_tokpos linectrl t)
+      (string_of_span linectrl t.span)
   | InvalidDirectiveLocation t ->
-    sprintf "%s:\ninvalid directive location\n" (string_of_tokpos linectrl t)
+    sprintf "%s:\ninvalid directive location\n" (string_of_span linectrl t.span)
   | InvalidDirective t ->
-    sprintf "%s:\ninvalid directive \"%s\"\n" (string_of_tokpos linectrl t) t.v
+    sprintf "%s:\ninvalid directive \"%s\"\n" (string_of_span linectrl t.span) t.v
   | InvalidOctal t ->
-    sprintf "%s:\ninvalid octal constant \"%s\"\n" (string_of_tokpos linectrl t) t.v
+    sprintf "%s:\ninvalid octal constant \"%s\"\n" (string_of_span linectrl t.span) t.v
   | HolyVersion t ->
     sprintf "%s:\nversion must be first semantic token\n"
-      (string_of_tokpos linectrl t)
+      (string_of_span linectrl t.span)
   | UnsupportedVersion t ->
-    sprintf "%s:\nversion %d is unsupported\n" (string_of_tokpos linectrl t) t.v
+    sprintf "%s:\nversion %d is unsupported\n" (string_of_span linectrl t.span) t.v
   | InvalidVersionBase t ->
     sprintf "%s:\nversion must be specified in decimal\n"
-      (string_of_tokpos linectrl t)
+      (string_of_span linectrl t.span)
   | InvalidLineBase t ->
     sprintf "%s:\nline control arguments must be specified in decimal\n"
-      (string_of_tokpos linectrl t)
+      (string_of_span linectrl t.span)
   | InvalidVersionArg t ->
-    sprintf "%s:\ninvalid version argument\n" (string_of_tokpos linectrl t)
+    sprintf "%s:\ninvalid version argument\n" (string_of_span linectrl t.span)
   | InvalidLineArg t ->
-    sprintf "%s:\ninvalid line argument\n" (string_of_tokpos linectrl t)
+    sprintf "%s:\ninvalid line argument\n" (string_of_span linectrl t.span)
   | MacroArgUnclosed t ->
-    sprintf "%s:\nunclosed macro argument list\n" (string_of_tokpos linectrl t)
+    sprintf "%s:\nunclosed macro argument list\n" (string_of_span linectrl t.span)
   | MacroArgInnerParenUnclosed t ->
     sprintf "%s:\nunclosed inner parenthesis in macro argument list\n"
-      (string_of_tokpos linectrl t)
+      (string_of_span linectrl t.span)
   | MacroArgTooFew (t,a,e) ->
     sprintf "%s:\ntoo few macro arguments: expected %d, got %d\n"
-      (string_of_tokpos linectrl t) e a
+      (string_of_span linectrl t.span) e a
   | MacroArgTooMany (t,a,e) ->
     sprintf "%s:\ntoo many macro arguments: expected %d, got %d\n"
-      (string_of_tokpos linectrl t) e a
+      (string_of_span linectrl t.span) e a
   | ReservedKeyword t ->
     sprintf "%s:\n\"%s\" is a reserved keyword and may not be used\n"
-      (string_of_tokpos linectrl t) t.v
+      (string_of_span linectrl t.span) t.v
   | RedefineReservedMacro t ->
     sprintf "%s:\n\"%s\" is a reserved macro and may not be redefined\n"
-      (string_of_tokpos linectrl t) t.v
+      (string_of_span linectrl t.span) t.v
   | UndefineReservedMacro t ->
     sprintf "%s:\n\"%s\" is a reserved macro and may not be undefined\n"
-      (string_of_tokpos linectrl t) t.v
+      (string_of_span linectrl t.span) t.v
   | ErrorDirective t ->
-    sprintf "%s:\n%s\n" (string_of_tokpos linectrl t) (snd (t.scan t.span.a))
+    sprintf "%s:\n%s\n" (string_of_span linectrl t.span) (snd (t.scan t.span.a))
   | UnsupportedPPOp t ->
     sprintf "%s:\n\"%s\" is not supported in preprocessor expressions\n"
-      (string_of_tokpos linectrl t) (snd (t.scan t.span.a))
+      (string_of_span linectrl t.span) (snd (t.scan t.span.a))
   | FloatUnsupported t ->
     sprintf "%s:\nfloating point is not supported in preprocessor expressions\n"
-      (string_of_tokpos linectrl t)
+      (string_of_span linectrl t.span)
   | PPCondExprParseError t ->
     sprintf "%s:\nerror parsing conditional expression \"%s\"\n"
-      (string_of_tokpos linectrl t) (snd (t.scan t.span.a))
+      (string_of_span linectrl t.span) (snd (t.scan t.span.a))
   | UncaughtException e -> sprintf "Uncaught exception:\n%s\n" (Printexc.to_string e)
   | AmbiguousPreprocessorConditional t ->
     sprintf "%s:\nambiguous preprocessor conditional branch: %s\n"
-      (string_of_tokpos linectrl t) t.v
+      (string_of_span linectrl t.span) t.v
   | GlomPPOnly fn ->
     sprintf "Source '%s' is a glom with multiple source units.\n" fn
   | MultiUnitGloPPOnly fn -> (* TODO: test *)
     sprintf "Source '%s' is a glo with multiple source units.\n" fn
+  | Essl_lib.EsslParseError (name,_,_) ->
+    sprintf "ESSL parse error: %s\n" name
   | Sys_error m -> sprintf "System error:\n%s\n" m
   | exn -> try Glol.string_of_error exn with e -> raise e
