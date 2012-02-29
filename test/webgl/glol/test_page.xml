@@ -11,13 +11,7 @@
     <script type="text/javascript" src="../../../glol_js.d.js"></script>
     <script type="text/javascript" src="../../../Pretty-Diff/prettydiff.js"></script>
     <script type="text/javascript" src="test_glol.js"></script>
-    <style type="text/css">
-      thead { font-size: 200% }
-      .test th, .testgroup th { text-align: right }
-      .pass { background-color: green }
-      .partial { background-color: yellow }
-      .fail { background-color: red }
-    </style>
+    <link rel="stylesheet" href="../../../glol.css" type="text/css" />
   </head>
   <body>
     <tests />

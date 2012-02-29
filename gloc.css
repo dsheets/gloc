@@ -1,0 +1,5 @@
+thead { font-size: 200% }
+.test th, .testgroup th { text-align: right }
+.pass { background-color: green }
+.partial { background-color: yellow }
+.fail { background-color: red }
