@@ -1,5 +1,18 @@
+/*
+*************************************
+  gloc stylesheeet
+  Created: 28 feb 2012    
+  Updated:  
+*************************************
+*/
+
 thead { font-size: 200% }
-.test th, .testgroup th { text-align: right }
+.test th, .testgroup th { text-align: left }
 .pass { background-color: green }
 .partial { background-color: yellow }
-.fail { background-color: red }
+tr.testgroup .fail { background-color: #f00; }
+tr.test fail { background: #fff; }
+table.diff { border:1px solid #666; }
+table.diff tbody tr { border-bottom:1px solid #666; }
+table.diff tfoot { border-top:1px solid #666; }
+table.diff tr:nth-of-type(odd) { background-color:#a8c1d7; }
