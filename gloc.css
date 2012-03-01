@@ -25,3 +25,4 @@ table.diff tfoot tr th { border-top:1px solid #666; border-left:1px solid #666; 
 em { color: #f00; background: #fdd; padding: 4px; font-weight:bold; }
 p em { background:none; font-weight:normal; }
 td.posix, td.js_of_ocaml, td.javascript { /*width:33%; max-width:33%; */ vertical-align:top; }
+td.posix p, td.js_of_ocaml p, td.javascript p { font-size:smaller; }
