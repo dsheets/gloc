@@ -88,7 +88,7 @@ ROUND(vec4)
 #define ROUNDEVEN(T) \
   T roundEven(T x) { \
     T y = floor(x + 0.5); \
-    return ( y - x == 0.5 ) ? floor(0.5*y)*2.0 : y \
+    return ( y - x == 0.5 ) ? floor(0.5*y)*2.0 : y ; \
     }
      
 ROUNDEVEN(float)
