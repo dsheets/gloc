@@ -43,9 +43,18 @@ float determinant(mat3 m) {
          + m[2][0]*( m[0][1]*m[1][2] - m[1][1]*m[0][2]) ;
   }
 
-// soon .... 
-//float determinant(mat4 m) {
-//  }
+// 4x4 determinate inplemented by blocks ..
+//     | A B |
+// det | C D | = det ( AD - BC )
+//
+
+float determinant(mat4 m) {
+  mat2 a = mat2(m);
+  mat2 b = mat2(m[2].xy,m[3].xy);
+  mat2 c = mat2(m[0].zw,m[1].zw);
+  mat2 d = mat2(m[2].zw,m[3].zw);
+  return determinant( a*d - b*c );
+  }
 
 mat2 inverse(mat2 m) {
   float d = 1.0 / determinant(m) ;
