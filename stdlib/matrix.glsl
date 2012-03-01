@@ -1,16 +1,3 @@
-#define SINH(T) \
-  T sinh(T x) { \
-    T e = exp(x); \
-    return 0.5 * (e - 1/e); \
-  }
-
-SINH(float)
-SINH(vec2)
-SINH(vec3)
-SINH(vec4)
-
-#define TRANSPOSE(T) \
-  T transpose(T x) { \
 
 // constructors are column major 
 mat2 transpose(mat2 m) {
