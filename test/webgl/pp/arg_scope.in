@@ -1,0 +1,2 @@
+#define J(h) h
+void main() { J(h); }

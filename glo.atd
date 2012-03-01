@@ -1,8 +1,8 @@
-type glo = {
+type 'a glo = {
   glo:version;
   target:(string * version);
   ?meta:meta option;
-  ~units: u list <ocaml repr="array">;
+  ~units: 'a u list <ocaml repr="array">;
   ~linkmap: (string * string) list <json repr="object">
 }
 
@@ -15,7 +15,7 @@ type meta = {
   ?build:href option;
 }
 
-type u = {
+type 'a u = {
   ~pdir: string list;
   ~edir: (string * string) list;
   ?vdir: int option;
@@ -24,7 +24,7 @@ type u = {
   ~inmac:string list;
   ~opmac:string list;
   ~outmac:string list;
-  source:string;
+  source:'a;
 }
 
 type url = string

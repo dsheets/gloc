@@ -102,7 +102,7 @@ module Make(P : Platform) = struct
       author=[]; license=None; library=None; version=None; build=None }
 
   let meta_of_path p = P.in_of_filename p
-    (fun s -> match (Glo_j.glo_of_string s).meta
+    (fun s -> match (glo_of_string s).meta
       with None -> default_meta | Some meta -> meta)
 
   let spec_of_iface exec_state cli = function
@@ -152,7 +152,7 @@ module Make(P : Platform) = struct
         then Yojson.Safe.pretty_to_string ~std:true o
         else Yojson.Safe.to_string ~std:true o)
     | Glo glo ->
-      let s = Glo_j.string_of_glo glo in
+      let s = string_of_glo glo in
       Buffer.add_string b
         ((if !(exec_state.verbose)
           then Yojson.Safe.prettify ~std:true s else s)^"\n")

@@ -133,8 +133,13 @@ let create_body expr envs =
 
 let env_of_ppexpr ppexpr =
   let s = stream_of_pptok_expr ppexpr in
-  let ts = ref (essl_tokenize s) in
-  parse_essl (essl_lexerfn ts)
+  let hot = ref None in
+  try parse_essl (essl_lexerfn hot s)
+  with Essl.Error ->
+    raise (Essl_lib.EsslParseError ("ESSL parse error",
+                                    match !hot with
+                                      | Some t -> t.span
+                                      | None -> {a=start_loc;z=start_loc}))
 
 let compile ?meta target fn origexpr ~inmac ~opmac tokslst =
   let envs = List.map env_of_ppexpr tokslst in

@@ -81,7 +81,10 @@ function File(name) {
     this.disconnect = function() { fdel.style.display="inline"; return this; };
 
     var readonly = false;
-    if (name=="[stdout]" || name=="[stderr]") readonly=true;
+    if (name=="[stdout]" || name=="[stderr]") {
+        readonly=true;
+        fdiv.className += " readonly";
+    }
 
     var feditor = CodeMirror(fdiv, {
         lineNumbers: true,
@@ -111,9 +114,9 @@ function File(name) {
 }
 
 function init_fs() {
-    (new File("[stdin]")).connect();
-    (new File("[stdout]")).connect();
     (new File("[stderr]")).connect();
+    (new File("[stdout]")).connect();
+    (new File("[stdin]")).connect();
 }
 
 var cmd = {};
