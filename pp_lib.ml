@@ -22,7 +22,7 @@ and comments = string pptok list pptok list
 and pptok_type =
   | Int of (base * int) pptok
   | Float of float pptok
-  | Word of (string * unit Env.t) pptok
+  | Word of (string * bool Env.t) pptok
   | Call of string pptok
   | Punc of Punc.tok pptok
   | Comma of Punc.tok pptok
@@ -35,7 +35,7 @@ and macro = { name: string option;
 
 type env = {
   macros: macro Env.t;
-  builtin_macros: (env -> (string * unit Env.t) pptok -> macro) Env.t;
+  builtin_macros: (env -> (string * bool Env.t) pptok -> macro) Env.t;
   extensions: behavior Env.t;
   inmacros: string pptok list;
 }

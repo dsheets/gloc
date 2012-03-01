@@ -11,6 +11,7 @@
 <glol_js.*>: syntax(camlp4o), package(js_of_ocaml), package(js_of_ocaml.syntax), package(re.str), package(atdgen)
 <glo_*>: package(atdgen)
 <glo.*>: package(atdgen)
+<glo_lib.*>: package(re.str)
 <ce_lib.*>: package(menhirLib)
 <essl_lib.*>: package(menhirLib)
 

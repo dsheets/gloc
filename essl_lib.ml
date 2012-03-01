@@ -9,7 +9,7 @@ open Essl
 module P = Punc
 
 exception ReservedEsslOper of Punc.tok pptok
-exception EsslParseError of string * src_loc * src_loc
+exception EsslParseError of string * span
 
 let rec stream_of_pptok_expr = function
   | Comments _ -> []
@@ -106,22 +106,21 @@ let essl_token_of_punc p = match p.v with
       error (ReservedEsslOper p);
       raise (ParserError "Reserved operator in incoming essl stream")
 
-let essl_tokenize s = List.map
-  (function
-     | Int i -> INTCONSTANT { i with v=(snd i.v) }
-     | Float f -> FLOATCONSTANT f
-     | Word w -> essl_token_of_word { w with v=(fst w.v) }
-     | Call c ->
-         raise (ParserError "Call token found in incoming essl stream")
-     | Punc p -> essl_token_of_punc p
-     | Comma c -> COMMA c
-     | Leftp p -> LEFT_PAREN p
-     | Rightp p -> RIGHT_PAREN p
-  ) s
+let essl_tokenize = function
+  | Int i -> INTCONSTANT { i with v=(snd i.v) }
+  | Float f -> FLOATCONSTANT f
+  | Word w -> essl_token_of_word { w with v=(fst w.v) }
+  | Call c ->
+    raise (ParserError "Call token found in incoming essl stream")
+  | Punc p -> essl_token_of_punc p
+  | Comma c -> COMMA c
+  | Leftp p -> LEFT_PAREN p
+  | Rightp p -> RIGHT_PAREN p
 
-let essl_lexerfn sr =
+let essl_lexerfn hot s =
+  let sr = ref s in
   fun () -> match !sr with
-    | h::r -> sr := r; h
+    | h::r -> sr := r; hot := Some (proj_pptok_type h); essl_tokenize h
     | [] -> EOF
 
 let parse_essl lex =

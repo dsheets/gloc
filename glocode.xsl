@@ -182,6 +182,7 @@
           .hidesource { background-color: yellow }
           .showsource { background-color: green; color: white }
           .CodeMirror { border-right: 1px solid #ccc }
+          .readonly .CodeMirror { border-color: #c66 }
           .CodeMirror-scroll { height: auto; overflow: visible; }
           .suffix { color: #999 }
         </style>

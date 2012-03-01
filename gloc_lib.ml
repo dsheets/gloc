@@ -105,10 +105,10 @@ let builtin_macros = List.fold_left
   (fun map (n,f) -> Env.add n f map)
   Env.empty [
     "__LINE__",(fun e w ->
-      {name=None; args=None;
+      {name=Some "__LINE__"; args=None;
        stream=fun _ -> [int_replace_word w w.span.a.line.src]});
     "__FILE__",(fun e w ->
-      {name=None; args=None;
+      {name=Some "__FILE__"; args=None;
        stream=fun _ -> [int_replace_word w w.span.a.file.src]});
     "__VERSION__",(fun _ _ -> omacro "__VERSION__" (synth_int (Dec,100)));
     "GL_ES",(fun _ _ -> omacro "GL_ES" (synth_int (Dec,1)))
@@ -157,7 +157,21 @@ let check_pp_divergence ppl =
                     scan=(fun loc -> (loc,""));
                     comments=([],ref []);
                     v=[] }
+(*
+type dissolved_ppexpr = { version_d: int;
+                          pragma_d: string list;
+                          extension_d: (string * behavior) list;
+                          meta_d: meta;
+                          macros_d:
 
+let dissolve env ppexpr =
+  let rec loop env meta pl = function
+    | (Comments c)::r -> loop env (extract_meta c) pl r
+    | (Chunk c)::r ->
+      let macros, _ = macro_expand env c.v in
+      loop env meta ((meta,macros,Chunk c)::pl) r
+    | (If {v=})::r ->
+*)
 let compile exec_state fn source =
   let ppexpr = parse exec_state source in
   let ppl = preprocess ppexpr in
@@ -169,26 +183,19 @@ let compile exec_state fn source =
     else ppexpr
   in
 
-  let env_collect (f1,f2) vl (env,_) = (f1 env, f2 env)::vl in
+  let env_map f ppl = List.unique (List.flatten (List.map f ppl)) in
   let get_inmac env = List.map (fun t -> t.v) env.inmacros in
   let get_opmac env = Env.fold (fun s _ l -> s::l) env.macros [] in
-  let inmac,opmac = List.split
-    (List.fold_left (env_collect (get_inmac,get_opmac))
-       [] ppl) in
+  let inmac = env_map (fun (env,_) -> get_inmac env) ppl in
+  let opmac = env_map (fun (env,_) -> get_opmac env) ppl in
 
   let outlang = !(exec_state.outlang) in
   let target = (Lang.string_of_dialect outlang.Lang.dialect,
                 outlang.Lang.version) in
   let meta = !(exec_state.metadata) in
-  try Glo.compile ~meta target fn slexpr
-        ~inmac:(List.unique (List.flatten inmac))
-        ~opmac:(List.unique (List.flatten opmac))
-        (List.map snd ppl)
+  try Glo.compile ~meta target fn ~inmac ~opmac slexpr (List.map snd ppl)
   with err -> begin
-    raise (CompilerError
-             (SLParser, [Essl_lib.EsslParseError ((Printexc.to_string err),
-                                                  !(Pp_lib.file),!(Pp_lib.line))]
-             ))
+    raise (CompilerError (SLParser, [err]))
   end
 
 let link prologue required glom =
@@ -310,7 +317,7 @@ let string_of_error linectrl = function
     sprintf "Source '%s' is a glom with multiple source units.\n" fn
   | MultiUnitGloPPOnly fn -> (* TODO: test *)
     sprintf "Source '%s' is a glo with multiple source units.\n" fn
-  | Essl_lib.EsslParseError (name,_,_) ->
-    sprintf "ESSL parse error: %s\n" name
+  | Essl_lib.EsslParseError (name,span) ->
+    sprintf "%s:\nESSL parse error: %s\n" (string_of_span linectrl span) name
   | Sys_error m -> sprintf "System error:\n%s\n" m
   | exn -> try Glol.string_of_error exn with e -> raise e
