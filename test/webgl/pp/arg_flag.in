@@ -1,0 +1,3 @@
+#define A B A
+#define J(A) A
+void main() { J(A); }

@@ -142,7 +142,9 @@ let lookup env w =
           (function
             | Word w ->
               let me = if m.name = None
-                then Env.fold Env.add ms (Env.add name false (snd w.v))
+                then
+                  let a = try Env.find name (snd w.v) with Not_found -> false in
+                  Env.fold Env.add ms (Env.add name a (snd w.v))
                 else Env.fold Env.add ms (Env.add name true (snd w.v))
               in Word {w with v=(fst w.v,me)}
             | x -> x)
