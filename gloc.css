@@ -12,18 +12,16 @@ thead { font-size: 160% }
 td { padding:8px; }
 .test th, .testgroup th { text-align: left; vertical-align:top; padding:4px; }
 .pass { background-color: #dfd; }
-.partial { background-color: yellow }
-tr.testgroup .fail { background-color: #f00; }
+.partial { background-color: #ffd; }
+tr.testgroup .fail { background-color: #fdd; }
 tr.test fail { background: #fff; }
-table.diff { border-top:1px solid #666; border-right:1px solid #666; border-bottom:1px solid #666; border-spacing: 0; margin-top:10px; }
+table.diff { border-top:1px solid #666; border-right:1px solid #666; border-bottom:1px solid #666; border-spacing: 0; margin-top:10px; background-color:#d7e2ec; } /* a8c1d7 */ 
 table.diff tbody { font-family: Courier New, courier, monospace; }
-/* not showing up below */
 table.diff tbody tr th, table.diff tbody tr td { border-top:1px solid #666;  }
+table.diff tbody tr td { white-space: nowrap;  }
 table.diff tbody tr th { border-right:1px solid #666; border-left:1px solid #666; }
-table.diff thead tr th.texttitle { border-left:1px solid #666; }
+table.diff thead tr th.texttitle { border-left:1px solid #666; font-size:80%; }
 table.diff tfoot tr th { border-top:1px solid #666; border-left:1px solid #666; }	
-/* not showing up above */
-table.diff tr:nth-of-type(odd) { background-color:#a8c1d7; }
-em { color: #f00; background: #fdd; padding: 4px; }
-p em { background:none; }
-td.posix, td.js_of_ocaml, td.javascript { width:33%; max-width:33%; vertical-align:top; }
+em { color: #f00; background: #fdd; padding: 4px; font-weight:bold; }
+p em { background:none; font-weight:normal; }
+td.posix, td.js_of_ocaml, td.javascript { /*width:33%; max-width:33%; */ vertical-align:top; }
