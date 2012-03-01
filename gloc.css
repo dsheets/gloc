@@ -15,7 +15,8 @@ td { padding:8px; }
 .partial { background-color: yellow }
 tr.testgroup .fail { background-color: #f00; }
 tr.test fail { background: #fff; }
-table.diff { border:1px solid #666; border-spacing: 0;  font-style: serif; }
+table.diff { border:1px solid #666; border-spacing: 0; margin-top:10px; }
+table.diff tbody { font-family: Courier New, courier, monospace; }
 /* not showing up below */
 table.diff tbody tr { border-bottom:1px solid #666; } 
 table.diff tfoot { border-top:1px solid #666; }	
