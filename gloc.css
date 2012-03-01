@@ -2,21 +2,25 @@
 *************************************
   gloc stylesheeet
   Created: 28 feb 2012    
-  Updated:  
+  Updated: 29 feb 2012
 *************************************
 */
 
 body { font-family: "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", verdana, arial, sans-serif; }
-thead { font-size: 200% }
-.test th, .testgroup th { text-align: left }
-.pass { background-color: green }
+table#tests  > thead > tr > th { padding:10px 0 20px; }
+thead { font-size: 160% }
+td { padding:8px; }
+.test th, .testgroup th { text-align: left; vertical-align:top; padding:4px; }
+.pass { background-color: #dfd; }
 .partial { background-color: yellow }
 tr.testgroup .fail { background-color: #f00; }
 tr.test fail { background: #fff; }
-table.diff { border:1px solid #666; }
-table.diff tbody tr { border-bottom:1px solid #666; }
-table.diff tfoot { border-top:1px solid #666; }
+table.diff { border:1px solid #666; border-spacing: 0;  font-style: serif; }
+/* not showing up below */
+table.diff tbody tr { border-bottom:1px solid #666; } 
+table.diff tfoot { border-top:1px solid #666; }	
+/* not showing up above */
 table.diff tr:nth-of-type(odd) { background-color:#a8c1d7; }
-em { color: #f00; background: #fdd; }
+em { color: #f00; background: #fdd; padding: 4px; }
 p em { background:none; }
-td { padding:8px; }
+td.posix, td.js_of_ocaml, td.javascript { width:33%; max-width:33%; vertical-align:top; }
