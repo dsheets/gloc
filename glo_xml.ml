@@ -76,7 +76,8 @@ let format_glo attrs glo =
        | Some meta -> [format_meta meta])
      @(List.map format_unit (Array.to_list glo.units))
      @(List.map (format_link "link" []) glo.linkmap)
-     @[format_tag "json" [] [Atom (Glo_j.string_of_glo glo,atom)]])
+     @[format_tag "json" []
+          [Atom (string_of_glo glo,atom)]])
 
 let rec format_glom nameopt = function
   | Glo glo -> format_glo (attr_of_nameopt nameopt) glo

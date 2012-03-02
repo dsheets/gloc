@@ -116,15 +116,16 @@ let int_replace_word w i =
 let omacro name stream = { name=Some name; args=None; stream }
 let defarg env name stream =
   let stream = fun _ -> stream in
-    { env with macros=Env.add name {name=None; args=None; stream} env.macros }
+  { env with macros=Env.add name {name=None; args=None; stream}
+      env.macros }
 let define env name stream =
   let stream = fun _ -> stream in
-    { env with macros=Env.add name {name=Some name; args=None; stream}
-        env.macros }
+  { env with macros=Env.add name {name=Some name; args=None; stream}
+      env.macros }
 let defun env name args stream =
   let stream = fun _ -> stream in
-    { env with macros=Env.add name {name=Some name; args=Some args; stream}
-        env.macros }
+  { env with macros=Env.add name {name=Some name; args=Some args; stream}
+      env.macros }
 let undef env name = { env with macros=Env.remove name env.macros }
 let register_pragma env p = env (* TODO: care *)
 let register_extension env x =
@@ -132,22 +133,24 @@ let register_extension env x =
 
 let lookup env w =
   let (name,ms) = w.v in
-    if Env.mem name ms then None
-    else try
-      Some (Env.find name env.builtin_macros env w)
-    with Not_found -> try
-      let m = Env.find name env.macros in
+  if Env.mem name ms then None
+  else try Some (Env.find name env.builtin_macros env w)
+    with Not_found ->
+      try
+        let m = Env.find name env.macros in
         Some { m with stream=fun _ -> List.map
-                 (function
-                    | Word w ->
-                        let me = if m.name=None
-                        then Env.fold Env.add ms (snd w.v)
-                        else Env.fold Env.add ms (Env.add name () (snd w.v))
-                        in Word {w with v=(fst w.v,me)}
-                    | x -> x)
-                 (m.stream w.span.a)
+          (function
+            | Word w ->
+              let me = if m.name = None
+                then
+                  let a = try Env.find name (snd w.v) with Not_found -> false in
+                  Env.fold Env.add ms (Env.add name a (snd w.v))
+                else Env.fold Env.add ms (Env.add name true (snd w.v))
+              in Word {w with v=(fst w.v,me)}
+            | x -> x)
+          (m.stream w.span.a)
              }
-    with Not_found -> None
+      with Not_found -> None
 
 let macro_arg_collect start stream =
   let rec outer opa args = function
@@ -173,6 +176,10 @@ let macro_arg_collect start stream =
   in let args, r = outer [] [] stream in (List.rev args, r)
 
 let macro_expand ?(cond=false) env ptl =
+  let filter_macro_args = function
+    | Word w -> Word {w with v=(fst w.v,Env.filter (fun _ v -> v) (snd w.v))}
+    | t -> t
+  in
   let extend_list fill lst len =
     lst@(Array.to_list (Array.make (len - (List.length lst)) fill))
   in
@@ -181,25 +188,25 @@ let macro_expand ?(cond=false) env ptl =
     | x,_::r -> drop_head_list r (x-1)
     | _,[] -> raise (ParserError "drop_head_list empty list arg")
   in
-  let rec loop env prev = function
-    | (Int i)::r -> loop env ((Int i)::prev) r
-    | (Float f)::r -> loop env ((Float f)::prev) r
+  let rec loop env expanded prev = function
+    | (Int i)::r -> loop env expanded ((Int i)::prev) r
+    | (Float f)::r -> loop env expanded ((Float f)::prev) r
     | (Word w)::r ->
         begin match cond, prev with
           | true,(Word {v=("defined",_)})::_
           | true,(Leftp _)::(Word {v=("defined",_)})::_ ->
-              loop env ((Word w)::prev) r (* defined is soooo "special" *)
+              loop env expanded ((Word w)::prev) r (* defined is soooo "special" *)
           | _,_ -> begin match r with
               | (Leftp p)::r -> begin match lookup env w with
-                  | Some ({args=None; stream}) ->
-                      loop env prev ((stream w.span.a)@[Leftp p]@r)
-                  | Some ({args=Some binders; stream}) ->
-                      let blen = List.length binders in
-                      let args, r = macro_arg_collect (proj p) r in
-                        (* nullary macro fns are a special case of unary *)
-                      let args = if blen=0 && args=[[]] then [] else args in
-                      let arglen = List.length args in
-                      let args = if arglen < blen
+                  | Some ({args=None; stream} as m) ->
+                    loop env (m::expanded) prev ((stream w.span.a)@[Leftp p]@r)
+                  | Some ({args=Some binders; stream} as m) ->
+                    let blen = List.length binders in
+                    let args, r = macro_arg_collect (proj p) r in
+                      (* nullary macro fns are a special case of unary *)
+                    let args = if blen=0 && args=[[]] then [] else args in
+                    let arglen = List.length args in
+                    let args = if arglen < blen
                       then (error (MacroArgTooFew ((proj w),arglen,blen));
                             extend_list [] args blen)
                       else if arglen > blen
@@ -208,36 +215,40 @@ let macro_expand ?(cond=false) env ptl =
                                         (List.rev args)
                                         (arglen - blen)))
                       else args
-                      in
-                      let appenv = List.fold_left2
-                        (fun appenv binder arg ->
-                           defarg appenv binder (loop env [] arg)) (* "prescan" *)
-                        {macros=Env.empty;
-                         builtin_macros=Env.empty;
-                         extensions=Env.empty;
-                         inmacros=[]}
-                        binders args
-                      in loop env prev ((loop appenv [] (stream w.span.a))@r)
+                    in
+                    let macros, appenv = List.fold_left2
+                      (fun (expanded,appenv) binder arg ->
+                        let macros, stream = loop env [] [] arg in (* "prescan" *)
+                        (macros@expanded, defarg appenv binder stream))
+                      ([], {macros=Env.empty;
+                            builtin_macros=Env.empty;
+                            extensions=Env.empty;
+                            inmacros=[]})
+                      binders args
+                    in
+                    let _, stream = loop appenv [] [] (stream w.span.a) in
+                    let stream = List.map filter_macro_args stream in
+                    loop env ((m::macros)@expanded) prev (stream@r)
                   | None ->
-                      check_reserved {w with v=(fst w.v)};
-                      loop env ((Leftp p)::(Word w)::prev) r
-                end
+                    check_reserved {w with v=(fst w.v)};
+                    loop env expanded ((Leftp p)::(Word w)::prev) r
+              end
               | r -> begin match lookup env w with
-                  | Some ({args=None; stream}) ->
-                      loop env prev ((stream w.span.a)@r)
+                  | Some ({args=None; stream} as m) ->
+                    loop env (m::expanded) prev ((stream w.span.a)@r)
                   | Some ({args=Some _}) | None ->
-                      check_reserved {w with v=(fst w.v)};
-                      loop env ((Word w)::prev) r
-                end
-            end
+                    check_reserved {w with v=(fst w.v)};
+                    loop env expanded ((Word w)::prev) r
+              end
+          end
         end
     | (Call c)::r -> raise (ParserError "Call token in normalized stream")
-    | (Punc p)::r -> loop env ((Punc p)::prev) r
-    | (Comma c)::r -> loop env ((Comma c)::prev) r
-    | (Leftp p)::r -> loop env ((Leftp p)::prev) r
-    | (Rightp p)::r -> loop env ((Rightp p)::prev) r
-    | [] -> List.rev prev
-  in loop env [] ptl
+    | (Punc p)::r -> loop env expanded ((Punc p)::prev) r
+    | (Comma c)::r -> loop env expanded ((Comma c)::prev) r
+    | (Leftp p)::r -> loop env expanded ((Leftp p)::prev) r
+    | (Rightp p)::r -> loop env expanded ((Rightp p)::prev) r
+    | [] -> (List.rev expanded,List.rev prev)
+  in loop env [] [] ptl
 
 let coerce_binop fn x y = if fn x y then Int32.one else Int32.zero
 
@@ -304,7 +315,7 @@ and cond_binop env f (a,b) =
 let preprocess_ppexpr env ppexpr =
   let rec loop env prev = function
     | (Comments c)::r -> loop env prev r
-    | (Chunk c)::r -> let s = macro_expand env c.v in
+    | (Chunk c)::r -> let _,s = macro_expand env c.v in
         if s=[] then loop env prev r
         else loop env
           ((Chunk {(fuse_pptok
@@ -313,7 +324,7 @@ let preprocess_ppexpr env ppexpr =
         let cond,tb,fb = i.v in
         let cond = match cond with
           | Opaque ptlt ->
-              let s = macro_expand ~cond:true env ptlt.v in
+              let _,s = macro_expand ~cond:true env ptlt.v in
               let ts = ce_tokenize s in
                 begin try parse_cond_expr (ce_lexerfn ts)
                 with Esslpp_ce.Error ->
