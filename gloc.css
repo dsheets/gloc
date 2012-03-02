@@ -8,14 +8,15 @@
 
 body { font-family: "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", verdana, arial, sans-serif; }
 table#tests > thead > tr > th { padding:10px 0 20px; }
+table#tests > tbody > tr > th { text-align:left; }
 thead { font-size: 160% }
 td { padding:8px; }
 .test th, .testgroup th { text-align: left; vertical-align:top; padding:4px; }
 .pass { background-color: #dfd; }
 .partial { background-color: #ffd; }
 tr.testgroup .fail { background-color: #fdd; }
-tr.test fail { background: #fff; }
-table.diff { border-top:1px solid #666; border-right:1px solid #666; border-bottom:1px solid #666; border-spacing: 0; margin-top:10px; background-color:#d7e2ec; } /* a8c1d7 */ 
+tr.test .fail { background: #fdd; }
+table.diff { border-top:1px solid #666; border-right:1px solid #666; border-bottom:1px solid #666; border-spacing: 0; margin-top:10px; background-color:#fff; } /* d7e2ec a8c1d7 */ 
 table.diff tbody { font-family: Courier New, courier, monospace; }
 table.diff tbody tr th, table.diff tbody tr td { border-top:1px solid #666;  }
 table.diff tbody tr td { white-space: nowrap;  }
