@@ -2,7 +2,7 @@
 *************************************
   gloc stylesheeet
   Created: 28 feb 2012    
-  Updated: 1 mar 2012
+  Updated: 2 mar 2012
 *************************************
 */
 
@@ -50,5 +50,8 @@ h2 { display: inline }
 .CodeMirror-scroll { height: auto; overflow: visible; }
 .suffix { color: #999 }
 
+form table tbody tr:focus { background: #f00; }
 form#gloc-cli table td	{ padding:0; }
 h1 { margin-top:0; }
+input { background-color: #eee; }
+input:focus { background-color: #ffd; }

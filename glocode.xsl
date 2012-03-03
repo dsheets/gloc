@@ -171,7 +171,8 @@
         <script src="gloc_platform_js.js"></script>
         <script src="_build/gloc_js.d.js"></script>
         <link rel="stylesheet" type="text/css" href="CodeMirror2/lib/codemirror.css" />
-        <style type="text/css">
+        <!-- 
+<style type="text/css">
           body { font-family: sans-serif }
           .flag, .input { text-align: right }
           #gloc { top: 20px; right: 10px; position: fixed }
@@ -186,6 +187,8 @@
           .CodeMirror-scroll { height: auto; overflow: visible; }
           .suffix { color: #999 }
         </style>
+ -->
+        <link rel="stylesheet" href="gloc.css" type="text/css">
       </head>
       <body onload="init()">
         <div id="gloc">
