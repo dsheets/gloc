@@ -188,7 +188,7 @@
           .suffix { color: #999 }
         </style>
  -->
-        <link rel="stylesheet" href="gloc.css" type="text/css">
+        <link rel="stylesheet" href="gloc.css" type="text/css" />
       </head>
       <body onload="init()">
         <div id="gloc">
