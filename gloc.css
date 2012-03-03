@@ -51,10 +51,10 @@ h2 { display: inline }
 .suffix { color: #999 }
 
 form table tbody tr:focus { background: #f00; }
-form#gloc-cli table td	{ padding:0; }
+form#gloc-cli table td	{ padding:2px; }
 h1 { margin-top:0; }
 input { background-color: #eee; }
 input:focus { background-color: #ffd; }
-td.flag, td.descr { font-weight:bold; color:#666; text-shadow: 0px 1px 0px #fff;
+td.flag, td.descr { font-family: arial black; letter-spacing:1px; color:#666; text-shadow: 0px 1px 0px #fff;
 /*td.descr { font-weight:bold; color:#999; text-shadow: 0px 1px 0px rgba(255,255,255,.5); }*/
 /*td.descr { font-weight:bold; color:#bbb; text-shadow: 0px 1px 0px rgba(255,255,255,.5), 0px -1px 0px rgba(0,0,0,.5); }*/
