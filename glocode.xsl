@@ -191,10 +191,11 @@
         <link rel="stylesheet" href="gloc.css" type="text/css" />
       </head>
       <body onload="init()">
-        <div id="gloc">
-          <h1>gloc<!--<span class="suffix">ode</span>-->&#xA0;<xsl:value-of select="@version"/>
+      <div id="header"><h1>gloc<!--<span class="suffix">ode</span>-->&#xA0;<xsl:value-of select="@version"/>
           by <a href="http://ashimagroup.net/"><xsl:value-of select="@distributor"/></a>
-          </h1>
+          </h1></div>
+        <div id="gloc">
+          
           <form name="gloc" id="gloc-cli">
             <table>
               <xsl:apply-templates />
