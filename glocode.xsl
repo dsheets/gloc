@@ -214,6 +214,8 @@
         </div>
         <div id="fs">
         </div>
+        <div id="footer">
+       </div>
       </body>
     </html>
   </xsl:template>
