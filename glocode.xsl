@@ -171,7 +171,8 @@
         <script src="gloc_platform_js.js"></script>
         <script src="_build/gloc_js.d.js"></script>
         <link rel="stylesheet" type="text/css" href="CodeMirror2/lib/codemirror.css" />
-        <style type="text/css">
+        <!-- 
+<style type="text/css">
           body { font-family: sans-serif }
           .flag, .input { text-align: right }
           #gloc { top: 20px; right: 10px; float: right } //position: fixed }
@@ -186,12 +187,15 @@
           .CodeMirror-scroll { height: auto; overflow: visible; }
           .suffix { color: #999 }
         </style>
+ -->
+        <link rel="stylesheet" href="gloc.css" type="text/css" />
       </head>
       <body onload="init()">
-        <div id="gloc">
-          <h1>gloc<!--<span class="suffix">ode</span>-->&#xA0;<xsl:value-of select="@version"/>
+      <div id="header"><h1>gloc<!--<span class="suffix">ode</span>-->&#xA0;<xsl:value-of select="@version"/>
           by <a href="http://ashimagroup.net/"><xsl:value-of select="@distributor"/></a>
-          </h1>
+          </h1></div>
+        <div id="gloc">
+          
           <form name="gloc" id="gloc-cli">
             <table>
               <xsl:apply-templates />
@@ -216,6 +220,8 @@
         </div>
         <div id="fs">
         </div>
+        <div id="footer">
+       </div>
       </body>
     </html>
   </xsl:template>
