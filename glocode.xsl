@@ -174,7 +174,7 @@
         <style type="text/css">
           body { font-family: sans-serif }
           .flag, .input { text-align: right }
-          #gloc { top: 20px; right: 10px; position: fixed }
+          #gloc { top: 20px; right: 10px; float: right } //position: fixed }
           .fs { width: 50% }
           #gloc-cmd { font-size: 24pt }
           h2 { display: inline }
@@ -207,6 +207,12 @@
               </tr>
             </table>
           </form>
+          <p><a href="https://github.com/ashima/gloc">Source on Github (BSD-3-Clause)</a></p>
+          <p><a href="https://github.com/ashima/gloc/issues">Report a problem</a></p>
+          <p><a href="test/webgl/glol/">glol tests</a></p>
+          <p><a href="glol.js">glol.js</a></p>
+          <p><a href="mailto:sheets@ashimaarts.com">E-mail the developer, David Sheets</a></p>
+          <p><a href="mailto:info@ashimagroup.net">E-mail the company, Ashima Arts</a></p>
         </div>
         <div id="fs">
         </div>
