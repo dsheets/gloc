@@ -10,7 +10,7 @@
 test page
 */
 
-body { font-family: tahoma, "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", verdana, arial, sans-serif; background:#d9d0c3; margin:0;}
+body { font-family: tahoma, "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", verdana, arial, sans-serif; background:#fff; margin:0;}
 table#tests > thead > tr > th { padding:10px 0 20px; }
 table#tests > tbody > tr > th { text-align:left; }
 thead { font-size: 160% }
@@ -38,15 +38,16 @@ td.posix p, td.js_of_ocaml p, td.javascript p { font-size:smaller; }
 /*
 tool
 */
-#header { width:100%; background:#281710; height:80px; border-bottom:5px solid #f90; }
-#header h1 { text-align:center; width:100%; color:#d9d0c3; padding-top:15px; }
+#header { width:100%; background:#5da9cf; height:80px; border-bottom:5px solid #222029; }
+#header h1 { text-align:center; width:100%; color:#222029; padding-top:15px; }
 .flag, .input { text-align: right }
-#gloc { top: 103px; right: 10px; float:right; background: #d9d0c3; }
+#gloc { top: 103px; right: 10px; float:right; }
 .fs { width: 50%; margin-top:20px; }
 #gloc-cmd { font-size: 24pt }
+#gloc-cli { background: #ccc; }
 h2 { display: inline }
 .closefile { background-color: red }
-.hidesource { background-color: #ffd }
+.hidesource { background-color: #ffd; }
 .showsource { background-color: #00c583; color: white /* 00b478 */}
 .CodeMirror { border-right: 1px solid #ccc; }
 .CodeMirror-scroll { height: auto; overflow: visible; }
@@ -55,23 +56,23 @@ h2 { display: inline }
 
 #fs { margin-left:8px; }
 #fs h2 { text-shadow: 0px 1px 0px #fff; }
-#header h1 a, #header h1 a:link { text-shadow:none; color:#d9d0c3; }
+#header h1 a, #header h1 a:link { text-shadow:none; color:#ffd; }
 .CodeMirror-gutter { background:#ffeadd; border-right:1px solid #ccc; }
 .CodeMirror-gutter-text pre { color:#999; }
-.CodeMirror-lines { background:#f7f7f7; }
+.CodeMirror-lines { background:#eee; }
 form table tbody tr:focus { background: #f00; }
-form table { border: 3px solid #f7f7f7; border-spacing:0; }
-form table td	{ border-bottom: 3px solid #f7f7f7; padding:4px; }
+form table { border: 3px solid #eee; border-spacing:0; }
+form table td	{ border-bottom: 3px solid #eee; padding:4px; }
 form table td#gloc-cmd-copy { border-bottom:0; }
 h1 { margin-top:0; }
-input { background-color: #f7f7f7; }
+input { background-color: #eee; }
 input:focus { background-color: #ffd; }
-td.flag, td.descr { font-family: tahoma; font-weight: bold; color:#281710; text-shadow: 0px 1px 0px #fff; font-size:100%;}
+td.flag, td.descr { font-family: tahoma; font-weight: bold; color:#222029; text-shadow: 0px 1px 0px #fff; font-size:100%;}
 /*td.descr { font-weight:bold; color:#999; text-shadow: 0px 1px 0px rgba(255,255,255,.5); }*/
 /*td.descr { font-weight:bold; color:#bbb; text-shadow: 0px 1px 0px rgba(255,255,255,.5), 0px -1px 0px rgba(0,0,0,.5); }*/
-#footer { position:relative; bottom:0; clear:both; width:100%; background:#281710; height:110px; left:0; line-height:0.8em; border-top:5px solid #f90; }
+#footer { position:relative; bottom:0; clear:both; width:100%; background:#5da9cf; height:110px; left:0; line-height:0.8em; border-top:5px solid #222029; }
 #footerlinks { margin:0 auto; width:50%; }
-#footer a, #footer a:link { color:#fff; font-size: 0.8em; }
+#footer a, #footer a:link { color:#ffd; font-size: 0.8em; }
 #footer p { margin:0; text-align:center; padding-top:20px; }
 #footer p#source, #footer p#glol { 
 	float:left;
