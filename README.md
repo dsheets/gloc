@@ -13,8 +13,13 @@ shader systems. *gloc 1.0* features:
  - a JavaScript implementation of the linking algorithm *glol*
  - runs as a native binary and in-the-browser via js_of_ocaml
 
+*gloc* is distributed as source code via this repository as well as a
+ [compiled JavaScript tool](http://ashimagroup.net/gloc/). *glol*, the
+ *glo* linking algorithm, is [also
+ available](http://ashimagroup.net/gloc/glol.js) for your development convenience.
+
 *gloc* is licensed under a
- [BSD-3-Clause](https://github.com/dsheets/gloc/blob/master/LICENSE)
+ [BSD-3-Clause](https://github.com/ashima/gloc/blob/master/LICENSE)
  license and distributed by Ashima Arts as a member of the greater WebGL community.
 
 ## Interfaces
@@ -24,7 +29,7 @@ shader systems. *gloc 1.0* features:
 ```
 gloc version 1.0.0 (Ashima Arts)
   -c produce glo and halt; do not link
-  --xml produce glo XML documents
+  --xml produce glo XML document
   -E preprocess and halt; do not parse SL
   -e parse preprocessor and halt; do not preprocess
   --source strip the glo format and return the contained source
@@ -33,7 +38,7 @@ gloc version 1.0.0 (Ashima Arts)
   -D define a global macro
   -o output file
   --accuracy {best|preprocess}output accuracy
-  -L disregard incoming line directives
+  --line disregard incoming line directives
   -x {webgl}source language
   -t {webgl}target language
   -v verbose
@@ -45,11 +50,11 @@ gloc version 1.0.0 (Ashima Arts)
 ### [glo](https://github.com/ashima/gloc/blob/master/glo.atd)
 
 ```ocaml
-type glo = {
+type 'a glo = {
   glo:version;
   target:(string * version);
   ?meta:meta option;
-  ~units: u list <ocaml repr="array">;
+  ~units: 'a u list <ocaml repr="array">;
   ~linkmap: (string * string) list <json repr="object">
 }
 
@@ -62,7 +67,7 @@ type meta = {
   ?build:href option;
 }
 
-type u = {
+type 'a u = {
   ~pdir: string list;
   ~edir: (string * string) list;
   ?vdir: int option;
@@ -71,7 +76,7 @@ type u = {
   ~inmac:string list;
   ~opmac:string list;
   ~outmac:string list;
-  source:string;
+  source:'a;
 }
 
 type url = string
@@ -83,16 +88,17 @@ type glom <ocaml_json module="Yojson.Safe" t="json"> = abstract
 
 ### [glol](https://github.com/ashima/gloc/blob/master/glol.ml)
 
-The source code is conversationally-commented. If you have questions or
+A [JavaScript implementation of
+glol](https://github.com/ashima/gloc/blob/master/glol.js) is also
+available. The source code is conversationally commented. If you have questions or
 concerns, just ask! :-)
 
 ## Requirements
 
 ### WebGL Application Developers
 
-WebGL application developers need only to use the JavaScript *glol* link
-algorithm at *TBA* and the gloc_js compiler available at *TBA*. No local
-software installation is required.
+WebGL application developers need only to use the [JavaScript *glol* link
+algorithm](http://ashimagroup.net/gloc/glol.js) and the [gloc_js compiler](http://ashimagroup.net/gloc/). No local software installation is required.
 
 ### Shader Developers
 
@@ -104,10 +110,18 @@ will need the following local software packages to build *gloc*:
  - [ulex](http://cduce.org/download.html)
  - [menhir](http://gallium.inria.fr/~fpottier/menhir/)
  - [ocaml-re](https://github.com/avsm/ocaml-re)
- - [atdgen](http://oss.wink.com/atdgen/)
+
+You will also need recent versions of Martin Jambon's atdgen and friends
+in approximately this order:
+
+ - [yojson 1.1+](https://github.com/mjambon/yojson)
+ - [atd](https://github.com/MyLifeLabs/atd)
+ - [atdgen](https://github.com/MyLifeLabs/atdgen)
 
 These software packages may be available in your operating system's
-package repository.
+package repository. See [the gloc GitHub wiki
+page](https://github.com/ashima/gloc/wiki) for more detailed
+installation information.
 
 ### gloc Developers
 
