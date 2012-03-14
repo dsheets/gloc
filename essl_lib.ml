@@ -65,6 +65,8 @@ let essl_token_of_word w = match w.v with
   | "while" -> WHILE (proj w)
   | "sampler2D" -> SAMPLER2D (proj w)
   | "samplerCube" -> SAMPLERCUBE (proj w)
+  | "false" -> BOOLCONSTANT {w with v=false}
+  | "true" -> BOOLCONSTANT {w with v=true}
   | _ -> IDENTIFIER w
 
 let essl_token_of_punc p = match p.v with
