@@ -162,6 +162,12 @@ let proj_pptok_expr = function
   | Line t -> proj t
   | List t -> proj t
 
+let string_of_behavior = function
+  | Require -> "require"
+  | Enable -> "enable"
+  | Warn -> "warn"
+  | Disable -> "disable"
+
 let string_of_span linectrl
     ({a={file=af; line=al; col=ac};
       z={file=zf; line=zl; col=zc}}) =
@@ -250,6 +256,12 @@ let scan_of_string ({a;z}) (prec,postc) s = fun start ->
     | [] -> fin,""
     | cs -> scan_of_comments cs fin
   in (fin, sprintf "%s%s%s%s" pre cfix s post)
+
+let empty_pptok loc =
+  {span={a=loc;z=loc};
+   scan=(fun l -> l,"");
+   comments=([],ref []);
+   v=()}
 
 let fuse_pptok ?zloc ?(nl=true) = function
   | [] -> raise (ParserError "fusing empty pptok list")

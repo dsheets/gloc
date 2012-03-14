@@ -118,13 +118,14 @@ let defarg env name stream =
   let stream = fun _ -> stream in
   { env with macros=Env.add name {name=None; args=None; stream}
       env.macros }
-let define env name stream =
+let define env ({v=({v=name},stream)}) =
   let stream = fun _ -> stream in
-  { env with macros=Env.add name {name=Some name; args=None; stream}
+  { env with macros=Env.add name {name=Some name; args=None; stream }
       env.macros }
-let defun env name args stream =
+let defun env ({v=({v=name},args,stream)}) =
+  let args = List.map (fun {v} -> v) args in
   let stream = fun _ -> stream in
-  { env with macros=Env.add name {name=Some name; args=Some args; stream}
+  { env with macros=Env.add name {name=Some name; args=Some args; stream }
       env.macros }
 let undef env name = { env with macros=Env.remove name env.macros }
 let register_pragma env p = env (* TODO: care *)
@@ -315,49 +316,48 @@ and cond_binop env f (a,b) =
 let preprocess_ppexpr env ppexpr =
   let rec loop env prev = function
     | (Comments c)::r -> loop env prev r
-    | (Chunk c)::r -> let _,s = macro_expand env c.v in
-        if s=[] then loop env prev r
-        else loop env
-          ((Chunk {(fuse_pptok
-                      (List.map proj_pptok_type s)) with v=s})::prev) r
+    | (Chunk c)::r ->
+      let _,s = macro_expand env c.v in
+      if s=[] then loop env prev r
+      else loop env
+        ((Chunk {(fuse_pptok
+                    (List.map proj_pptok_type s)) with v=s})::prev) r
     | (If i)::r ->
-        let cond,tb,fb = i.v in
-        let cond = match cond with
-          | Opaque ptlt ->
-              let _,s = macro_expand ~cond:true env ptlt.v in
-              let ts = ce_tokenize s in
-                begin try parse_cond_expr (ce_lexerfn ts)
-                with Esslpp_ce.Error ->
-                  let t = {(fuse_pptok ~nl:false
-                              (List.map proj_pptok_type s)) with v=s}
-                  in error (PPCondExprParseError t); Opaque t
-                end
-          | _ -> cond
-        in begin match cond_eval env cond with
-          | Result x when x=Int32.zero ->
+      let cond,tb,fb = i.v in
+      let cond = match cond with
+        | Opaque ptlt ->
+          let _,s = macro_expand ~cond:true env ptlt.v in
+          let ts = ce_tokenize s in
+          begin try parse_cond_expr (ce_lexerfn ts)
+            with Esslpp_ce.Error ->
+              let t = {(fuse_pptok ~nl:false
+                          (List.map proj_pptok_type s)) with v=s}
+              in error (PPCondExprParseError t); Opaque t
+          end
+        | _ -> cond
+      in begin match cond_eval env cond with
+        | Result x when x=Int32.zero ->
+          (match fb with
+            | Some fb -> loop env prev (fb::r)
+            | None -> loop env prev r)
+        | Result _ -> loop env prev (tb::r)
+        | Deferred i ->
+          let env = { env with inmacros=i@env.inmacros } in
+          List.append
+            (loop env prev (tb::r))
             (match fb with
               | Some fb -> loop env prev (fb::r)
               | None -> loop env prev r)
-          | Result _ -> loop env prev (tb::r)
-          | Deferred i ->
-            let env = { env with inmacros=i@env.inmacros } in
-            List.append
-              (loop env prev (tb::r))
-              (match fb with
-                | Some fb -> loop env prev (fb::r)
-                | None -> loop env prev r)
-        end
+      end
     | (Def f)::r ->
       let m = (fst f.v).v in
-      let env = define env m (snd f.v) in
+      let env = define env f in
       check_reserved_macro (RedefineReservedMacro (fst f.v)) m;
       loop env prev r
     | (Fun f)::r ->
-      let name,args,body = f.v in
-      let env = defun env name.v
-        (List.map (fun a -> a.v) args)
-        body
-      in check_reserved_macro (RedefineReservedMacro name) name.v;
+      let name,_,_ = f.v in
+      let env = defun env f in
+      check_reserved_macro (RedefineReservedMacro name) name.v;
       loop env prev r
     | (Undef {v=m})::r ->
       let env = undef env m.v in

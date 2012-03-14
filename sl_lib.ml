@@ -50,7 +50,7 @@ type ('a,'b) slarray = [ `array of 'a * 'b ]
 type sltype = [ (sltype (*slint*) slexpr, sltype) slarray
               | slsampler | slnumish
               | sltype slstruct
-	      | slvoid ] (* TODO: type shouldn't have void -- error *)
+              | slvoid ] (* TODO: type shouldn't have void -- error *)
 and slreturn = [ slvoid
                | (sltype (*slint*) slexpr, sltype) slarray
                | slsampler | slnumish
@@ -106,12 +106,12 @@ and 'b slexpr =
   | Seq of (sltype slexpr * 'b slexpr) pptok
 and slstmt =
     Expr of sltype slexpr pptok
-	(* TODO: select condition only slbool *)
+        (* TODO: select condition only slbool *)
   | Select of (sltype slexpr
-	       * slstmt list pptok * slstmt list pptok option) pptok
+               * slstmt list pptok * slstmt list pptok option) pptok
       (* TODO: for condition only slbool *)
   | For of (slstmt * (slstmt option * sltype slexpr option) pptok
-	    * slstmt) pptok
+            * slstmt) pptok
   | While of (slstmt * slstmt) pptok
       (* TODO: dowhile condition only slbool *)
   | DoWhile of (slstmt list pptok * sltype slexpr) pptok
@@ -122,7 +122,7 @@ and slstmt =
   | Scope of slstmt list pptok (* slenv? *)
   | Invariant of string list pptok
   | Precdecl of sltype (*slprecable*) pptok
-  | Bind of slbind pptok list pptok
+  | Bind of sldecl list pptok
 and slbind =
   | Type of sltype
   | Ref of bool * sltype * string * sltype slexpr option * sltype slexpr option
@@ -131,17 +131,20 @@ and slbind =
   | Attribute of sltype * string
   | Param of bool * sltype slparam * string option
   | Fun of (slbind, sltype (*slreturn*)) slfun * string * slstmt list option
-and slenv = { ctxt : slbind pptok list SymMap.t list; (* scope stack *)
-              opensyms : string list;
-              prec : slprec PrecMap.t list; (* precision stack *)
-              invariant : bool;
-              pragmas : string pptok pptok SymMap.t;
-              stmts : slstmt list;
-	      decl_bind : ((string
-			    * sltype slexpr option
-			    * sltype slexpr option) pptok
-			   -> slbind) option
-	    }
+and sldecl = { qualt : unit pptok; typet : unit pptok; symt : slbind pptok }
+and slenv = {
+  ctxt : sldecl list SymMap.t list; (* scope stack *)
+  opensyms : string list;
+  prec : slprec PrecMap.t list; (* precision stack *)
+  invariant : bool;
+  pragmas : string pptok pptok SymMap.t;
+  externals : sldecl list pptok list;
+  decl_bind : ((string
+                * sltype slexpr option
+                * sltype slexpr option) pptok
+               -> slbind) option;
+  decl_t : (unit pptok * unit pptok) option
+}
 
 exception BadField of sltype pptok
 exception BadDeclStatement of unit pptok
@@ -155,9 +158,20 @@ exception InvalidVaryingStruct of unit pptok
 exception CannotInitializeUniform of unit pptok
 
 let empty_ctxt = { ctxt=[SymMap.empty]; opensyms=[]; prec=[PrecMap.empty];
-                   invariant=false; pragmas=SymMap.empty; stmts=[];
-		   decl_bind=None }
+                   invariant=false; pragmas=SymMap.empty; externals=[];
+                   decl_bind=None; decl_t=None }
 let ctxt = ref empty_ctxt
+
+let usertype_of_bind = function
+  | Ref (_,`record (ut,_),_,_,_)
+  | Uniform (`record (ut,_),_,_)
+  | Varying (_,`record (ut,_),_,_)
+  | Attribute (`record (ut,_),_)
+  | Param (_,In (`record (ut,_)),_)
+  | Param (_,Out (`record (ut,_)),_)
+  | Param (_,Inout (`record (ut,_)),_)
+  | Fun (`lam (_,`record (ut,_)),_,_) -> ut
+  | _ -> None
 
 (*let typeof_stmt ctxt = function
   | Expr t -> error (BadDeclStatement (proj t)); `univ
@@ -193,9 +207,9 @@ let lookup_type envr sym =
       (*typeof_stmt env h*) `univ (* TODO: type propagation *)
     with Not_found ->
       let env = !envr in
-	if List.mem sym env.opensyms then () (* TODO: inference *)
-	else envr := {env with opensyms=sym::env.opensyms};
-	`univ
+        if List.mem sym env.opensyms then () (* TODO: inference *)
+        else envr := {env with opensyms=sym::env.opensyms};
+        `univ
 
 let push_scope envr =
   let env = !envr in
@@ -220,7 +234,7 @@ let make_uniform t = function
   | {v=(n,oie,None)} -> Uniform (t.v,n,oie)
   | {v=(n,oie,Some _)} as tok -> error (CannotInitializeUniform (proj tok));
       Uniform (t.v,n,oie)
-let rec register envr binding =
+let register envr binding =
   let bind name =
     let env = !envr in
     let scope = List.hd env.ctxt in
@@ -228,7 +242,7 @@ let rec register envr binding =
     let symstack = try SymMap.find name scope
     with Not_found -> [] in
       envr := {env with ctxt=(SymMap.add name (binding::symstack) scope)::up}
-  in match binding.v with
+  in match binding.symt.v with
     | Type (`record (Some name, _))
     | Ref (_, _, name, _, _)
     | Uniform (_, name, _)
@@ -238,16 +252,20 @@ let rec register envr binding =
     | Param (_, _, Some name) -> bind name; binding
     | Type _
     | Param (_, _, None) -> binding
-let close_decl_bind envr = envr := {!envr with decl_bind=None}
-let open_decl_bind envr make = envr := {!envr with decl_bind=Some make}
-let bind_decl envr dbtok =
-  let v = match (!envr).decl_bind with
-    | Some decl_bind -> decl_bind dbtok
-    | None -> make_ref false {dbtok with v=`univ} dbtok (* TODO: error? *)
-  in register envr {dbtok with v}
+let close_decl_bind envr = envr := {!envr with decl_bind=None; decl_t=None}
+let open_decl_bind envr make qualt typet =
+  envr := {!envr with decl_bind=Some make; decl_t=Some (qualt, typet)}
+let bind_decl envr symt =
+  let qualt, typet = match (!envr).decl_t with
+    | Some decl_t -> decl_t
+    | None -> (empty_pptok symt.span.a, empty_pptok symt.span.a)
+  in let v = match (!envr).decl_bind with
+    | Some decl_bind -> decl_bind symt
+    | None -> make_ref false {symt with v=`univ} symt (* TODO: error? *)
+  in register envr {qualt; typet; symt={symt with v}}
 
 let definitionp = function
-  | {v=Fun (_,_,None)} -> false
+  | {symt={v=Fun (_,_,None)}} -> false
   | _ -> true
 
 let lookup_prec envr pt =
@@ -336,14 +354,14 @@ let el_of_char = function
 let swizzle_of_identifier id = let s = id.v in try match String.length s with
   | 1 -> Sub1 (el_of_char s.[0])
   | 2 -> Sub2 (el_of_char s.[0],
-	       el_of_char s.[1])
+               el_of_char s.[1])
   | 3 -> Sub3 (el_of_char s.[0],
-	       el_of_char s.[1],
-	       el_of_char s.[2])
+               el_of_char s.[1],
+               el_of_char s.[2])
   | 4 -> Sub4 (el_of_char s.[0],
-	       el_of_char s.[1],
-	       el_of_char s.[2],
-	       el_of_char s.[3])
+               el_of_char s.[1],
+               el_of_char s.[2],
+               el_of_char s.[3])
   | _ -> error (BadSwizzle id); Sub1 X
   with BadSwizzleField c -> error (BadSwizzle id); Sub1 X (* care? *)
 
