@@ -1,6 +1,5 @@
 add
  - extension support
- - compile-time macro opens
  - warn on defined as a macro
  - warn on comment nesting
  - macro redef errors/warnings
