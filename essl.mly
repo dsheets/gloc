@@ -73,22 +73,22 @@ postfix_expression
     let t = fuse_pptok [proj_slexpr p; proj l; proj_slexpr i; proj r]
     in begin match typeof p with
       | `array (_,el) ->
-	Subscript {t with v = (el, p, i)}
+        Subscript {t with v = (el, p, i)}
       | `vec2 el | `vec3 el | `vec4 el ->
-	Swizzle {t with v = (inj_prim el, p, Sub1 X)} (*(swizzle_of_int i))}*)
+        Swizzle {t with v = (inj_prim el, p, Sub1 X)} (*(swizzle_of_int i))}*)
       | `mat2 prec ->
-	Swizzle {t with v = (`vec2 (`float prec), p,
-			     Sub1 X)} (*(swizzle_of_int i))}*)
+        Swizzle {t with v = (`vec2 (`float prec), p,
+                             Sub1 X)} (*(swizzle_of_int i))}*)
       | `mat3 prec ->
-	Swizzle {t with v = (`vec3 (`float prec), p,
-			     Sub1 X)} (*(swizzle_of_int i))}*)
+        Swizzle {t with v = (`vec3 (`float prec), p,
+                             Sub1 X)} (*(swizzle_of_int i))}*)
       | `mat4 prec ->
-	Swizzle {t with v = (`vec4 (`float prec), p,
-			     Sub1 X)} (*(swizzle_of_int i))}*)
+        Swizzle {t with v = (`vec4 (`float prec), p,
+                             Sub1 X)} (*(swizzle_of_int i))}*)
       | `univ -> Subscript {t with v = (`univ,p,i)}
       | v -> error (BadSubscript {(proj_slexpr p) with v});
-	     (* TODO: enforce subscriptability *)
-	     Swizzle {t with v=(`univ,p,Sub1 X)}
+             (* TODO: enforce subscriptability *)
+             Swizzle {t with v=(`univ,p,Sub1 X)}
       end
   }
 | f=function_call { f }
@@ -96,15 +96,15 @@ postfix_expression
     let t = fuse_pptok [proj_slexpr p; proj d; proj i]
     in begin match typeof p with
       | `record (name, fs) ->
-	  Field { t with v=(List.assoc i.v fs,p,i.v)} (* TODO: missing field *)
+          Field { t with v=(List.assoc i.v fs,p,i.v)} (* TODO: missing field *)
       | `vec2 elt | `vec3 elt | `vec4 elt ->
-	  let s = swizzle_of_identifier i in
-	  let st = typeof_swizzle elt s in
-	    Swizzle { t with v=(st, p, s) } (* TODO: check widths *)
+          let s = swizzle_of_identifier i in
+          let st = typeof_swizzle elt s in
+            Swizzle { t with v=(st, p, s) } (* TODO: check widths *)
       | `univ -> Field { t with v=(`univ,p,i.v)}
       | v -> error (BadField {(proj_slexpr p) with v});
-	     (* TODO: enforce operand slstruct *)
-	     Field { t with v=(`univ,p,i.v)}
+             (* TODO: enforce operand slstruct *)
+             Field { t with v=(`univ,p,i.v)}
       end
   }
 | p=postfix_expression; i=INC_OP {
@@ -263,7 +263,7 @@ conditional_expression
 | o=logical_or_expression; q=QUESTION; e=expression;
 c=COLON; a=assignment_expression {
   Sel {(fuse_pptok [proj_slexpr o; proj q; proj_slexpr e;
-		    proj c; proj_slexpr a])
+                    proj c; proj_slexpr a])
        with v=(o,e,a)}
 }
 ;
@@ -294,41 +294,58 @@ expression
 constant_expression
 : c=conditional_expression { c } (* TODO: check const *)
 ;
-end_declaration : s=SEMICOLON { close_decl_bind ctxt; s };
 %inline begin_declaration : t=type_specifier {
-  open_decl_bind ctxt (make_ref false t); {t with v=t}
+  fun ctxt ->
+    open_decl_bind ctxt (make_ref false t) (empty_pptok t.span.a) (proj t);
+    (empty_pptok t.span.a, t)
 }
 | c=CONST; t=type_specifier {
-  open_decl_bind ctxt (make_ref true t);
-  {(fuse_pptok [proj c; proj t]) with v=t}
+  fun ctxt ->
+    open_decl_bind ctxt (make_ref true t) c (proj t);
+    (c, t)
 }
 | a=ATTRIBUTE; t=type_specifier {
-  open_decl_bind ctxt (make_attribute t);
-  (match t.v with `record (_,_) -> error (InvalidAttributeStruct (proj t));
-    | _ -> ());
-  {(fuse_pptok [proj a; proj t]) with v=t}
+  fun ctxt ->
+    open_decl_bind ctxt (make_attribute t) a (proj t);
+    (match t.v with `record (_,_) -> error (InvalidAttributeStruct (proj t));
+      | _ -> ());
+    (a, t)
 }
 | i=INVARIANT?; q=VARYING; t=type_specifier {
-  let inv,i = match i with Some i -> true,[i] | None -> false,[] in
-    open_decl_bind ctxt (make_varying inv t);
+  fun ctxt ->
+    let inv,i = match i with Some i -> true,[i] | None -> false,[] in
+    let qt = fuse_pptok (i@[q]) in
+    open_decl_bind ctxt (make_varying inv t) qt (proj t);
     (match t.v with `record (_,_) -> error (InvalidVaryingStruct (proj t))
       | _ -> ());
-    {(fuse_pptok (i@[proj q; proj t])) with v=t}
+    (qt, t)
 }
 | u=UNIFORM; t=type_specifier {
-  open_decl_bind ctxt (make_uniform t);
-  {(fuse_pptok [proj u; proj t]) with v=t}
+  fun ctxt ->
+    open_decl_bind ctxt (make_uniform t) u (proj t);
+    (u, t)
 };
 declaration
 : t=struct_specifier; s=SEMICOLON {
-    Bind {(fuse_pptok [proj t; proj s])
-	  with v=[register ctxt {t with v=Type t.v}]}
+  let decl = register ctxt
+    { qualt=(empty_pptok t.span.a);
+      typet=(empty_pptok t.span.a);
+      symt={t with v=Type t.v} }
+  in Bind {(fuse_pptok [proj t; proj s]) with v=[decl]}
 }
-| q=begin_declaration;
-dl=fuse_sep_nonempty_list(declarator,COMMA); s=end_declaration {
-  let tok = fuse_pptok [proj q; proj dl; proj s] in match q.v.v with
-    | `record (_,_) -> Bind {tok with v={q.v with v=Type q.v.v}::dl.v}
-    | _ -> Bind {tok with v=dl.v}
+| b=begin_declaration;
+dl=fuse_sep_nonempty_list(declarator,COMMA); s=SEMICOLON {
+  let q, t = b ctxt in
+  let decls = List.map (fun t -> (t.v ctxt).v) dl.v in
+  close_decl_bind ctxt;
+  let tok = fuse_pptok [proj q; proj t; proj dl; proj s] in
+  match t.v with
+    | `record (_,_) ->
+      let t = { qualt=(empty_pptok t.span.a);
+                typet=(empty_pptok t.span.a);
+                symt={t with v=Type t.v }} in
+      Bind {tok with v=t::decls}
+    | _ -> Bind {tok with v=decls}
   }
 | inv=INVARIANT; dl=fuse_sep_nonempty_list(IDENTIFIER,COMMA); s=SEMICOLON {
   let v = List.map (fun d -> d.v) dl.v in
@@ -340,21 +357,34 @@ dl=fuse_sep_nonempty_list(declarator,COMMA); s=end_declaration {
 (* TODO: catch bad precision type *)
 ;
 declarator
-: i=IDENTIFIER { bind_decl ctxt { i with v=(i.v,None,None) } }
+: i=IDENTIFIER {
+  { i with v=fun ctxt ->
+    let decl = bind_decl ctxt { i with v=(i.v,None,None) } in
+    {decl.symt with v=decl}
+  }
+  }
 | i=IDENTIFIER; a=array_type_annot {
-    bind_decl ctxt {(fuse_pptok [proj i; proj a]) with v=(i.v,Some a.v,None) }
+  let t = fuse_pptok [proj i; proj a] in
+  { t with v=fun ctxt ->
+    let decl = bind_decl ctxt { t with v=(i.v,Some a.v,None) }
+    in {decl.symt with v=decl}
+  }
   }
 | i=IDENTIFIER; e=EQUAL; ini=initializer_ {
-    bind_decl ctxt {(fuse_pptok [proj i; proj e; proj_slexpr ini])
-		    with v=(i.v,None,Some ini)}
+  let t = fuse_pptok [proj i; proj e; proj_slexpr ini] in
+  { t with v=fun ctxt ->
+    let decl = bind_decl ctxt { t with v=(i.v,None,Some ini)}
+    in {decl.symt with v=decl}
   }
+}
 ;
 array_type_annot
 : l=LEFT_BRACKET; c=constant_expression; r=RIGHT_BRACKET {
   {(fuse_pptok [proj l; proj_slexpr c; proj r]) with v=c}
 }
+;
 precision_type
-  : pq=precision_qualifier; f=FLOAT {
+: pq=precision_qualifier; f=FLOAT {
     {(fuse_pptok [proj pq; proj f]) with v=`float pq.v}
   }
 | pq=precision_qualifier; i=INT {
@@ -366,74 +396,125 @@ precision_type
 | pq=precision_qualifier; s=SAMPLERCUBE {
     {(fuse_pptok [proj pq; proj s]) with v=`samplerCube pq.v}
   }
+;
 begin_param_list
 : l=LEFT_PAREN {
   push_scope ctxt; l
 }
+;
 function_prototype
 : t=type_specifier; i=IDENTIFIER;
 p=fuse_sep_list(begin_param_list,param_declaration,COMMA,RIGHT_PAREN) {
-  let params = List.map (fun p -> (register ctxt p).v) p.v in
-    push_scope ctxt;
-    {(fuse_pptok [proj t; proj i; proj p])
-     with v=(`lam (params, t.v), i.v)}
+  let params = List.map (fun p -> p.v) p.v in
+  push_scope ctxt;
+  (t, {(fuse_pptok [proj i; proj p]) with v=(`lam (params, t.v), i.v)})
 }
 | t=type_specifier; i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
-    push_scope ctxt; push_scope ctxt;
-    {(fuse_pptok [proj t; proj i; proj l; proj v; proj r])
-     with v=(`lam ([],t.v), i.v)}
-  }
+  push_scope ctxt; push_scope ctxt;
+  (t, {(fuse_pptok [proj i; proj l; proj v; proj r]) with v=(`lam ([],t.v), i.v)})
+}
 | v=VOID; i=IDENTIFIER;
-p=fuse_sep_list(begin_param_list,param_declaration,COMMA,RIGHT_PAREN) {
-  let params = List.map (fun p -> (register ctxt p).v) p.v in
-    push_scope ctxt;
-    {(fuse_pptok [proj v; proj i; proj p])
-     with v=(`lam (params,`void), i.v)}
+  p=fuse_sep_list(begin_param_list,param_declaration,COMMA,RIGHT_PAREN) {
+  let params = List.map (fun p -> p.v) p.v in
+  push_scope ctxt;
+  ({v with v=`void},{(fuse_pptok [proj i; proj p])
+   with v=(`lam (params,`void), i.v)})
 }
 | n=VOID; i=IDENTIFIER; l=LEFT_PAREN; v=VOID; r=RIGHT_PAREN {
-    push_scope ctxt; push_scope ctxt;
-    {(fuse_pptok [proj v; proj i; proj l; proj v; proj r])
-     with v=(`lam ([],`void), i.v)}
+  push_scope ctxt; push_scope ctxt;
+  ({v with v=`void},{(fuse_pptok [proj i; proj l; proj v; proj r])
+   with v=(`lam ([],`void), i.v)})
   }
 ;
 param_declarator
-  : t=type_specifier; i=IDENTIFIER {
-    {(fuse_pptok [proj t; proj i]) with v=(t.v,Some i.v)}
+: t=type_specifier; i=IDENTIFIER {
+    (t, {i with v=(t.v,i.v)})
   }
 | t=type_specifier; i=IDENTIFIER; a=array_type_annot {
-    {(fuse_pptok [proj t; proj i; proj a]) with v=(`array (a.v,t.v),Some i.v)}
+    (t, {(fuse_pptok [proj i; proj a]) with v=(`array (a.v,t.v),i.v)})
   }
 ;
 param_declaration
-: t=CONST?; d=param_declarator
+: t=CONST?; d=param_declarator {
+    let qualt,const = match t with
+      | Some t -> t, true
+      | None -> (empty_pptok (fst d).span.a), false in
+    let bind = Param (const, In (fst d).v, Some (snd (snd d).v)) in
+    let decl = register ctxt
+      {qualt; typet=(proj (fst d)); symt={(snd d) with v=bind}}
+    in {(fuse_pptok [decl.qualt;decl.typet;proj decl.symt]) with v=bind}
+  }
 | t=CONST?; d=param_type_specifier {
-    let ct,const = match t with Some t -> [t],true | None -> [],false in
-      {(fuse_pptok (ct@[proj d]))
-       with v=Param (const, In (fst d.v), snd d.v)}
+    let qualt,const = match t with
+      | Some t -> t, true
+      | None -> (empty_pptok d.span.a), false in
+    let bind = Param (const, In d.v, None) in
+    let decl = register ctxt
+      {qualt; typet=proj d;
+       symt={(empty_pptok d.span.z) with v=bind}}
+    in {(fuse_pptok [decl.qualt;decl.typet;proj decl.symt]) with v=bind}
   }
-| t=CONST?; i=IN; d=param_declarator
+| t=CONST?; i=IN; d=param_declarator {
+    let qualt,const = match t with
+      | Some t -> fuse_pptok [t;i], true
+      | None -> i, false in
+    let bind = Param (const, In (fst d).v, Some (snd (snd d).v)) in
+    let decl = register ctxt
+      {qualt; typet=(proj (fst d)); symt={(snd d) with v=bind}}
+    in {(fuse_pptok [decl.qualt;decl.typet;proj decl.symt]) with v=bind}
+  }
 | t=CONST?; i=IN; d=param_type_specifier {
-    let ct,const = match t with Some t -> [t],true | None -> [],false in
-      {(fuse_pptok (ct@[proj i; proj d]))
-       with v=Param (const, In (fst d.v), snd d.v)}
+    let qualt,const = match t with
+      | Some t -> fuse_pptok [t;i], true
+      | None -> i, false in
+    let bind = Param (const, In d.v, None) in
+    let decl = register ctxt
+      {qualt; typet=proj d;
+       symt={(empty_pptok d.span.z) with v=bind}}
+    in {(fuse_pptok [decl.qualt;decl.typet;proj decl.symt]) with v=bind}
   }
-| t=CONST?; o=OUT; d=param_declarator
+| t=CONST?; o=OUT; d=param_declarator {
+    let qualt,const = match t with
+      | Some t -> fuse_pptok [t;o], true
+      | None -> o, false in
+    let bind = Param (const, Out (fst d).v, Some (snd (snd d).v)) in
+    let decl = register ctxt
+      {qualt; typet=(proj (fst d)); symt={(snd d) with v=bind}}
+    in {(fuse_pptok [decl.qualt;decl.typet;proj decl.symt]) with v=bind}
+  }
 | t=CONST?; o=OUT; d=param_type_specifier {
-    let ct,const = match t with Some t -> [t],true | None -> [],false in
-      {(fuse_pptok (ct@[proj o; proj d]))
-       with v=Param (const, Out (fst d.v), snd d.v)}
+    let qualt,const = match t with
+      | Some t -> fuse_pptok [t;o], true
+      | None -> o, false in
+    let bind = Param (const, Out d.v, None) in
+    let decl = register ctxt
+      {qualt; typet=proj d;
+       symt={(empty_pptok d.span.z) with v=bind}}
+    in {(fuse_pptok [decl.qualt;decl.typet;proj decl.symt]) with v=bind}
   }
-| t=CONST?; io=INOUT; d=param_declarator
+| t=CONST?; io=INOUT; d=param_declarator {
+    let qualt,const = match t with
+      | Some t -> fuse_pptok [t;io], true
+      | None -> io, false in
+    let bind = Param (const, Inout (fst d).v, Some (snd (snd d).v)) in
+    let decl = register ctxt
+      {qualt; typet=(proj (fst d)); symt={(snd d) with v=bind}}
+    in {(fuse_pptok [decl.qualt;decl.typet;proj decl.symt]) with v=bind}
+  }
 | t=CONST?; io=INOUT; d=param_type_specifier {
-    let ct,const = match t with Some t -> [t],true | None -> [],false in
-      {(fuse_pptok (ct@[proj io; proj d]))
-       with v=Param (const, Inout (fst d.v), snd d.v)}
+    let qualt,const = match t with
+      | Some t -> fuse_pptok [t;io], true
+      | None -> io, false in
+    let bind = Param (const, Inout d.v, None) in
+    let decl = register ctxt
+      {qualt; typet=proj d; symt={(empty_pptok d.span.z) with v=bind}}
+    in {(fuse_pptok [decl.qualt;decl.typet;proj decl.symt]) with v=bind}
   }
 ;
 param_type_specifier
-: t=type_specifier { { t with v=(t.v,None) } }
+: t=type_specifier { t }
 | t=type_specifier; a=array_type_annot {
-    {(fuse_pptok [proj t; proj a]) with v=(`array (a.v,t.v),None)}
+    {(fuse_pptok [proj t; proj a]) with v=(`array (a.v,t.v))}
   }
 ;
 type_specifier
@@ -455,11 +536,16 @@ type_specifier
 | m=MAT4 { {m with v=`mat4 (lookup_prec ctxt Float)} }
 | s=SAMPLER2D { {s with v=`sampler2d (lookup_prec ctxt Sampler2d)} }
 | s=SAMPLERCUBE { {s with v=`samplerCube (lookup_prec ctxt SamplerCube)} }
-| s=struct_specifier { ignore (register ctxt {s with v=Type s.v}); s }
+| s=struct_specifier {
+  ignore (register ctxt {qualt=empty_pptok s.span.a;
+                         typet=empty_pptok s.span.a;
+                         symt={s with v=Type s.v}});
+  s
+}
 | i=IDENTIFIER { match lookup_type ctxt i.v with
-		   | `univ -> {i with v=`record (Some i.v,[])}
-		   | v -> {i with v}
-	       }
+                   | `univ -> {i with v=`record (Some i.v,[])}
+                   | v -> {i with v}
+               }
 ;
 precision_qualifier
 : h=HIGH_PRECISION { {h with v=High} }
@@ -471,13 +557,13 @@ struct_specifier
 l=LEFT_BRACE; dl=list(struct_declaration); r=RIGHT_BRACE {
   match i with
     | None ->
-	let t = `record (None, List.flatten (List.map (fun d -> d.v) dl)) in 
-	  {(fuse_pptok ([proj s; proj l]@(List.map proj dl)@[proj r]))
-	   with v=t}
+        let t = `record (None, List.flatten (List.map (fun d -> d.v) dl)) in
+          {(fuse_pptok ([proj s; proj l]@(List.map proj dl)@[proj r]))
+           with v=t}
     | Some i ->
-	let t = `record (Some i.v, List.flatten (List.map (fun d -> d.v) dl)) in 
-	  {(fuse_pptok ([proj s; proj i; proj l]@(List.map proj dl)@[proj r]))
-	   with v=t}
+        let t = `record (Some i.v, List.flatten (List.map (fun d -> d.v) dl)) in
+          {(fuse_pptok ([proj s; proj i; proj l]@(List.map proj dl)@[proj r]))
+           with v=t}
 }
 ;
 struct_declaration (* TODO: nested struct error *)
@@ -517,7 +603,7 @@ compound_statement
 : l=begin_compound_scope; sl=list(statement_no_new_scope); r=RIGHT_BRACE {
   pop_scope ctxt 1;
   Scope {(fuse_pptok ((proj l)
-		      ::(List.map proj_slstmt sl)@[proj r]))
+                      ::(List.map proj_slstmt sl)@[proj r]))
          with v=sl}
 }
 ;
@@ -566,11 +652,19 @@ condition
 | t=type_specifier; i=IDENTIFIER; e=EQUAL; ini=initializer_ {
     push_scope ctxt;
     let r = Ref (false, t.v, i.v,None,Some ini) in
-    let tok = {(fuse_pptok [proj t; proj i; proj e; proj_slexpr ini]) with v=r} in
+    let symt = {(fuse_pptok [proj i; proj e; proj_slexpr ini]) with v=r} in
       match t.v with
-	| `record (Some tyname, fields) ->
-	    Bind {tok with v=[{t with v=Type t.v};register ctxt tok]}
-	| _ -> Bind {tok with v=[register ctxt tok]}
+        | `record (Some tyname, fields) ->
+          Bind {(fuse_pptok [proj t; proj symt])
+          with v=[{qualt=(empty_pptok t.span.a);
+                   typet=(empty_pptok t.span.a);
+                   symt={t with v=Type t.v}};
+                  register ctxt {qualt=(empty_pptok t.span.a);
+                                 typet=proj t;
+                                 symt}]}
+        | _ -> Bind {(fuse_pptok [proj t; proj symt])
+        with v=[register ctxt {qualt=(empty_pptok t.span.a);
+                               typet=proj t; symt}]}
   }
 ;
 do_intro : d=DO { push_scope ctxt; d };
@@ -584,14 +678,14 @@ iteration_statement
 | d=do_intro; st=statement; w=do_outro;
 l=LEFT_PAREN; e=expression; r=RIGHT_PAREN; s=SEMICOLON {
   DoWhile {(fuse_pptok [proj d; proj st; proj w;
-			proj l; proj_slexpr e; proj r; proj s])
+                        proj l; proj_slexpr e; proj r; proj s])
            with v=(st,e)}
 }
 | f=FOR; l=LEFT_PAREN; i=for_init_statement; j=for_rest_statement; r=RIGHT_PAREN;
 s=statement_no_new_scope {
   pop_scope ctxt 1; (* for_rest_statement introduces scope *)
   For {(fuse_pptok [proj f; proj l; proj_slstmt i; proj j; proj r;
-		    proj_slstmt s])
+                    proj_slstmt s])
        with v=(i,j,s)}
 }
 ;
@@ -625,21 +719,28 @@ jump_statement
 | d=DISCARD; s=SEMICOLON { Discard (fuse_pptok [proj d; proj s]) }
 ;
 translation_unit
-: dl=list(external_declaration); EOF { !ctxt }
+: dl=list(external_declaration); EOF {
+  ctxt := {!ctxt with externals=List.fold_left
+      (fun l -> function Bind d -> d::l | _ -> l) [] dl};
+  !ctxt
+}
 ;
 external_declaration
 : d=declaration { d }
 | f=function_prototype; s=SEMICOLON {
   pop_scope ctxt 2;
-  let fundecl = {(fuse_pptok [proj f; proj s])
-		 with v=Fun (fst f.v, snd f.v, None)} in
-    Bind {fundecl with v=[register ctxt fundecl]}
+  let bind = Fun (fst (snd f).v, snd (snd f).v, None) in
+  let decl = {qualt=(empty_pptok (fst f).span.a); typet=(proj (fst f));
+              symt={(fuse_pptok [proj (snd f); proj s]) with v=bind}} in
+  Bind {(fuse_pptok [decl.typet; proj decl.symt]) with v=[register ctxt decl]}
 }
 | p=function_prototype; c=compound_statement_no_new_scope {
   pop_scope ctxt 2;
-  let fundecl = Fun (fst p.v, snd p.v, Some c.v) in
-  let ftok = register ctxt {(fuse_pptok [proj p; proj c]) with v=fundecl} in
-    Bind {ftok with v=[ftok]}
+  let bind = Fun (fst (snd p).v, snd (snd p).v, Some c.v) in
+  let decl = {qualt=(empty_pptok (fst p).span.a); typet=(proj (fst p));
+              symt={(fuse_pptok [proj (snd p); proj c])
+              with v=bind}} in
+  Bind {(fuse_pptok [decl.typet; proj decl.symt]) with v=[register ctxt decl]}
 }
 ;
 %%

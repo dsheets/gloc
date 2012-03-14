@@ -28,7 +28,7 @@ let gloc_distributor = "Ashima Arts"
 
 type group = Stage of stage
 type set = LinkSymbols | LinkDefines | LinkGlobalMacros
-type option = DisableLineControl | Verbose
+type option = DisableLineControl | Verbose | Dissolve
 type filetype = Output | Meta | Input
 type iface =
     Group of group
@@ -59,7 +59,7 @@ let cli = [
                         fun exec_state s ->
                           exec_state.accuracy := (Language.accuracy_of_string s)),
   "output accuracy";
-  "-L", Option DisableLineControl, "disregard incoming line directives";
+  "--line", Option DisableLineControl, "disregard incoming line directives";
   "-x", Choice (["webgl"],
                 fun exec_state s ->
                   exec_state.inlang :=
@@ -70,6 +70,7 @@ let cli = [
                   exec_state.outlang :=
                     (Language.with_dialect s !(exec_state.outlang))),
   "target language";
+  "--dissolve", Option Dissolve, "dissolve declarations"; (* TODO: fix bugs *)
   "-v", Option Verbose, "verbose";
   "--meta", Filename Meta, "prototypical glo file to use for metadata";
 ]
@@ -120,6 +121,7 @@ module Make(P : Platform) = struct
     | Filename Meta ->
       A.String (fun m -> exec_state.metadata := (meta_of_path m))
     | Option DisableLineControl -> A.Clear exec_state.linectrl
+    | Option Dissolve -> A.Set exec_state.dissolve
     | Option Verbose -> A.Set exec_state.verbose
     | Choice (syms, setfn) -> A.Symbol (syms, setfn exec_state)
     | Set _ -> raise (Failure "no untagged set symbols") (* TODO: real exn *)
@@ -175,12 +177,13 @@ module Make(P : Platform) = struct
     | Other o -> raise (Failure "cannot get source of unknown json") (* TODO *)
 
   let write_glopp exec_state fn b prologue glom =
-    let ppexpr = parse exec_state (source_of_glom fn glom) in
+    let ppexpr = parse !(exec_state.inlang) (source_of_glom fn glom) in
     Buffer.add_string b
       ((string_of_ppexpr start_loc
           (match !(exec_state.stage) with
             | ParsePP -> ppexpr
-            | Preprocess -> check_pp_divergence (preprocess ppexpr)
+            | Preprocess ->
+              check_pp_divergence (preprocess !(exec_state.outlang) ppexpr)
             | s -> (* TODO: stage? error message? tests? *)
               raise (CompilerError (PPDiverge, [GloppStageError s]))
           ))^"\n")
@@ -221,17 +224,19 @@ module Make(P : Platform) = struct
                Buffer.add_string b
                  (Glo_xml.xml_of_glom ~xsl:"glocode.xsl" ~pretty:true
                     (make_glom exec_state inputs)))
-         | Link -> let glom = make_glom exec_state inputs in
-                   let prologue = prologue exec_state in
-                   let src = link prologue req_sym glom in
-                   P.out_of_filename fn
-                     (fun b ->
-                       Buffer.add_string b
-                         ((if !(exec_state.accuracy)=Language.Preprocess
-                           then string_of_ppexpr start_loc
-                             (check_pp_divergence
-                                (preprocess (parse exec_state src)))
-                           else src)))
+         | Link ->
+           let glom = make_glom exec_state inputs in
+           let prologue = prologue exec_state in
+           let src = link prologue req_sym glom in
+           P.out_of_filename fn
+             (fun b ->
+               Buffer.add_string b
+                 ((if !(exec_state.accuracy)=Language.Preprocess
+                   then string_of_ppexpr start_loc
+                     (check_pp_divergence
+                        (preprocess !(exec_state.inlang)
+                           (parse !(exec_state.inlang) src)))
+                   else src)))
          | Compile -> (* TODO: consolidate glo *)
            P.out_of_filename fn
              (fun b ->

@@ -4,6 +4,10 @@
  * found in the LICENSE file.
  *)
 
+open Pp_lib
+open Pp
+open Esslpp_lex
+open Esslpp
 open Yojson
 
 include Glo_t
@@ -13,6 +17,8 @@ type 'a glom =
   | Glom of (string * 'a glom) list
   | Source of string
   | Other of Yojson.Safe.json
+
+type metaspan = NewMeta of meta | EndMeta | NoMeta
 
 exception UnserializableGlom of string
 exception InvalidGlom of string
@@ -69,76 +75,99 @@ let string_of_version (maj,min,rev) =
   let soi = string_of_int in
   (soi maj)^"."^(soi min)^"."^(soi rev)
 
+let parse lang source =
+  let () = reset () in
+  let lexbuf = Ulexing.from_utf8_string source in
+  let parse = MenhirLib.Convert.traditional2revised
+    (fun t -> t)
+    (fun _ -> Lexing.dummy_pos)
+    (fun _ -> Lexing.dummy_pos)
+    translation_unit in
+  let ppexpr = parse (fun () -> lex lang lexbuf) in
+  normalize_ppexpr ppexpr
+
+let builtin_macros_of_language = function
+  | {Language.dialect=Language.WebGL} ->
+    List.fold_left (fun map (n,f) -> Env.add n f map)
+      Env.empty [
+        "__LINE__",(fun e w ->
+          {name=Some "__LINE__"; args=None;
+           stream=fun _ -> [int_replace_word w w.span.a.line.src]});
+        "__FILE__",(fun e w ->
+          {name=Some "__FILE__"; args=None;
+           stream=fun _ -> [int_replace_word w w.span.a.file.src]});
+        "__VERSION__",(fun _ _ -> omacro "__VERSION__" (synth_int (Dec,100)));
+        "GL_ES",(fun _ _ -> omacro "GL_ES" (synth_int (Dec,1)))
+      ]
+
 let extract_meta comments =
   let href_field_re field =
-    Re_str.regexp ("^\\b*"^field^":?\\b+\\([^<]*\\)<\\([^>]*\\)>")
+    Re_str.regexp ("^ *"^field^":? *\\([^<]+\\) *\\(<[^>]*>\\)?")
   in
+  let end_span_re name = Re_str.regexp ("^ *End:? *"^name) in
   let trim s =
-    let eoc = Re_str.search_forward (Re_str.regexp "\\(\b*\\)$") s 0 in
+    let eoc = Re_str.search_forward (Re_str.regexp "\\( *\\)$") s 0 in
     Re_str.string_before s eoc
+  in
+  let url_of_angled s =
+    try
+      ignore (Re_str.search_forward (Re_str.regexp "<\\([^>]*\\)>") s 0);
+      Re_str.matched_group 1 s
+    with Not_found -> ""
+  in
+  let extract_href field s =
+    let re = href_field_re field in
+    ignore (Re_str.search_forward re s 0);
+    let title = Re_str.matched_group 1 s in
+    let url = try Re_str.matched_group 2 s with Not_found -> ""
+    in (trim title, url_of_angled url)
   in
   let comments = List.flatten
     (List.map
        (fun c -> List.map (fun c -> c.Pp_lib.v) c.Pp_lib.v) comments) in
   let crre = Re_str.regexp
-    "^\\b*Copyright\\b+\\([0-9][0-9][0-9][0-9]\\)\\b+\\([^<]*\\)<\\([^>]*\\)>" in
-  let copyright = List.fold_left
-    (fun cro ln ->
+    "^ *Copyright:? *\\([0-9][0-9][0-9][0-9]\\) *\\([^<]+\\) *\\(<[^>]*>\\)?" in
+  let rec find_copyright = function
+    | [] -> None
+    | ln::r -> begin
       try
         ignore (Re_str.search_forward crre ln 0);
         let year = int_of_string (Re_str.matched_group 1 ln) in
         let title = Re_str.matched_group 2 ln in
-        let url = Re_str.matched_group 3 ln in
-        Some (year,(trim title,url))
-      with Not_found -> None
-    ) None comments in
-  match copyright with
+        let url = try url_of_angled (Re_str.matched_group 3 ln)
+          with Not_found -> ""
+        in Some (year,(trim title,url))
+      with Not_found -> find_copyright r
+    end in
+  match find_copyright comments with
     | Some copyright ->
-      let author_re = href_field_re "Author" in
-      let license_re = href_field_re "License" in
-      let library_re = href_field_re "Library" in
-      let version_re = href_field_re "Version" in
-      let build_re = href_field_re "Build" in
       let triple_re = Re_str.regexp
         "\\([0-9]+\\)\\.\\([0-9]+\\)\\.\\([0-9]+\\)" in
-      Some begin List.fold_right
+      NewMeta begin List.fold_right
         (fun ln meta ->
-          try
-            ignore (Re_str.search_forward author_re ln 0);
-            let title = trim (Re_str.matched_group 1 ln) in
-            let url = Re_str.matched_group 2 ln in
-            {meta with author=(title,url)::meta.author}
+          try {meta with author=(extract_href "Author" ln)::meta.author}
+          with Not_found ->
+          try {meta with license=Some (extract_href "License" ln)}
+          with Not_found ->
+          try {meta with library=Some (extract_href "Library" ln)}
           with Not_found ->
           try
-            ignore (Re_str.search_forward license_re ln 0);
-            let title = trim (Re_str.matched_group 1 ln) in
-            let url = Re_str.matched_group 2 ln in
-            {meta with license=Some (title,url)}
-          with Not_found ->
-          try
-            ignore (Re_str.search_forward library_re ln 0);
-            let title = trim (Re_str.matched_group 1 ln) in
-            let url = Re_str.matched_group 2 ln in
-            {meta with library=Some (title,url)}
-          with Not_found ->
-          try
-            ignore (Re_str.search_forward version_re ln 0);
-            let title = trim (Re_str.matched_group 1 ln) in
-            let url = Re_str.matched_group 2 ln in
+            let (title,url) = extract_href "Version" ln in
             ignore (Re_str.search_forward triple_re title 0);
             let version = (int_of_string (Re_str.matched_group 1 title),
                            int_of_string (Re_str.matched_group 2 title),
                            int_of_string (Re_str.matched_group 3 title))
             in {meta with version=Some (version,url)}
           with Not_found ->
-          try
-            ignore (Re_str.search_forward build_re ln 0);
-            let title = trim (Re_str.matched_group 1 ln) in
-            let url = Re_str.matched_group 2 ln in
-            {meta with build=Some (title,url)}
+          try {meta with build=Some (extract_href "Build" ln)}
           with Not_found -> meta
         ) comments {copyright; author=[];
                     license=None; library=None;
                     version=None; build=None}
       end
-    | None -> None
+    | None ->
+      if List.exists
+        (fun ln -> Re_str.string_match (end_span_re "Copyright") ln 0)
+        comments
+      then EndMeta
+      else NoMeta
