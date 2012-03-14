@@ -9,7 +9,6 @@ open Printf
 open Pp_lib
 open Pp
 open Esslpp_lex
-open Esslpp
 open Glo_lib
 
 module List = struct
@@ -56,7 +55,7 @@ let string_of_component_error = function
   | PPDiverge -> "unrecoverable preprocessor divergence"
   | SLParser -> "unrecoverable parse error"
   | Analyzer -> "unrecoverable analysis error"
-  | Linker ->"unrecoverable link error"
+  | Linker -> "unrecoverable link error"
 
 exception UnrecognizedJsonFormat
 exception UncaughtException of exn
@@ -72,6 +71,7 @@ type 'a input = Stream of 'a | Define of 'a
 
 type state = {stage:stage ref;
               verbose:bool ref;
+              dissolve:bool ref;
               linectrl:bool ref;
               metadata:meta ref;
               symbols:string list ref;
@@ -90,6 +90,7 @@ let default_lang = { Lang.dialect=Lang.WebGL;
 let new_exec_state meta = {
   stage=ref Link;
   verbose=ref false;
+  dissolve=ref false;
   linectrl=ref true;
   metadata=ref meta;
   symbols=ref [];
@@ -101,19 +102,6 @@ let new_exec_state meta = {
   accuracy=ref Lang.Best;
 } (* one-shot monad *)
 
-let builtin_macros = List.fold_left
-  (fun map (n,f) -> Env.add n f map)
-  Env.empty [
-    "__LINE__",(fun e w ->
-      {name=Some "__LINE__"; args=None;
-       stream=fun _ -> [int_replace_word w w.span.a.line.src]});
-    "__FILE__",(fun e w ->
-      {name=Some "__FILE__"; args=None;
-       stream=fun _ -> [int_replace_word w w.span.a.file.src]});
-    "__VERSION__",(fun _ _ -> omacro "__VERSION__" (synth_int (Dec,100)));
-    "GL_ES",(fun _ _ -> omacro "GL_ES" (synth_int (Dec,1)))
-  ]
-
 let maybe_fatal_error k =
   if (List.length !errors) > 0
   then begin let errs = !errors in
@@ -121,82 +109,49 @@ let maybe_fatal_error k =
              raise (CompilerError (k,errs))
   end
 
-let parse exec_state source =
-  let () = reset () in
-  let lexbuf = Ulexing.from_utf8_string source in
-  let parse = MenhirLib.Convert.traditional2revised
-    (fun t -> t)
-    (fun _ -> Lexing.dummy_pos) (* TODO: fixme? *)
-    (fun _ -> Lexing.dummy_pos)
-    translation_unit in
-  let ppexpr = try parse (fun () -> lex !(exec_state.inlang) lexbuf) with
-    | err -> raise (CompilerError (Parser, [UncaughtException err]))
-  in maybe_fatal_error PPParser;
-  normalize_ppexpr ppexpr
-
-let preprocess ppexpr =
-  let ppl = preprocess_ppexpr {macros=Env.empty;
-                               builtin_macros;
-                               extensions=Env.empty;
-                               inmacros=[]} ppexpr in
-  maybe_fatal_error PPError;
-  ppl
-
 let check_pp_divergence ppl =
-  if List.length ppl > 1
-  then let o = List.fold_left
-         (fun dl pp -> List.fold_left
-           (fun dl om ->
-             if List.exists (fun m -> om.v=m.v) dl then dl else om::dl)
-           dl (fst pp).inmacros)
-         [] ppl
-       in raise (CompilerError
-                   (PPDiverge, List.rev_map (fun t -> AmbiguousPreprocessorConditional t) o))
+  if List.length ppl > 1 then
+    let o = List.fold_left
+      (fun dl pp -> List.fold_left
+        (fun dl om ->
+          if List.exists (fun m -> om.v=m.v) dl then dl else om::dl)
+        dl (fst pp).inmacros)
+      [] ppl
+    in raise (CompilerError
+                (PPDiverge,
+                 List.rev_map (fun t -> AmbiguousPreprocessorConditional t) o))
   else match ppl with (_,e)::_ -> e
     | [] -> Chunk { span={a=start_loc;z=start_loc};
                     scan=(fun loc -> (loc,""));
                     comments=([],ref []);
                     v=[] }
-(*
-type dissolved_ppexpr = { version_d: int;
-                          pragma_d: string list;
-                          extension_d: (string * behavior) list;
-                          meta_d: meta;
-                          macros_d:
 
-let dissolve env ppexpr =
-  let rec loop env meta pl = function
-    | (Comments c)::r -> loop env (extract_meta c) pl r
-    | (Chunk c)::r ->
-      let macros, _ = macro_expand env c.v in
-      loop env meta ((meta,macros,Chunk c)::pl) r
-    | (If {v=})::r ->
-*)
+let parse lang source =
+  let p = try parse lang source with
+    | err -> raise (CompilerError (Parser, [UncaughtException err]))
+  in maybe_fatal_error PPParser; p
+
+let preprocess lang ppexpr =
+  let ppl = preprocess_ppexpr (Glo.empty_ppenv lang) ppexpr in
+  maybe_fatal_error PPError;
+  ppl
+
 let compile exec_state fn source =
-  let ppexpr = parse exec_state source in
-  let ppl = preprocess ppexpr in
+  let ppexpr = parse !(exec_state.inlang) source in
+  let ppl = preprocess !(exec_state.inlang) ppexpr in
 
-  let slexpr =
-    if (!(exec_state.accuracy)=Lang.Preprocess
-       && !(exec_state.stage)=Compile)
+  let ppexpr = if (!(exec_state.accuracy)=Lang.Preprocess
+                  && !(exec_state.stage)=Compile)
     then check_pp_divergence ppl
     else ppexpr
   in
 
-  let env_map f ppl = List.unique (List.flatten (List.map f ppl)) in
-  let get_inmac env = List.map (fun t -> t.v) env.inmacros in
-  let get_opmac env = Env.fold (fun s _ l -> s::l) env.macros [] in
-  let inmac = env_map (fun (env,_) -> get_inmac env) ppl in
-  let opmac = env_map (fun (env,_) -> get_opmac env) ppl in
-
-  let outlang = !(exec_state.outlang) in
-  let target = (Lang.string_of_dialect outlang.Lang.dialect,
-                outlang.Lang.version) in
   let meta = !(exec_state.metadata) in
-  try Glo.compile ~meta target fn ~inmac ~opmac slexpr (List.map snd ppl)
-  with err -> begin
-    raise (CompilerError (SLParser, [err]))
-  end
+  try (if !(exec_state.dissolve)
+    then Glo.dissolve else Glo.compile)
+        ~meta !(exec_state.inlang) fn ppexpr ppl
+  with (CompilerError _) as e -> raise e
+    | err -> raise (CompilerError (SLParser, [err]))
 
 let link prologue required glom =
   try Glol.link prologue required (Glol.flatten "" glom)
@@ -227,7 +182,7 @@ let glo_of_u meta target u =
 
 let make_glo exec_state fn s =
   match glom_of_string s with
-    | Source s -> Glo (compile exec_state fn s)
+    | Source s -> compile exec_state fn s
     | glom -> glom
 
 let make_glom exec_state inputs =
@@ -237,7 +192,11 @@ let make_glom exec_state inputs =
         (fn,make_glo exec_state fn s)::al
       | (fn, Stream glom) | (fn, Define glom) -> (fn,glom)::al
     ) [] inputs
-  in Glol.nest glo_alist
+  in if 1=(List.length glo_alist)
+    then match snd (List.hd glo_alist) with
+      | Glom glom -> Glol.nest glom
+      | x -> Glol.nest [fst (List.hd glo_alist),x]
+    else Glol.nest glo_alist
 
 let minimize_glom = function
   | Glom [_,Glo glo] -> Glo glo
