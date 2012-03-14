@@ -43,7 +43,7 @@ tool
 .flag, .input { text-align: right }
 #gloc { top: 103px; right: 10px; float:right; }
 .fs { width: 50%; margin-top:20px; }
-#gloc-cmd { font-size: 24pt }
+#gloc-cmd { font-size: 20pt }
 #gloc-cli { background: #ccc; }
 h2 { display: inline }
 .closefile { background-color: red }
