@@ -171,7 +171,8 @@
         <script src="gloc_platform_js.js"></script>
         <script src="_build/gloc_js.d.js"></script>
         <link rel="stylesheet" type="text/css" href="CodeMirror2/lib/codemirror.css" />
-        <style type="text/css">
+        <!-- 
+<style type="text/css">
           body { font-family: sans-serif }
           .flag, .input { text-align: right }
           #gloc { top: 20px; right: 10px; float: right } //position: fixed }
@@ -186,12 +187,15 @@
           .CodeMirror-scroll { height: auto; overflow: visible; }
           .suffix { color: #999 }
         </style>
+ -->
+        <link rel="stylesheet" href="gloc.css" type="text/css" />
       </head>
       <body onload="init()">
-        <div id="gloc">
-          <h1>gloc<!--<span class="suffix">ode</span>-->&#xA0;<xsl:value-of select="@version"/>
+      <div id="header"><h1>gloc<!--<span class="suffix">ode</span>-->&#xA0;<xsl:value-of select="@version"/>
           by <a href="http://ashimagroup.net/"><xsl:value-of select="@distributor"/></a>
-          </h1>
+          </h1></div>
+        <div id="gloc">
+          
           <form name="gloc" id="gloc-cli">
             <table>
               <xsl:apply-templates />
@@ -207,15 +211,20 @@
               </tr>
             </table>
           </form>
-          <p><a href="https://github.com/ashima/gloc">Source on Github (BSD-3-Clause)</a></p>
+          <!-- 
+<p><a href="https://github.com/ashima/gloc">Source on Github (BSD-3-Clause)</a></p>
           <p><a href="https://github.com/ashima/gloc/issues">Report a problem</a></p>
           <p><a href="test/webgl/glol/">glol tests</a></p>
           <p><a href="glol.js">glol.js</a></p>
           <p><a href="mailto:sheets@ashimaarts.com">E-mail the developer, David Sheets</a></p>
           <p><a href="mailto:info@ashimagroup.net">E-mail the company, Ashima Arts</a></p>
+ -->
         </div>
         <div id="fs">
         </div>
+        <div id="footer">
+        <div id="footerlinks"><p id="source"><a href="https://github.com/ashima/gloc">Source on Github (BSD-3-Clause)</a></p><p id="glol"><a href="test/webgl/glol/">glol tests</a><br /><a href="glol.js">glol.js</a></p><p id="contact"><a href="https://github.com/ashima/gloc/issues">Report a problem</a><br /><a href="mailto:sheets@ashimaarts.com">E-mail the developer, David Sheets</a><br /><a href="mailto:info@ashimagroup.net">E-mail the company, Ashima Arts</a></p></div>
+       </div>
       </body>
     </html>
   </xsl:template>

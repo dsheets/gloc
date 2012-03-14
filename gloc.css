@@ -2,7 +2,7 @@
 *************************************
   gloc stylesheeet
   Created: 28 feb 2012    
-  Updated: 1 mar 2012
+  Updated: 2 mar 2012
 *************************************
 */
 
@@ -10,7 +10,7 @@
 test page
 */
 
-body { font-family: "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", verdana, arial, sans-serif; }
+body { font-family: tahoma, "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", verdana, arial, sans-serif; background:#fff; margin:0;}
 table#tests > thead > tr > th { padding:10px 0 20px; }
 table#tests > tbody > tr > th { text-align:left; }
 thead { font-size: 160% }
@@ -25,7 +25,7 @@ table.diff tbody { font-family: Courier New, courier, monospace; font-size:80%; 
 table.diff th { font-weight:normal; }
 table.diff > thead > tr > th {font-weight:bold; }
 table.diff tbody tr th, table.diff tbody tr td { border-top:1px solid #999;  }
-table.diff tbody tr td { white-space: nowrap;  }
+/*table.diff tbody tr td { white-space: nowrap;  }*/
 table.diff tbody tr th { border-right:1px solid #999; border-left:1px solid #999; }
 table.diff thead tr th.texttitle { border-left:1px solid #999; font-size:80%; }
 table.diff tfoot tr th { border-top:1px solid #999; border-left:1px solid #999; }	
@@ -38,17 +38,53 @@ td.posix p, td.js_of_ocaml p, td.javascript p { font-size:smaller; }
 /*
 tool
 */
+#header { width:100%; background:#5da9cf; height:80px; border-bottom:5px solid #222029; }
+#header h1 { text-align:center; width:100%; color:#222029; padding-top:15px; }
 .flag, .input { text-align: right }
-#gloc { top: 20px; right: 10px; position: fixed }
+#gloc { top: 103px; right: 10px; float:right; }
 .fs { width: 50%; margin-top:20px; }
-#gloc-cmd { font-size: 24pt }
+#gloc-cmd { font-size: 20pt }
+#gloc-cli { background: #ccc; }
 h2 { display: inline }
 .closefile { background-color: red }
-.hidesource { background-color: yellow }
-.showsource { background-color: green; color: white }
-.CodeMirror { border-right: 1px solid #ccc }
+.hidesource { background-color: #ffd; }
+.showsource { background-color: #00c583; color: white /* 00b478 */}
+.CodeMirror { border-right: 1px solid #ccc; }
 .CodeMirror-scroll { height: auto; overflow: visible; }
+.CodeMirror-gutter-text { color: #999; }
 .suffix { color: #999 }
 
-form#gloc-cli table td	{ padding:0; }
+#fs { margin-left:8px; }
+#fs h2 { text-shadow: 0px 1px 0px #fff; }
+#header h1 a, #header h1 a:link { text-shadow:none; color:#ffd; }
+.CodeMirror-gutter { background:#ffeadd; border-right:1px solid #ccc; }
+.CodeMirror-gutter-text pre { color:#999; }
+.CodeMirror-lines { background:#eee; }
+form table tbody tr:focus { background: #f00; }
+form table { border: 3px solid #eee; border-spacing:0; }
+form table td	{ border-bottom: 3px solid #eee; padding:4px; }
+form table td#gloc-cmd-copy { border-bottom:0; }
 h1 { margin-top:0; }
+input { background-color: #eee; }
+input:focus { background-color: #ffd; }
+td.flag, td.descr { font-family: tahoma; font-weight: bold; color:#222029; text-shadow: 0px 1px 0px #fff; font-size:100%;}
+/*td.descr { font-weight:bold; color:#999; text-shadow: 0px 1px 0px rgba(255,255,255,.5); }*/
+/*td.descr { font-weight:bold; color:#bbb; text-shadow: 0px 1px 0px rgba(255,255,255,.5), 0px -1px 0px rgba(0,0,0,.5); }*/
+#footer { position:relative; bottom:0; clear:both; width:100%; background:#5da9cf; height:110px; left:0; line-height:0.8em; border-top:5px solid #222029; }
+#footerlinks { margin:0 auto; width:50%; }
+#footer a, #footer a:link { color:#ffd; font-size: 0.8em; }
+#footer p { margin:0; text-align:center; padding-top:20px; }
+#footer p#source, #footer p#glol { 
+	float:left;
+	width:30%;
+	}
+	
+#footer p#glol {
+	clear:right;
+	width:30%;
+		}
+
+#footer p#contact {
+	float:left;
+	width:30%;
+	}
