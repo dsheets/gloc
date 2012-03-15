@@ -1,4 +1,4 @@
-PP = OCAMLRUNPARAM=b ../../../gloc.d.byte
+PP = OCAMLRUNPARAM=b ../../../src/gloc.d.byte
 
 INS := $(wildcard *.in)
 OUTS := $(INS:.in=.out)

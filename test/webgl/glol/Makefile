@@ -1,4 +1,4 @@
-GLOC = OCAMLRUNPARAM=b ../../../gloc.d.byte
+GLOC = OCAMLRUNPARAM=b ../../../src/gloc.d.byte
 
 ARGSETS := $(wildcard *.argset)
 ARGSYMS := $(ARGSETS:.argset=.argsym)

@@ -8,5 +8,5 @@ License:     BSD3
 Executable gloc
   Path:       .
   BuildTools: ocamlbuild
-  MainIs:     gloc_posix.ml
+  MainIs:     src/gloc_posix.ml
 
