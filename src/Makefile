@@ -3,7 +3,8 @@
 RM_ANNOT=rm -f *.annot
 OCAMLBUILD=ocamlbuild -use-ocamlfind -cflag -annot
 CP_ANNOT=cp _build/*.annot .
-GLOCODE=../doc/glocode
+DOC=../doc
+GLOCODE=${DOC}/glocode
 CODEMIRROR=../CodeMirror2
 
 all: gloc.d.byte glol_js.d.js gloc_js.d.js
@@ -12,6 +13,7 @@ glocode: gloc_xml.d.byte
 	rm -rf ${GLOCODE}
 	mkdir -p ${GLOCODE}
 	./gloc_xml.d.byte | xsltproc - > ${GLOCODE}/index.html
+	xsltproc doc.xsl doc.xml > ${DOC}/index.html
 	rm -rf ${GLOCODE}/CodeMirror2
 	mkdir -p ${GLOCODE}/CodeMirror2/lib
 	mkdir -p ${GLOCODE}/CodeMirror2/mode
@@ -19,7 +21,7 @@ glocode: gloc_xml.d.byte
 	cp -R ${CODEMIRROR}/lib ${GLOCODE}/CodeMirror2/
 	cp -R ${CODEMIRROR}/mode ${GLOCODE}/CodeMirror2/
 	cp -R ${CODEMIRROR}/keymap ${GLOCODE}/CodeMirror2/
-	cp gloc.css ${GLOCODE}/
+	cp gloc.css ${DOC}/
 	cp gloc_platform_js.js ${GLOCODE}/
 	mkdir -p ${GLOCODE}/_build/
 	make gloc_js.d.js
