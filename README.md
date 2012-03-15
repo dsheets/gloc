@@ -14,7 +14,7 @@ shader systems. *gloc 1.0* features:
  - runs as a native binary and in-the-browser via js_of_ocaml
 
 *gloc* is distributed as source code via this repository as well as a
- [compiled JavaScript tool](http://ashimagroup.net/gloc/). *glol*, the
+ [compiled JavaScript tool](http://ashimagroup.net/gloc/glocode/). *glol*, the
  *glo* linking algorithm, is [also
  available](http://ashimagroup.net/gloc/glol.js) for your development convenience.
 
@@ -24,7 +24,7 @@ shader systems. *gloc 1.0* features:
 
 ## Interfaces
 
-### [gloc](https://github.com/ashima/gloc/blob/master/gloc.ml#L44)
+### [gloc](https://github.com/dsheets/gloc/blob/master/src/gloc.ml#L45)
 
 ```
 gloc version 1.0.0 (Ashima Arts)
@@ -41,13 +41,14 @@ gloc version 1.0.0 (Ashima Arts)
   --line disregard incoming line directives
   -x {webgl}source language
   -t {webgl}target language
+  --dissolve dissolve declarations
   -v verbose
   --meta prototypical glo file to use for metadata
   -help  Display this list of options
   --help  Display this list of options
 ```
 
-### [glo](https://github.com/ashima/gloc/blob/master/glo.atd)
+### [glo](https://github.com/ashima/gloc/blob/master/src/glo.atd)
 
 ```ocaml
 type 'a glo = {
@@ -92,10 +93,10 @@ type version = (int * int * int)
 type glom <ocaml_json module="Yojson.Safe" t="json"> = abstract
 ```
 
-### [glol](https://github.com/ashima/gloc/blob/master/glol.ml)
+### [glol](https://github.com/ashima/gloc/blob/master/src/glol.ml)
 
 A [JavaScript implementation of
-glol](https://github.com/ashima/gloc/blob/master/glol.js) is also
+glol](https://github.com/ashima/gloc/blob/master/src/glol.js) is also
 available. The source code is conversationally commented. If you have questions or
 concerns, just ask! :-)
 
@@ -103,8 +104,10 @@ concerns, just ask! :-)
 
 ### WebGL Application Developers
 
-WebGL application developers need only to use the [JavaScript *glol* link
-algorithm](http://ashimagroup.net/gloc/glol.js) and the [gloc_js compiler](http://ashimagroup.net/gloc/). No local software installation is required.
+WebGL application developers need only to use the [JavaScript *glol*
+link algorithm](http://ashimagroup.net/gloc/glol.js) and the
+[glocode](http://ashimagroup.net/gloc/glocode/) development
+environment. No local software installation is required.
 
 ### Shader Developers
 
