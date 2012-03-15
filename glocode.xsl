@@ -192,7 +192,7 @@
       </head>
       <body onload="init()">
       <div id="header"><h1><span class="glow">glo</span>c<span class="suffix">ode</span>&#xA0;<xsl:value-of select="@version"/>
-          by <a href="http://ashimagroup.net/"><xsl:value-of select="@distributor"/></a>
+          by <a href="http://ashimaarts.com/"><xsl:value-of select="@distributor"/></a>
           </h1></div>
         <div id="gloc">
           
@@ -223,7 +223,7 @@
         <div id="fs">
         </div>
         <div id="footer">
-        <div id="footerlinks"><p id="source"><a href="https://github.com/ashima/gloc">Source on Github (BSD-3-Clause)</a></p><p id="glol"><a href="test/webgl/glol/">glol tests</a><br /><a href="glol.js">glol.js</a></p><p id="contact"><a href="https://github.com/ashima/gloc/issues">Report a problem</a><br /><a href="mailto:sheets@ashimaarts.com">E-mail the developer, David Sheets</a><br /><a href="mailto:info@ashimagroup.net">E-mail the company, Ashima Arts</a></p></div>
+        <div id="footerlinks"><p id="source"><a href="https://github.com/ashima/gloc">Source on Github (BSD-3-Clause)</a></p><p id="glol"><a href="test/webgl/glol/">glol tests</a><br /><a href="glol.js">glol.js</a></p><p id="contact"><a href="https://github.com/ashima/gloc/issues">Report a problem</a><br /><a href="mailto:sheets@ashimaarts.com">E-mail the developer, David Sheets</a><br /><a href="mailto:info@ashimaarts.com">E-mail the company, Ashima Arts</a></p></div>
        </div>
       </body>
     </html>
