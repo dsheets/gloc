@@ -1,0 +1,8 @@
+float h(struct k { int q; } arg);
+float j(struct n { int b; } arg) { return 0.2; }
+
+struct s { int q; } f(const in int a, inout int b, out float c);
+
+struct s2 { int q; } g(const in int a, inout int b, out float c) {
+  return s2(a);
+}

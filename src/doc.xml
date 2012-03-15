@@ -1,0 +1,87 @@
+<doc>
+  <div id="header"><h1><span class="glow">glo</span>c
+  by <a href="http://ashimaarts.com/">Ashima Arts</a></h1></div>
+
+
+
+  <p id="gloc"><h2>gloc components</h2></p>
+
+  <section>
+    <h3>gloc</h3>
+    <p><em>gloc</em> is a collection of tools for transforming the WebGL
+    shading language, OpenGL ES 2.0 GLSL.</p>
+    <p><em>gloc</em> runs in a browser via <a
+    href="glocode/">glocode</a> which is an interface automatically
+    generated from the <em>gloc</em> command-line interface and a <a
+    href="http://ocsigen.org/js_of_ocaml/">js_of_ocaml</a> compilation
+    of <em>gloc</em>'s OCaml bytecode.</p>
+  </section>
+  
+  <section id="glo">
+    <h3>glo</h3>
+    <p><em>glo</em> is a simple JSON format for transporting analyzed
+    shader source.</p>
+    <p><em>glo</em>'s format is precisely specified in <a href="https://github.com/ashima/gloc/blob/master/src/glo.atd">glo.atd</a> which can subsequently be compiled into an OCaml type, JSON, or the compact binary format <a href="http://mjambon.com/biniou.html">biniou</a>.</p>
+    <p><em>glo</em> is a JSON object with 5 fields:
+    <ul>
+      <li>"glo", a 3-array of integers specifying the version of the glo format</li>
+      <li>"target", a 2-array of (1.) the string representing the
+      intended target platform ("webgl") and (2.) a 3-array of
+      integers specifying the version of the target platform</li>
+      <li>"meta", an optional field of a meta JSON object described below</li>
+      <li>"units", a list of annotated shader fragments described below</li>
+      <li>"linkmap", an object with field-names of strings of shader
+      file fragment integers found in #line preprocessor directives
+      and values of relative URLs</li>
+    </ul>
+    </p>
+    <p>meta is a JSON object with 1 required and 5 optional fields:
+    <ul>
+      <li>"copyright", a 2-array of (1.) integer year and (2.) href (required)</li>
+      <li>"author", an array of hrefs (optional)</li>
+      <li>"license", a href (optional)</li>
+      <li>"library", a href (optional)</li>
+      <li>"version", a 2-array of (1.) a 3-array of integers representing the version of this shader and (2.) a URL string (optional)</li>
+      <li>"build", a href (optional)</li>
+    </ul>
+    </p>
+    <p>href is a JSON 2-array of (1.) a string representing the title of the linked resource and (2.) a URL string</p>
+    <p>unit is a JSON object with 1 required and 14 optional fields:
+    <ul>
+      <li>"pdir", an array of #pragma strings (optional)</li>
+      <li>"edir", an array of 2-arrays of (1.) extension name string and (2.) extension directive behavior string (optional)</li>
+      <li>"vdir", an integer representing the #version argument (optional)</li>
+      <li>"inu", an array of string uniform names required from the application (optional)</li>
+      <li>"outu", an array of string uniform names provided by the application (optional)</li>
+      <li>"ina", an array of string attribute names required from the application (optional)</li>
+      <li>"outa", an array of string attribute names provided by the application (optional)</li>
+      <li>"vary", an array of string varyings referenced by this shader (optional)</li>
+      <li>"insym", an array of string SL symbols required by this unit (optional)</li>
+      <li>"outsym", an array of string SL symbols provided by this unit (optional)</li>
+      <li>"inmac", an array of string SL macros required by this unit (optional)</li>
+      <li>"outmac", an array of string SL macros provided by this unit (optional)</li>
+      <li>"opmac", an array of string SL macros open at the end of this unit (optional)</li>
+      <li>"bmac", an array of string SL macros blocked by this unit (optional)</li>
+      <li>"source", a string of location-independent shader source (required)</li> 
+    </ul>
+    </p>
+  </section>
+
+  <section id="glom">
+    <h3>glom</h3>
+    <p><em>glom</em> is the JSON manifest format for <em>glo</em> objects.</p>
+    <p><em>glom</em> is an array of 2-arrays of (1.) a string for the sub-glom and (2.) a JSON object (e.g. <em>glo</em>) or another <em>glom</em></p>
+  </section>
+
+  <section id="glol">
+    <h3>glol</h3>
+    <p><em>glol</em> is the linking algorithm for <em>glo</em>-encapsulated shader sources</p>
+    <p><em>glol</em> uses the well-defined ordering of <em>glom</em>
+    and <em>glo</em> to determine link precedence in the presence of
+    redundant symbols. The algorithm first satisfies macros and then
+    symbols. Symbols are satisfied by first checking for available
+    macros and then available symbols.</p>
+  </section>
+  
+  <footer />
+</doc>

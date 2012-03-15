@@ -1,0 +1,20 @@
+{
+  "glo": [ 1, 0, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
+  "units": [
+    { "outsym": [ "k" ], "source": "#line 1 GLOC_0\nstruct k { float j; };" },
+    { "outsym": [ "s" ], "source": "#line 2 GLOC_0\nstruct s { int f; };" },
+    {
+      "insym": [ "s" ],
+      "outsym": [ "q" ],
+      "source": "#line 2 GLOC_0\ns                   q;"
+    },
+    { "insym": [ "s" ], "outsym": [ "h" ], "source": "#line 3 GLOC_0\ns h;" },
+    {
+      "outsym": [ "j" ],
+      "source": "#line 4 GLOC_0\nstruct { struct { int f; } a; } j;"
+    }
+  ],
+  "linkmap": { "0": "#n=0" }
+}

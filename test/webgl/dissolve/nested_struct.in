@@ -1,0 +1,5 @@
+struct s { float q; };
+
+struct h { s g; s b; } f(void) { return h(s(1.0),s(0.0)); }
+
+invariant varying struct n { h d; } vvv;

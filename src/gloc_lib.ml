@@ -170,7 +170,9 @@ let make_define_line ds =
 
 let make_define_unit ds =
   let u m source =
-    {pdir=[]; edir=[]; vdir=None; insym=[]; outsym=[]; inmac=[]; opmac=[];
+    {pdir=[]; edir=[]; vdir=None;
+     inu=[]; outu=[]; ina=[]; outa=[]; vary=[]; insym=[]; outsym=[];
+     inmac=[]; opmac=[]; bmac=[];
      outmac=if m="" then [] else [macro_name m]; source}
   in match Re_str.bounded_split (Re_str.regexp_string "=") ds 2 with
     | [] -> u "" (make_define_line ds)

@@ -3,25 +3,29 @@
 RM_ANNOT=rm -f *.annot
 OCAMLBUILD=ocamlbuild -use-ocamlfind -cflag -annot
 CP_ANNOT=cp _build/*.annot .
+DOC=../doc
+GLOCODE=${DOC}/glocode
+CODEMIRROR=../CodeMirror2
 
 all: gloc.d.byte glol_js.d.js gloc_js.d.js
 
 glocode: gloc_xml.d.byte
-	rm -rf glocode/
-	mkdir -p glocode/
-	./gloc_xml.d.byte | xsltproc - > glocode/index.html
-	rm -rf glocode/CodeMirror2
-	mkdir -p glocode/CodeMirror2/lib
-	mkdir -p glocode/CodeMirror2/mode
-	mkdir -p glocode/CodeMirror2/keymap
-	cp -R CodeMirror2/lib glocode/CodeMirror2/
-	cp -R CodeMirror2/mode glocode/CodeMirror2/
-	cp -R CodeMirror2/keymap glocode/CodeMirror2/
-	cp gloc.css glocode/
-	cp gloc_platform_js.js glocode/
-	mkdir -p glocode/_build/
+	rm -rf ${GLOCODE}
+	mkdir -p ${GLOCODE}
+	./gloc_xml.d.byte | xsltproc - > ${GLOCODE}/index.html
+	xsltproc doc.xsl doc.xml > ${DOC}/index.html
+	rm -rf ${GLOCODE}/CodeMirror2
+	mkdir -p ${GLOCODE}/CodeMirror2/lib
+	mkdir -p ${GLOCODE}/CodeMirror2/mode
+	mkdir -p ${GLOCODE}/CodeMirror2/keymap
+	cp -R ${CODEMIRROR}/lib ${GLOCODE}/CodeMirror2/
+	cp -R ${CODEMIRROR}/mode ${GLOCODE}/CodeMirror2/
+	cp -R ${CODEMIRROR}/keymap ${GLOCODE}/CodeMirror2/
+	cp gloc.css ${DOC}/
+	cp gloc_platform_js.js ${GLOCODE}/
+	mkdir -p ${GLOCODE}/_build/
 	make gloc_js.d.js
-	cp _build/gloc_js.d.js glocode/_build/
+	cp _build/gloc_js.d.js ${GLOCODE}/_build/
 
 gloc_js.d.js:
 	${RM_ANNOT}

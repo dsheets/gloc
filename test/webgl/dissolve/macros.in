@@ -1,0 +1,12 @@
+#define Q 1
+#define W 2
+
+#if Q < W+Z
+#define J 3
+void foo();
+void baz() { }
+#endif
+
+#if 1
+const int j = J;
+#endif

@@ -71,11 +71,17 @@ type 'a u = {
   ~pdir: string list;
   ~edir: (string * string) list;
   ?vdir: int option;
+  ~inu:string list;
+  ~outu:string list;
+  ~ina:string list;
+  ~outa:string list;
+  ~vary:string list;
   ~insym:string list;
   ~outsym:string list;
   ~inmac:string list;
   ~opmac:string list;
   ~outmac:string list;
+  ~bmac:string list;
   source:'a;
 }
 

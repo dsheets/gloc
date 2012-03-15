@@ -8,7 +8,7 @@
 <gloc_xml.*>: package(atdgen), package(ulex), package(menhirLib), package(re.str)
 <gloc_lib.*>: package(atdgen), package(re.str)
 <glol.*>: package(atdgen), package(re.str)
-<glol_js.*>: syntax(camlp4o), package(js_of_ocaml), package(js_of_ocaml.syntax), package(re.str), package(atdgen)
+<glol_js.*>: syntax(camlp4o), package(js_of_ocaml), package(js_of_ocaml.syntax), package(re.str), package(atdgen), package(ulex), package(menhirLib)
 <glo_*>: package(atdgen)
 <glo.*>: package(atdgen), package(re.str)
 <glo_lib.*>: package(re.str), package(ulex), package(menhirLib)

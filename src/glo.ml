@@ -110,14 +110,18 @@ let get_insyms envs =
       l e.Sl_lib.opensyms)
     protos envs
 
-let get_outsyms envs =
-  List.fold_left
-    (fun l e -> Sl_lib.SymMap.fold
-      (fun k bindings l -> (* TODO: inference *)
-        if (List.mem k l) or not (List.exists Sl_lib.definitionp bindings)
-        then l else k::l)
-      (List.hd (List.rev e.Sl_lib.ctxt)) l)
-    [] envs
+let get_syms p envs = List.fold_left
+  (fun l e -> Sl_lib.SymMap.fold
+    (fun k bindings l -> (* TODO: inference *)
+      if (List.mem k l) or not (List.exists p bindings)
+      then l else k::l)
+    (List.hd (List.rev e.Sl_lib.ctxt)) l)
+  [] envs
+
+let get_outsyms = get_syms Sl_lib.definitionp
+let get_inu = get_syms Sl_lib.uniformp
+let get_ina = get_syms Sl_lib.attributep
+let get_vary = get_syms Sl_lib.varyingp
 
 (* maintain order *)
 let unique idx l = List.rev
@@ -168,8 +172,9 @@ let create_unit expr ppl =
     | requires, None -> directives_of_requires requires, empty_pptok_expr expr
   in (* TODO: rename GLOC_* to GLOC_GLOC_* *)
   ({pdir; edir; vdir;
+    outu=[]; outa=[]; vary=get_vary envs; inu=get_inu envs; ina=get_ina envs;
     insym=get_insyms envs; outsym=get_outsyms envs;
-    inmac; opmac; outmac=[];
+    inmac; opmac; outmac=[]; bmac=[];
     source=(snd ((proj_pptok_expr expr).scan start))},
    List.rev
      (unique (function Num fn | Ref (fn,_,_) -> string_of_int fn) file_nums))
@@ -212,7 +217,7 @@ let input_decl_cmp x y =
   let z = compare x_z y_z in
   if a>(-1) && z=(-1) || a<1 && z=1 then z else a
 
-let unit_of_binding (n, bs) =
+let unit_of_binding lang (n, bs) =
   let start = {file={src=(-1);input=(-1)}; line={src=1;input=1}; col=0} in
   let _, source = List.fold_left
     (fun (loc,s) {Sl_lib.qualt; Sl_lib.typet; Sl_lib.symt} ->
@@ -231,9 +236,16 @@ let unit_of_binding (n, bs) =
         | Sl_lib.Fun (_,_,_) -> (loc,s^qs^ts^ss)
         | _ -> (loc,s^qs^ts^ss^";")
     ) (start,"") (List.rev bs)
-  in {pdir=[]; edir=[]; vdir=None;
-      insym=[]; outsym=[]; inmac=[]; outmac=[]; opmac=[];
-      source}
+  in
+  let ppexpr = parse lang source in
+  let slenv = slenv_of_stream (stream_of_pptok_expr ppexpr) in
+  {pdir=[]; edir=[]; vdir=None;
+   inu=get_inu [slenv]; outu=[];
+   ina=get_ina [slenv]; outa=[];
+   vary=get_vary [slenv];
+   insym=get_insyms [slenv]; outsym=get_outsyms [slenv];
+   inmac=[]; outmac=[]; opmac=[]; bmac=[];
+   source}
 
 (*
             let streams = List.map (fun b -> match b with
@@ -265,12 +277,8 @@ let dissolve ?meta lang fn origexpr ppl =
         try let slenv = slenv_of_stream (stream_of_pptok_expr pp) in
             let bindings = Sl_lib.SymMap.bindings
               (List.hd (List.rev slenv.Sl_lib.ctxt)) in
-            List.map (fun b ->
-              let u = unit_of_binding b in
-              let ppexpr = parse lang u.source in
-              let slenv = slenv_of_stream (stream_of_pptok_expr ppexpr) in
-              {u with insym=get_insyms [slenv]; outsym=get_outsyms [slenv]}
-            ) (List.sort (* TODO: interleaved overloads *)
+            List.map (unit_of_binding lang)
+              (List.sort (* TODO: interleaved overloads *)
                  (fun (_,a) (_,b) ->
                    input_decl_cmp (List.hd a) (List.hd b))
                  bindings),

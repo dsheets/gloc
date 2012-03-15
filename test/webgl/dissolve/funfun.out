@@ -1,0 +1,30 @@
+{
+  "glo": [ 1, 0, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
+  "units": [
+    {
+      "insym": [ "h" ],
+      "source": "#line 1 GLOC_0\nfloat h(struct k { int q; } arg);"
+    },
+    {
+      "outsym": [ "j" ],
+      "source":
+        "#line 2 GLOC_0\nfloat j(struct n { int b; } arg) { return 0.2; }"
+    },
+    { "outsym": [ "s" ], "source": "#line 4 GLOC_0\nstruct s { int q; };" },
+    {
+      "insym": [ "s", "f" ],
+      "source":
+        "#line 4 GLOC_0\ns                   f(const in int a, inout int b, out float c);"
+    },
+    { "outsym": [ "s2" ], "source": "#line 6 GLOC_0\nstruct s2 { int q; };" },
+    {
+      "insym": [ "s2" ],
+      "outsym": [ "g" ],
+      "source":
+        "#line 6 GLOC_0\ns2                   g(const in int a, inout int b, out float c) {\n  return s2(a);\n}"
+    }
+  ],
+  "linkmap": { "0": "#n=0" }
+}

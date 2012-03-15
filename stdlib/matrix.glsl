@@ -1,3 +1,5 @@
+// Copyright 2012 Ashima Arts <http://ashimaarts.com/>
+// License: BSD-3-Clause <http://www.opensource.org/licenses/BSD-3-Clause>
 
 // constructors are column major 
 mat2 transpose(mat2 m) {
@@ -70,9 +72,9 @@ mat3 inverse(mat3 m) {
 // | g h | = | C D |   = |  -(D-CA'B)'CA'         (D-CA'B)'     |
 //
 // with
-// a inverted imediatly
-// and sub expresions t = CA'
-// noting that h and f are are subexpresion also
+// a inverted immediately
+// and sub expressions t = CA'
+// noting that h and f are subexpression also
 //    
 mat4 inverse(mat4 m) {
   mat2 a = inverse(mat2(m));

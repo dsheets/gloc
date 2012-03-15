@@ -4,6 +4,7 @@
   "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
     {
+      "vary": [ "gP" ],
       "outsym": [ "set_gP", "get_gP", "gP" ],
       "source":
         "#line 1 GLOC_0\nvarying vec3 gP;\n\nvec3 get_gP() { return gP; }\nvoid set_gP(vec3 p) { gP = p; }"
