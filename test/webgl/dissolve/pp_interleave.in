@@ -1,0 +1,7 @@
+void main() {
+#if Z
+gl_Position = vec4(Z);
+#else
+gl_Position = vec4(1.);
+#endif
+}

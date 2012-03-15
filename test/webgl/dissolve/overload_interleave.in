@@ -1,0 +1,15 @@
+precision highp float;
+
+float fst(vec2 v) { return v.x; }
+float snd(vec2 v) { return v.y; }
+float fst(vec3 v) { return v.x; }
+float snd(vec3 v) { return v.y; }
+
+bool is_even_dim(float) { return false; }
+bool is_odd_dim(float) { return true; }
+bool is_even_dim(vec2 v) { return is_odd_dim(v.x); }
+bool is_odd_dim(vec2 v) { return is_even_dim(v.x); }
+bool is_even_dim(vec3 v) { return is_odd_dim(v.xy); }
+bool is_odd_dim(vec3 v) { return is_even_dim(v.xy); }
+
+void main() {}

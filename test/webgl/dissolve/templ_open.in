@@ -1,0 +1,5 @@
+#define T(t) t lie(t x, t y) { return x*y - y*x; }
+
+T(mat2)
+T(mat3)
+T(mat4)

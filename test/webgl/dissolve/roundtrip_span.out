@@ -1,0 +1,47 @@
+[
+  [
+    "[stdin]",
+    {
+      "glo": [ 1, 0, 0 ],
+      "target": [ "webgl", [ 1, 0, 0 ] ],
+      "meta": {
+        "copyright": [ 2012, [ "Foo Corp", "" ] ],
+        "author": [ [ "A", "" ], [ "B", "" ], [ "C", "" ] ],
+        "version": [ [ 0, 0, 1 ], "" ],
+        "build": [ "r4929f", "http://www.example.com/" ]
+      },
+      "units": [
+        {
+          "insym": [ "f" ],
+          "source": "#line 8 GLOC_0\n       void f ( void ) ;"
+        },
+        {
+          "insym": [ "j" ],
+          "source": "#line 12 GLOC_0\n       void j ( void ) ;"
+        }
+      ],
+      "linkmap": { "0": "#n=0" }
+    }
+  ],
+  [
+    "[stdin]",
+    {
+      "glo": [ 1, 0, 0 ],
+      "target": [ "webgl", [ 1, 0, 0 ] ],
+      "meta": {
+        "copyright": [ 2012, [ "Bar Corp", "" ] ],
+        "license": [ "BSD-3-Clause", "" ],
+        "library": [ "Magic Box", "http://example.com/magic" ],
+        "version": [ [ 0, 1, 0 ], "mailto:bar@example.org" ]
+      },
+      "units": [
+        {
+          "outsym": [ "main" ],
+          "source":
+            "#line 1 GLOC_1\nvoid main() {\n  gl_Position = vec4(1.);\n}"
+        }
+      ],
+      "linkmap": { "1": "#n=1" }
+    }
+  ]
+]

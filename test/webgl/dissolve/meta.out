@@ -1,0 +1,45 @@
+[
+  [
+    "[stdin]",
+    {
+      "glo": [ 1, 0, 0 ],
+      "target": [ "webgl", [ 1, 0, 0 ] ],
+      "meta": {
+        "copyright": [ 2012, [ "Foo Corp", "http://www.example.com/" ] ],
+        "author": [
+          [ "Fiddlesticks McMonocle", "http://example.com/~mcmonocle/" ],
+          [ "Gladhands Krishnamurthy", "" ]
+        ],
+        "license": [ "BSD-3-Clause", "" ]
+      },
+      "units": [
+        {
+          "outsym": [ "vert_main" ],
+          "source": "#line 6 GLOC_0\nvoid vert_main() {\n\n}"
+        },
+        {
+          "outsym": [ "frag_main" ],
+          "source": "#line 10 GLOC_0\nvoid frag_main() {\n\n}"
+        }
+      ],
+      "linkmap": { "0": "#n=0" }
+    }
+  ],
+  [
+    "[stdin]",
+    {
+      "glo": [ 1, 0, 0 ],
+      "target": [ "webgl", [ 1, 0, 0 ] ],
+      "meta": { "copyright": [ 2012, [ "", "" ] ] },
+      "units": [
+        {
+          "insym": [ "h" ],
+          "outsym": [ "funq" ],
+          "source":
+            "#line 15 GLOC_0\n          void funq ( void ) { h = 2 ; }"
+        }
+      ],
+      "linkmap": { "0": "#n=0" }
+    }
+  ]
+]

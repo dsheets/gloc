@@ -1,0 +1,17 @@
+// Copyright 2012 Foo <http://www.example.com/> Blah.
+#line 2 0 // #n=module_a
+#define DBL(t) \
+t dbl(t a) { return a*2; }
+DBL(float)
+DBL(vec2)
+DBL(vec3)
+DBL(vec4)
+
+// Copyright 2012 Bar <http://www.example.net/> Baz.
+#line 9 1 // #n=module_b
+#define AVG(t) \
+t avg(t a, t b) { return (a+b)/2.0; }
+AVG(float)
+AVG(vec2)
+AVG(vec3)
+AVG(vec4)

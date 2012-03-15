@@ -1,0 +1,21 @@
+// Copyright 2012 Foo Corp <> All Rights Reversed.
+// Version: 0.0.1
+// Author: A
+// Author: B
+// Author: C
+// Build: r4929f <http://www.example.com/>
+
+void f(void);
+
+//End: Copyright
+
+void j(void);
+
+// Copyright 2012 Bar Corp <> Something
+// Version: 0.1.0 <mailto:bar@example.org>
+// License: BSD-3-Clause
+// Library: Magic Box <http://example.com/magic>
+#line 1 1
+void main() {
+  gl_Position = vec4(1.);
+}

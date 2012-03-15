@@ -1,0 +1,8 @@
+#if 1
+#define T(t) t fn(t a, t b) { return t(a.x+b.x); }
+
+T(vec2)
+T(vec3)
+T(vec4)
+#undef T
+#endif

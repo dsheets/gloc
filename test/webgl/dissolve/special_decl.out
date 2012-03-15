@@ -1,0 +1,62 @@
+{
+  "glo": [ 1, 0, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
+  "units": [
+    { "outmac": [ "HSIZE" ], "source": "#line 1 GLOC_0\n#define HSIZE 3" },
+    {
+      "vary": [ "foo" ],
+      "outsym": [ "foo" ],
+      "source": "#line 2 GLOC_0\ninvariant varying float foo;"
+    },
+    {
+      "vary": [ "bar" ],
+      "outsym": [ "bar" ],
+      "source": "#line 3 GLOC_0\nvarying float bar;"
+    },
+    {
+      "outsym": [ "my_s" ],
+      "source": "#line 4 GLOC_0\n        struct my_s { vec2 v2; };"
+    },
+    {
+      "inu": [ "h" ],
+      "insym": [ "my_s", "HSIZE" ],
+      "outsym": [ "h" ],
+      "source": "#line 4 GLOC_0\nuniform my_s                     h[HSIZE];"
+    },
+    {
+      "inu": [ "hh" ],
+      "insym": [ "my_s", "HSIZE" ],
+      "outsym": [ "hh" ],
+      "source":
+        "#line 4 GLOC_0\nuniform my_s                               hh[HSIZE];"
+    },
+    {
+      "inu": [ "jj" ],
+      "insym": [ "my_s" ],
+      "outsym": [ "jj" ],
+      "source":
+        "#line 4 GLOC_0\nuniform my_s                                          jj;"
+    },
+    {
+      "ina": [ "attr" ],
+      "outsym": [ "attr" ],
+      "source": "#line 5 GLOC_0\nattribute vec3 attr;"
+    },
+    { "outsym": [ "s" ], "source": "#line 7 GLOC_0\nstruct s { float g; };" },
+    {
+      "insym": [ "s" ],
+      "outsym": [ "fn" ],
+      "source":
+        "#line 7 GLOC_0\ns                     fn(s h) { return h; }\ns fn(s h, s q) { return q; }\ns fn(struct { float g; } n) { return n; }"
+    },
+    { "outsym": [ "n" ], "source": "#line 11 GLOC_0\nfloat n=1.0;" },
+    { "outsym": [ "rr" ], "source": "#line 11 GLOC_0\nfloat        rr=2.0;" },
+    {
+      "outsym": [ "y" ],
+      "source": "#line 11 GLOC_0\nfloat                y[10];"
+    },
+    { "outsym": [ "i" ], "source": "#line 12 GLOC_0\nconst bool i=false;" }
+  ],
+  "linkmap": { "0": "#n=0" }
+}

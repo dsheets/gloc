@@ -1,0 +1,23 @@
+{
+  "glo": [ 1, 0, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
+  "units": [
+    { "outmac": [ "Q" ], "source": "#line 1 GLOC_0\n#define Q 1" },
+    { "outmac": [ "W" ], "source": "#line 2 GLOC_0\n#define W 2" },
+    {
+      "insym": [ "foo" ],
+      "outsym": [ "baz" ],
+      "inmac": [ "Z", "W", "Q" ],
+      "outmac": [ "J" ],
+      "source":
+        "#line 4 GLOC_0\n#if Q < W+Z\n#define J 3\nvoid foo();\nvoid baz() { }\n#endif"
+    },
+    {
+      "insym": [ "J" ],
+      "outsym": [ "j" ],
+      "source": "#line 10 GLOC_0\n#if 1\nconst int j = J;\n#endif"
+    }
+  ],
+  "linkmap": { "0": "#n=0" }
+}

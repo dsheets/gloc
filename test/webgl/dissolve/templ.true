@@ -1,0 +1,13 @@
+{
+  "glo": [ 1, 0, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
+  "units": [
+    {
+      "outsym": [ "fn" ],
+      "source":
+        "#line 1 GLOC_0\n#if 1\n#define T(t) t fn(t a, t b) { return t(a.x+b.x); }\n\nT(vec2)\nT(vec3)\nT(vec4)\n#undef T\n#endif"
+    }
+  ],
+  "linkmap": { "0": "#n=0" }
+}

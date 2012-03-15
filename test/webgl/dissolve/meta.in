@@ -1,0 +1,15 @@
+// Copyright 2012 Foo Corp <http://www.example.com/> Imaginary property preserved.
+// Author: Fiddlesticks McMonocle <http://example.com/~mcmonocle/>
+// Author: Gladhands Krishnamurthy
+// License: BSD-3-Clause
+
+void vert_main() {
+
+}
+
+void frag_main() {
+
+}
+// End: Copyright
+#line 15 0
+void funq(void) { h = 2; }

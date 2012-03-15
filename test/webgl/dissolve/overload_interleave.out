@@ -1,0 +1,31 @@
+{
+  "glo": [ 1, 0, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
+  "units": [
+    {
+      "outsym": [ "fst" ],
+      "source":
+        "#line 3 GLOC_0\nfloat fst(vec2 v) { return v.x; }\n\nfloat fst(vec3 v) { return v.x; }"
+    },
+    {
+      "outsym": [ "snd" ],
+      "source":
+        "#line 4 GLOC_0\nfloat snd(vec2 v) { return v.y; }\n\nfloat snd(vec3 v) { return v.y; }"
+    },
+    {
+      "insym": [ "is_odd_dim" ],
+      "outsym": [ "is_even_dim" ],
+      "source":
+        "#line 8 GLOC_0\nbool is_even_dim(float) { return false; }\n\nbool is_even_dim(vec2 v) { return is_odd_dim(v.x); }\n\nbool is_even_dim(vec3 v) { return is_odd_dim(v.xy); }"
+    },
+    {
+      "insym": [ "is_even_dim" ],
+      "outsym": [ "is_odd_dim" ],
+      "source":
+        "#line 9 GLOC_0\nbool is_odd_dim(float) { return true; }\n\nbool is_odd_dim(vec2 v) { return is_even_dim(v.x); }\n\nbool is_odd_dim(vec3 v) { return is_even_dim(v.xy); }"
+    },
+    { "outsym": [ "main" ], "source": "#line 15 GLOC_0\nvoid main() {}" }
+  ],
+  "linkmap": { "0": "#n=0" }
+}

@@ -1,0 +1,13 @@
+{
+  "glo": [ 1, 0, 0 ],
+  "target": [ "webgl", [ 1, 0, 0 ] ],
+  "meta": { "copyright": [ 2012, [ "", "" ] ] },
+  "units": [
+    {
+      "outsym": [ "euclidean" ],
+      "source":
+        "#line 1 GLOC_0\nfloat euclidean(float k) { return k; }\nfloat euclidean(vec2 v) { return sqrt(v.x*v.x+v.y*v.y); }\nfloat euclidean(vec3 v) { return sqrt(v.x*v.x+v.y*v.y+v.z*v.z); }\nfloat euclidean(vec4 v) { return sqrt(v.x*v.x+v.y*v.y+v.z*v.z+v.w*v.w); }"
+    }
+  ],
+  "linkmap": { "0": "#n=0" }
+}

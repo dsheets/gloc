@@ -1,0 +1,46 @@
+[
+  [
+    "[stdin]",
+    {
+      "glo": [ 1, 0, 0 ],
+      "target": [ "webgl", [ 1, 0, 0 ] ],
+      "meta": { "copyright": [ 2012, [ "Foo", "http://www.example.com/" ] ] },
+      "units": [
+        {
+          "outmac": [ "DBL" ],
+          "source":
+            "#line 2 GLOC_0\n#define DBL(t)/*\\\n*/ t dbl( t a ) { return a * 2 ; }"
+        },
+        {
+          "outsym": [ "dbl" ],
+          "inmac": [ "DBL" ],
+          "source":
+            "#line 4 GLOC_0\nDBL(float)\nDBL(vec2)\nDBL(vec3)\nDBL(vec4)"
+        }
+      ],
+      "linkmap": { "0": "#n=0" }
+    }
+  ],
+  [
+    "[stdin]",
+    {
+      "glo": [ 1, 0, 0 ],
+      "target": [ "webgl", [ 1, 0, 0 ] ],
+      "meta": { "copyright": [ 2012, [ "Bar", "http://www.example.net/" ] ] },
+      "units": [
+        {
+          "outmac": [ "AVG" ],
+          "source":
+            "#line 9 GLOC_1\n#define AVG(t)/*\\\n*/ t avg( t a , t b ) { return ( a + b ) / 2.0 ; }"
+        },
+        {
+          "outsym": [ "avg" ],
+          "inmac": [ "AVG" ],
+          "source":
+            "#line 11 GLOC_1\nAVG(float)\nAVG(vec2)\nAVG(vec3)\nAVG(vec4)"
+        }
+      ],
+      "linkmap": { "0": "#n=0", "1": "#n=module_b" }
+    }
+  ]
+]

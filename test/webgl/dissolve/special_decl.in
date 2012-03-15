@@ -1,0 +1,12 @@
+#define HSIZE 3
+invariant varying float foo;
+varying float bar;
+uniform struct my_s { vec2 v2; } h[HSIZE], hh[HSIZE], jj;
+attribute vec3 attr;
+
+struct s { float g; } fn(s h) { return h; }
+s fn(s h, s q) { return q; }
+s fn(struct { float g; } n) { return n; }
+
+float n=1.0, rr=2.0, y[10];
+const bool i=false;

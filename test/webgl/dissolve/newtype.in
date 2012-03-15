@@ -1,0 +1,4 @@
+struct k { float j; };
+struct s { int f; } q;
+s h;
+struct { struct { int f; } a; } j;
