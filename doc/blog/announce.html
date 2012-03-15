@@ -1,0 +1,120 @@
+<html>
+<head>
+  <style type="text/css">
+    a { color: black }
+    body { color: black; background: white } //#EEE; background: black }
+  .glow {
+  color: black;
+  text-shadow: 0 0 10px #FA0, 0 0 3px white
+  }
+</style>
+</head>
+<body>
+<h1>Introducing <span class="glow">glo</span>, <span class="glow">gloc</span>,
+  and <span class="glow">glol</span> for Open World Wide Web Shader Linking</h1>
+<p>Hello, World Wide Web! This is David Sheets, co-founder of Ashima Arts,
+  coming to you in living hypermedia.</p>
+<p>I am pleased to announce the first release
+of <a class="glow" href="http://ashimagroup.net/gloc/">gloc</a>, a
+  precision-crafted toolkit for WebGL and OpenGL ES2 GLSL
+  shaders. gloc
+  enables authors to easily unlock the power and creative potential of
+  3D Web and mobile graphics by making collaboration simple.</p>
+
+<p style="font-size: 120%">
+  <strong class="glow">g</strong>loc<br />
+  <strong class="glow">l</strong>inks<br />
+  <strong class="glow">o</strong>ur<br />
+  <strong class="glow">c</strong>reativity!</p>
+
+<p><span class="glow">gloc</span> represents a leap forward for
+portable, high-performance numeric and graphics functionality by
+promoting shaders and shader fragments to first-class web
+resources.</p>
+<h3>What <span class="glow">gloc</span> enables:</h3>
+<ul>
+  <li>Libraries of shader functions</li>
+  <li>Capability-based shader component fall-backs</li>
+  <li>Collaborative shading effect mash-ups</li>
+  <li><strong><a href="http://en.wikipedia.org/wiki/Dynamic_linker">LD_PRELOAD</a></strong>-like
+  functionality</li>
+  <li>Compression by factorization of common shader functions</li>
+  <li>Semantically-linked shaders in visualization systems</li>
+  <li>Cascading shaders for selective overriding</li>
+  <li>User Interface effects and compositing</li>
+  <li><em>and much more!</em></li>
+</ul>
+
+<h3>How <span class="glow">gloc</span> works:</h3>
+<table style="text-align: center">
+  <tr><td><img src="http://ashimagroup.net/gloc/gloc_pipeline.png"
+     alt="gloc pipeline: gloc transforms ES SL into glo object files
+     which are subsequently linked with other glo resources using glol to produce WebGL
+     shaders"/>
+  </td></tr>
+  <tr><td><em>gloc pipeline: gloc transforms ES SL into glo object files which are
+  subsequently linked with other glo resources using glol to produce WebGL shaders</em></td></tr>
+</table>
+<p><span class="glow">gloc</span> is a multi-stage compiler that
+  accurately parses and reifies the lexical structure of the language
+  tokens, the lexical preprocessor, and the shading language
+  proper. Every token's position is tracked to the file, line and
+  column, and comments are tagged to their nearest
+  token. <span class="glow">gloc</span>'s preprocessor is first-class,
+  open-scoped, and partial, which allows staged evaluation of
+  preprocessor directives as environmental parameters become known.
+</p>
+<p>After the parsing and evaluation of the preprocessor expressions,
+  <span class="glow">gloc</span> analyzes the potential shading language
+  token streams for validity (grammatical only in this release, type
+  checking will be added in a future
+  release). <span class="glow">gloc</span>'s shading language parser is
+  also open-scoped, allowing for undeclared variables, functions, and
+  types. Scope analysis is then performed on the token streams; and
+  finally, required and exported macros and symbols are inferred.
+</p>
+<p>The result of this scope analysis and a minimally modified
+  reserialization of the source is then packaged into a simple JSON
+  format, <a class="glow"
+  href="http://ashimagroup.net/gloc/#glo">glo</a>. The <span class="glow">glo</span>
+  format we have designed makes accurate linking as easy as possible
+  with a concise linking algorithm, <a class="glow"
+  href="http://ashimagroup.net/gloc/#glol">glol</a>. <span class="glow">glo</span>
+  includes support for link maps indicating the location of each linked
+  source fragment to aid debugging. Also included is optional
+  hyperlinked authorship metadata declaring the copyright holder,
+  author, license, library, version, and build. We recommend
+  transporting <span class="glow">glo</span> shader libraries in
+  the <a class="glow" href="http://ashimagroup.net/gloc/#glom">glom</a>
+  manifest format which provides an ordered, named, hierarchical JSON
+  structure around each
+  <span class="glow">glo</span>
+  object. The <span class="glow">glom</span> format
+  and <span class="glow">glol</span> algorithm are flexible enough to
+  provide storage and transport for arbitrary application-specific JSON objects in a
+  well-defined order.
+</p>
+<p>Finally, the generated <span class="glow">glo</span> files may be
+  linked back into valid shader programs
+  by <span class="glow">gloc</span> or a simple JavaScript
+  linker, <a href="http://ashimagroup.net/gloc/glol.js">glol.js</a>,
+  included with <a href="https://github.com/ashima/gloc/">the
+  distribution</a>. The linking algorithm takes a list of symbols to be
+  satisfied (['main'] by default) and a search path
+  of <span class="glow">glo</span> resources to use in shader
+  construction.
+</p>
+<h3>Where <span class="glow">gloc</span> lives:</h3>
+<p>The source code for the <a class="glow"
+  href="http://ashimagroup.net/gloc/">gloc</a> suite version 1.0.0 has
+  been released under the BSD 3-Clause license
+  on <a href="https://github.com/ashima/gloc/">GitHub</a>. A <a href="http://ashimagroup.net/gloc/glocode/">Web
+  interface</a> is immediately available.
+</p>
+<p>We heartily welcome community contributions and look forward to
+  working with the WebGL, OCaml, and WWW communities to build precision
+  tools for WebGL authors.
+</p>
+<p>Happy hacking! ~ David Sheets, Ashima Arts</p>
+</body>
+</html>
