@@ -1,8 +1,8 @@
-Fatal error: exception Gloc_lib.CompilerError(6, _)
+Fatal error: exception Pp_lib.ParserError("fusing empty pptok_expr list")
 Raised at file "glol.ml", line 51, characters 17-20
-Called from file "gloc_lib.ml", line 331, characters 15-39
-Re-raised at file "gloc_lib.ml", line 331, characters 56-57
-Called from file "gloc.ml", line 133, characters 34-62
+Called from file "gloc_lib.ml", line 284, characters 15-39
+Re-raised at file "gloc_lib.ml", line 284, characters 56-57
+Called from file "gloc.ml", line 140, characters 34-62
 Called from file "list.ml", line 69, characters 12-15
-Called from file "gloc.ml", line 138, characters 4-44
+Called from file "gloc.ml", line 145, characters 4-44
 Called from file "gloc_posix.ml", line 9, characters 10-75

@@ -4,7 +4,7 @@
   "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
     {
-      "insym": [ "q" ],
+      "insym": [ "x", "q", "z" ],
       "outsym": [ "z", "y", "x", "h" ],
       "source": "#line 1 GLOC_0\nint x=2, y=x, z=q, h=z;"
     }

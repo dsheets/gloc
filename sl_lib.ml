@@ -267,6 +267,15 @@ let bind_decl envr symt =
 let definitionp = function
   | {symt={v=Fun (_,_,None)}} -> false
   | _ -> true
+let uniformp = function
+  | {symt={v=Uniform _}} -> true
+  | _ -> false
+let attributep = function
+  | {symt={v=Attribute _}} -> true
+  | _ -> false
+let varyingp = function
+  | {symt={v=Varying _}} -> true
+  | _ -> false
 
 let lookup_prec envr pt =
   let env = !envr in
