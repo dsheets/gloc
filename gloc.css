@@ -41,6 +41,7 @@ tool
 #header { width:100%; background:#5da9cf; height:80px; border-bottom:5px solid #222029; }
 #header h1 { text-align:center; width:100%; color:#222029; padding-top:15px; }
 .flag, .input { text-align: right }
+.glow { color: white; text-shadow: 0 0 10px #FA0, 0 0 3px white }
 #gloc { top: 103px; right: 10px; float:right; }
 .fs { width: 50%; margin-top:20px; }
 #gloc-cmd { font-size: 20pt }
@@ -52,7 +53,7 @@ h2 { display: inline }
 .CodeMirror { border-right: 1px solid #ccc; }
 .CodeMirror-scroll { height: auto; overflow: visible; }
 .CodeMirror-gutter-text { color: #999; }
-.suffix { color: #999 }
+.suffix { color: #666 }
 
 #fs { margin-left:8px; }
 #fs h2 { text-shadow: 0px 1px 0px #fff; }
