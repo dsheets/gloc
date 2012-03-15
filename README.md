@@ -14,9 +14,9 @@ shader systems. *gloc 1.0* features:
  - runs as a native binary and in-the-browser via js_of_ocaml
 
 *gloc* is distributed as source code via this repository as well as a
- [compiled JavaScript tool](http://ashimagroup.net/gloc/glocode/). *glol*, the
+ [compiled JavaScript tool](http://ashimaarts.com/gloc/glocode/). *glol*, the
  *glo* linking algorithm, is [also
- available](http://ashimagroup.net/gloc/glol.js) for your development convenience.
+ available](http://ashimaarts.com/gloc/glol.js) for your development convenience.
 
 *gloc* is licensed under a
  [BSD-3-Clause](https://github.com/ashima/gloc/blob/master/LICENSE)
@@ -105,8 +105,8 @@ concerns, just ask! :-)
 ### WebGL Application Developers
 
 WebGL application developers need only to use the [JavaScript *glol*
-link algorithm](http://ashimagroup.net/gloc/glol.js) and the
-[glocode](http://ashimagroup.net/gloc/glocode/) development
+link algorithm](http://ashimaarts.com/gloc/glol.js) and the
+[glocode](http://ashimaarts.com/gloc/glocode/) development
 environment. No local software installation is required.
 
 ### Shader Developers
