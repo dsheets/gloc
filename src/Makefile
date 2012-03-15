@@ -26,6 +26,17 @@ glocode: gloc_xml.d.byte
 	mkdir -p ${GLOCODE}/_build/
 	make gloc_js.d.js
 	cp _build/gloc_js.d.js ${GLOCODE}/_build/
+	cp glol.js ${DOC}/
+	make gloc.d.byte
+	cd ../test/webgl/glol && make html
+	mkdir -p ${DOC}/test/webgl/glol
+	cp ../test/webgl/glol/test_page.html ${DOC}/test/webgl/glol/index.html
+	cp ../test/webgl/glol/test_glol.js ${DOC}/test/webgl/glol/
+	make glol_js.d.js
+	mkdir -p ${DOC}/_build/
+	cp _build/glol_js.d.js ${DOC}/_build/
+	mkdir -p ${DOC}/Pretty-Diff/
+	cp ../Pretty-Diff/prettydiff.js ${DOC}/Pretty-Diff/
 
 gloc_js.d.js:
 	${RM_ANNOT}

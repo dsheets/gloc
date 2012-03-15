@@ -29,8 +29,6 @@ table.diff tbody tr th, table.diff tbody tr td { border-top:1px solid #999;  }
 table.diff tbody tr th { border-right:1px solid #999; border-left:1px solid #999; }
 table.diff thead tr th.texttitle { border-left:1px solid #999; font-size:80%; }
 table.diff tfoot tr th { border-top:1px solid #999; border-left:1px solid #999; }	
-em { background: #fdd; font-weight:bold; }
-p em { background:none; font-weight:normal; }
 td.posix, td.js_of_ocaml, td.javascript { /*width:33%; max-width:33%; */ vertical-align:top; }
 td.posix p, td.js_of_ocaml p, td.javascript p { font-size:smaller; }
 

@@ -7,11 +7,11 @@
         return function(name,fn) { m[name] = fn; };
       })(ocaml);
     </script>
-    <script type="text/javascript" src="../../../src/glol.js"></script>
-    <script type="text/javascript" src="../../../src/_build/glol_js.d.js"></script>
-    <script type="text/javascript" src="../../../Pretty-Diff/prettydiff.js"></script>
+    <script type="text/javascript" src="/gloc/glol.js"></script>
+    <script type="text/javascript" src="/gloc/_build/glol_js.d.js"></script>
+    <script type="text/javascript" src="/gloc/Pretty-Diff/prettydiff.js"></script>
     <script type="text/javascript" src="test_glol.js"></script>
-    <link rel="stylesheet" href="../../../src/gloc.css" type="text/css" />
+    <link rel="stylesheet" href="/gloc/gloc.css" type="text/css" />
   </head>
   <body>
     <tests />

@@ -1,8 +1,13 @@
 <doc>
   <div id="header"><h1><span class="glow">glo</span>c
-  by <a href="http://ashimaarts.com/">Ashima Arts</a></h1></div>
+  <span style="font-weight: normal">by</span> <a href="http://ashimaarts.com/">Ashima Arts</a></h1></div>
 
-
+  <div style="text-align: center; margin: 1em">
+    <img src="gloc_pipeline.png"
+         alt="gloc pipeline: gloc transforms ES SL into glo object files which are subsequently linked with other glo resources using glol to produce WebGL shaders"/><br />
+    <em>gloc pipeline: gloc transforms ES SL into glo object files which are      
+  subsequently linked with other glo resources using glol to produce WebGL shaders</em>
+  </div>
 
   <p id="gloc"><h2>gloc components</h2></p>
 
