@@ -1,0 +1,23 @@
+cd src/
+make gloc.d.byte
+ln -s src/gloc.d.byte <some dir in $PATH>/gloc
+
+Remember, you will need:
+
+ - [GNU Make](http://www.gnu.org/software/make/)
+ - [OCaml 3.12.0+](http://caml.inria.fr/)
+ - [ulex](http://cduce.org/download.html)
+ - [menhir](http://gallium.inria.fr/~fpottier/menhir/)
+ - [ocaml-re](https://github.com/avsm/ocaml-re)
+
+You will also need recent versions of Martin Jambon's atdgen and friends
+in approximately this order:
+
+ - [yojson 1.1+](https://github.com/mjambon/yojson)
+ - [atd](https://github.com/MyLifeLabs/atd)
+ - [atdgen](https://github.com/MyLifeLabs/atdgen)
+
+These software packages may be available in your operating system's
+package repository. See [the gloc GitHub wiki
+page](https://github.com/ashima/gloc/wiki) for more detailed
+installation information.
