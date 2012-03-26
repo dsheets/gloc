@@ -1,6 +1,7 @@
+<install>
 cd src/
 make gloc.d.byte
-ln -s src/gloc.d.byte <some dir in $PATH>/gloc
+ln -s `pwd`/gloc.d.byte <some dir in $PATH>/gloc
 
 Remember, you will need:
 
@@ -21,3 +22,4 @@ These software packages may be available in your operating system's
 package repository. See [the gloc GitHub wiki
 page](https://github.com/ashima/gloc/wiki) for more detailed
 installation information.
+</install>
