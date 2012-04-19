@@ -1,0 +1,1 @@
+[["multipath.glsl",{"glo":[1,0,0],"target":["webgl",[1,0,0]],"meta":{"copyright":[2012,["",""]]},"units":[{"outsym":["a"],"source":"#line 1 GLOC_0\nvoid a() { }"}],"linkmap":{"0":"#n=0"}}],["multipath.glsl",{"glo":[1,0,0],"target":["webgl",[1,0,0]],"meta":{"copyright":[2012,["",""]]},"units":[{"outsym":["b"],"source":"#line 1 GLOC_0\nvoid b() { }"}],"linkmap":{"0":"#n=0"}}]]
