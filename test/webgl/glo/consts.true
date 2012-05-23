@@ -1,7 +1,6 @@
 {
   "glo": [ 1, 0, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
     {
       "outsym": [ "myfun", "g" ],

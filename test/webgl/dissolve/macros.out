@@ -1,7 +1,6 @@
 {
   "glo": [ 1, 0, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
     { "outmac": [ "Q" ], "source": "#line 1 GLOC_0\n#define Q 1" },
     { "outmac": [ "W" ], "source": "#line 2 GLOC_0\n#define W 2" },

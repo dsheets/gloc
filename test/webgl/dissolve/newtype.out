@@ -1,7 +1,6 @@
 {
   "glo": [ 1, 0, 0 ],
   "target": [ "webgl", [ 1, 0, 0 ] ],
-  "meta": { "copyright": [ 2012, [ "", "" ] ] },
   "units": [
     { "outsym": [ "k" ], "source": "#line 1 GLOC_0\nstruct k { float j; };" },
     { "outsym": [ "s" ], "source": "#line 2 GLOC_0\nstruct s { int f; };" },
