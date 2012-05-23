@@ -1,0 +1,29 @@
+{
+  "name" : "gloc",
+  "preferGlobal" : "true",
+  "version" : "1.0.0",
+  "author"  : "Ashima Arts",
+  "contributor" : [
+    {
+      "name" : "David Sheets",
+      "email" : "sheets@ashimaarts.com"
+    },
+    {
+      "name" : "Tikhon Jelvis",
+      "email" : "tikhon@berkeley.edu"
+    }
+  ],
+  "description" : "glsl object compiler",
+  "bin" : {
+    "gloc" : "./bin/gloc.js"
+  },
+  "scripts" : {
+    "start" : "node bin/gloc.js"
+  },
+  "repository" : {
+    "type" : "git",
+    "url" : "https://github.com/ashima/gloc.git"
+  },
+  "keywords" : ["compiler", "webgl", "glsl", "opengl", "gloc", "glol", "ocaml"],
+  "license" : "BSD 3 Clause"
+}
