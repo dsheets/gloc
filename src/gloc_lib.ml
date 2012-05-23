@@ -69,19 +69,19 @@ exception CompilerError of component * exn list
 
 type 'a input = Stream of 'a | Define of 'a
 
-type state = {stage:stage ref;
-              verbose:bool ref;
-              dissolve:bool ref;
-              linectrl:bool ref;
-              metadata:meta ref;
-              symbols:string list ref;
-              output:string ref;
-              inputs:string input list ref;
-              prologue:string list ref;
-              inlang:Lang.language ref;
-              outlang:Lang.language ref;
-              accuracy:Lang.accuracy ref;
-             }
+type 'a state = {stage:stage ref;
+                 verbose:bool ref;
+                 dissolve:bool ref;
+                 linectrl:bool ref;
+                 metadata:'a option ref;
+                 symbols:string list ref;
+                 output:string ref;
+                 inputs:string input list ref;
+                 prologue:string list ref;
+                 inlang:Lang.language ref;
+                 outlang:Lang.language ref;
+                 accuracy:Lang.accuracy ref;
+                }
 
 let default_lang = { Lang.dialect=Lang.WebGL;
                      Lang.version=(1,0,0);
@@ -149,7 +149,7 @@ let compile exec_state fn source =
   let meta = !(exec_state.metadata) in
   try (if !(exec_state.dissolve)
     then Glo.dissolve else Glo.compile)
-        ~meta !(exec_state.inlang) fn ppexpr ppl
+        ?meta !(exec_state.inlang) fn ppexpr ppl
   with (CompilerError _) as e -> raise e
     | err -> raise (CompilerError (SLParser, [err]))
 
@@ -180,7 +180,7 @@ let make_define_unit ds =
     | m::d::_ -> u m (make_define_line ds)
 
 let glo_of_u meta target u =
-  {glo=glo_version; target; meta=Some meta; units=[|u|]; linkmap=[]}
+  {glo=glo_version; target; meta; units=[|u|]; linkmap=[]}
 
 let make_glo exec_state fn s =
   match glom_of_string s with
