@@ -193,7 +193,7 @@ let compile ?meta lang fn origexpr ppl =
   let target = Language.target_of_language lang in
   let body_unit, file_nums = create_unit origexpr ppl in
   let linkmap = List.map link_of_filenum file_nums in
-  Glo {glo=glo_version; target; meta; units=[|body_unit|]; linkmap}
+  Leaf {glo=glo_version; target; meta; units=[|body_unit|]; linkmap}
 
 let input_decl_a x =
   (x.Sl_lib.qualt.span.a.line.input,x.Sl_lib.qualt.span.a.col)
@@ -345,10 +345,10 @@ let dissolve ?meta lang fn origexpr ppl =
         comments env (dfn,oglo) glom c requires
           ((Line {ldt with comments=([],snd ldt.comments)})::r)
     | (List {v})::r -> loop env (dfn,oglo) glom requires (v@r)
-    | [] -> List.rev ((dfn,Glo {oglo with linkmap=unique fst oglo.linkmap})::glom)
+    | [] -> List.rev ((dfn,Leaf {oglo with linkmap=unique fst oglo.linkmap})::glom)
   and comments env (dfn,oglo) glom c =
     let glom = if 0=(Array.length oglo.units) then glom
-      else ((dfn,Glo {oglo with linkmap=unique fst oglo.linkmap})::glom)
+      else ((dfn,Leaf {oglo with linkmap=unique fst oglo.linkmap})::glom)
     in match extract_meta c with
       | NoMeta -> loop env (dfn,oglo) glom
       | EndMeta -> loop env (dfn,pglo) glom

@@ -13,7 +13,7 @@ open Yojson
 include Glo_t
 
 type 'a glom =
-  | Glo of 'a glo
+  | Leaf of 'a
   | Glom of (string * 'a glom) list
   | Source of string
   | Other of Yojson.Safe.json
@@ -40,9 +40,9 @@ let string_of_glo glo =
       Bi_outbuf.add_string b (Safe.to_string (`String s))
     ) glo
 
-let rec json_of_glom : string glom -> Yojson.Safe.json = function
+let rec json_of_glom : string glo glom -> Yojson.Safe.json = function
   (* TODO: don't serialize! *)
-  | Glo glo -> Safe.from_string (string_of_glo glo)
+  | Leaf glo -> Safe.from_string (string_of_glo glo)
   | Glom glom ->
     `List (List.map (fun (n,glom) -> `List [`String n; json_of_glom glom]) glom)
   | Source s ->
@@ -64,7 +64,7 @@ let rec glom_of_json = function
          | _ ->
            raise (InvalidGlom "glom array type must be (string * (glo|glom)) list")
        ) jl)
-  | `Assoc al -> Glo (glo_of_json (`Assoc al))
+  | `Assoc al -> Leaf (glo_of_json (`Assoc al))
   | _ -> raise (Json_error "expected glom array or glo object")
 
 let glom_of_string s =

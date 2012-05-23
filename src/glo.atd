@@ -7,12 +7,12 @@ type 'a glo = {
 }
 
 type meta = {
-  copyright:(year * href);
-  ~author:href list;
-  ?license:href option;
-  ?library:href option;
+  copyright:(year * titled_href);
+  ~author:titled_href list;
+  ?license:titled_href option;
+  ?library:titled_href option;
   ?version:(version * url) option;
-  ?build:href option;
+  ?build:titled_href option;
 }
 
 type 'a u = {
@@ -34,7 +34,7 @@ type 'a u = {
 }
 
 type url = string
-type href = (string * url)
+type titled_href = (string * url)
 type year = int
 type version = (int * int * int)
 type glom <ocaml_json module="Yojson.Safe" t="json"> = abstract
