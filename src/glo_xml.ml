@@ -82,7 +82,7 @@ let format_glo attrs glo =
           [Atom (xml_escape (string_of_glo glo),atom)]])
 
 let rec format_glom nameopt = function
-  | Glo glo -> format_glo (attr_of_nameopt nameopt) glo
+  | Leaf glo -> format_glo (attr_of_nameopt nameopt) glo
   | Glom [] -> Atom ("",atom)
   | Glom gl -> format_tag "glom" (attr_of_nameopt nameopt)
     (List.map (fun (n,glom) -> format_glom (Some n) glom) gl)

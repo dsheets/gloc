@@ -201,7 +201,7 @@ let make_glom exec_state inputs =
     else Glol.nest glo_alist
 
 let minimize_glom = function
-  | Glom [_,Glo glo] -> Glo glo
+  | Glom [_,Leaf glo] -> Leaf glo
   | x -> x
 
 let string_of_error linectrl = function

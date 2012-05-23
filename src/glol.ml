@@ -267,7 +267,7 @@ let link prologue required glo_alist =
 (* Flatten a glom into an association list and remove non-glo elements *)
 let flatten prefix glom =
   let rec descend prefix l = function
-    | (n,Glo glo) -> (prefix^n, glo)::l
+    | (n,Leaf glo) -> (prefix^n, glo)::l
     | (n,Glom glom) -> List.fold_left
       (fun l p -> descend (prefix^n^"/") l p) l glom
     | (n,Source _) | (n,Other _) -> l
@@ -275,7 +275,7 @@ let flatten prefix glom =
     | Glom glom -> List.rev
       (List.fold_left
          (fun l p -> descend prefix l p) [] glom)
-    | Glo glo -> [prefix,glo]
+    | Leaf glo -> [prefix,glo]
     | Source _ | Other _ -> []
 
 (* Nest a glo alist back into a glom *)

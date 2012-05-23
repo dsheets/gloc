@@ -153,7 +153,7 @@ module Make(P : Platform) = struct
       Buffer.add_string b (if !(exec_state.verbose)
         then Yojson.Safe.pretty_to_string ~std:true o
         else Yojson.Safe.to_string ~std:true o)
-    | Glo glo ->
+    | Leaf glo ->
       let s = string_of_glo glo in
       Buffer.add_string b
         ((if !(exec_state.verbose)
@@ -168,7 +168,7 @@ module Make(P : Platform) = struct
   let rec source_of_glom fn = function
     | Source s -> begin match glom_of_string s with Source s -> s
         | glom -> source_of_glom fn glom end
-    | Glo glo -> if (Array.length glo.units)=1
+    | Leaf glo -> if (Array.length glo.units)=1
       then Glol.armor glo.meta (fn,glo.linkmap,0) []
         glo.units.(0).source
       else raise (CompilerError (PPDiverge, [MultiUnitGloPPOnly fn]))
@@ -206,7 +206,7 @@ module Make(P : Platform) = struct
               with e -> compiler_error exec_state Command [e] end
           | Define ds -> if ds="" then ("[--define]", Define (Source ""))
             else ("[--define "^ds^"]",
-                  Define (Glo (glo_of_u !(exec_state.metadata)
+                  Define (Leaf (glo_of_u !(exec_state.metadata)
                                  (Language.target_of_language !(exec_state.outlang))
                                  (make_define_unit ds))))
         ) il
