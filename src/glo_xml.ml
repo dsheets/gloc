@@ -5,17 +5,19 @@ let block = { list with
   space_after_opening = false;
   space_after_separator = false;
   space_before_closing = false }
-let attrs = { list with
-  space_after_opening = false;
-  space_after_separator = false;
-  space_before_closing = false;
-  align_closing = false }
-let naked = { list with
-  space_after_opening = false;
-  space_after_separator = false;
-  space_before_closing = false;
-  indent_body = 0 }
+let attrs = { block with align_closing = false }
+let naked = { block with indent_body = 0 }
 let tag = { label with space_after_label = false; indent_after_label = 0 }
+
+let xml_escape s =
+  let special = Re_str.regexp "\\(>\\|<\\|&\\)" in
+  Re_str.global_substitute special
+    (fun s -> match Re_str.matched_string s with
+      | "<" -> "&lt;"
+      | ">" -> "&gt;"
+      | "&" -> "&amp;"
+      | x -> x
+    ) s
 
 let format_naked fl = List (("","\n","",naked),fl)
 
@@ -62,7 +64,7 @@ let format_unit u =
        format_tag "macro" ["sort","open"] [Atom (m,atom)]) u.opmac)
      @(List.map (fun m ->
        format_tag "macro" ["sort","out"] [Atom (m,atom)]) u.outmac)
-     @[format_tag "source" [] [Atom (u.source,atom)]])
+     @[format_tag "source" [] [Atom (xml_escape u.source,atom)]])
 
 let attr_of_nameopt = function
   | None -> []
@@ -77,14 +79,15 @@ let format_glo attrs glo =
      @(List.map format_unit (Array.to_list glo.units))
      @(List.map (format_link "link" []) glo.linkmap)
      @[format_tag "json" []
-          [Atom (string_of_glo glo,atom)]])
+          [Atom (xml_escape (string_of_glo glo),atom)]])
 
 let rec format_glom nameopt = function
   | Glo glo -> format_glo (attr_of_nameopt nameopt) glo
   | Glom [] -> Atom ("",atom)
   | Glom gl -> format_tag "glom" (attr_of_nameopt nameopt)
     (List.map (fun (n,glom) -> format_glom (Some n) glom) gl)
-  | Source s -> format_tag "source" (attr_of_nameopt nameopt) [Atom (s,atom)]
+  | Source s -> format_tag "source" (attr_of_nameopt nameopt)
+    [Atom (xml_escape s,atom)]
   | Other o -> format_tag "extra" (attr_of_nameopt nameopt)
     [Atom (Yojson.Safe.to_string o,atom)]
 
