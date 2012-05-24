@@ -1,5 +1,4 @@
 #pragma STDGL invariant(all)/*  holy*/
-// Copyright 2012  <> All rights reserved.
 #line 1 0/* pragma_b.glsl#n=0 */
 #pragma optimize(on)
 
@@ -7,6 +6,5 @@ void f() { }
 
 #pragma optimize(off)
 // End: Copyright
-// Copyright 2012  <> All rights reserved.
 #line 3 1/* pragma_a.glsl#n=0 */
 void main() { f(); }

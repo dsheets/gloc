@@ -1,15 +1,12 @@
-// Copyright 2012  <> All rights reserved.
 #line 1 0/* conflict_c.glsl#n=0 */
 int q() { return 1; }
 void f() { }
 // End: Copyright
-// Copyright 2012  <> All rights reserved.
 #line 1 1/* conflict_b.glsl#n=0 */
 #define q 2
 void g() {}
 #undef q
 // End: Copyright
-// Copyright 2012  <> All rights reserved.
 #line 1 2/* conflict.glsl#n=0 */
 void main() {
      f();

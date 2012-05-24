@@ -1,4 +1,3 @@
-// Copyright 2012  <> All rights reserved.
 #line 1 211/* regex_line_dir.glsl#n=211 */
 void f() {}
 #line 1 21/* regex_line_dir.glsl#n=21 */
