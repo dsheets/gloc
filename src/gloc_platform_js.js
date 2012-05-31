@@ -17,29 +17,32 @@ var register_ocaml_fn = (function(m) {
 
 var fs = {};
 
-function gloc_stdout(s) {
+function gloc_stdout(s, cb) {
     var f = fs["[stdout]"];
     f.editor.setValue(s);
     f.show();
+    cb();
 }
 
-function gloc_stderr(s) {
+function gloc_stderr(s, cb) {
     var f = fs["[stderr]"];
     f.editor.setValue(f.editor.getValue()+s);
     f.show();
+    cb();
 }
 
-function gloc_stdin() {
-    return fs["[stdin]"].editor.getValue();
+function gloc_stdin(cb) {
+    cb(fs["[stdin]"].editor.getValue());
 }
 
-function gloc_fs_read(fn) {
-    return fs[fn].editor.getValue();
+function gloc_fs_read(path, cb) {
+    cb(fs[path].editor.getValue());
 }
 
-function gloc_fs_write(fn, s) {
-    fs[fn].editor.setValue(s);
-    fs[fn].show();
+function gloc_fs_write(path, s, cb) {
+    fs[path].editor.setValue(s);
+    fs[path].show();
+    cb();
 }
 
 var std = {"[stdout]": false, "[stdin]": false, "[stderr]": false};
@@ -131,7 +134,7 @@ function init_gloc() {
         args = args.join(" ").split(" ").filter(function (s) { return s!=""; });
         fs["[stderr]"].editor.setValue("");
         fs["[stdout]"].editor.setValue("");
-        ocaml.gloc(args);
+        ocaml.gloc(args,function() { /* TODO */ },function () { /* TODO */ });
         return false;
     };
 }

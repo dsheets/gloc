@@ -17,8 +17,8 @@ module type Platform = sig
   val id : [> `POSIX | `JS | `NODE_JS ]
   val get_year : unit -> int
   val eprint : string -> unit Lwt.t
-  val out_of_filename : Lwt_io.file_name -> (Lwt_io.output_channel -> 'a Lwt.t) -> 'a Lwt.t
-  val in_of_filename : Lwt_io.file_name -> string Lwt.t
+  val out_of_filename : string -> string -> unit Lwt.t
+  val in_of_filename : string -> string Lwt.t
 end
 
 exception Exit of int
@@ -147,46 +147,43 @@ module Make(P : Platform) = struct
                        ^" ("^(string_of_int code)^")\n") in
     Lwt.fail (Exit code)
 
-  let rec write_glom exec_state fn oc = function
-    | Source s -> write_glom exec_state fn oc (make_glo exec_state fn s)
+  let rec write_glom exec_state path = function
+    | Source s -> write_glom exec_state path (make_glo exec_state path s)
     | Other o ->
-      Lwt_io.write oc (if !(exec_state.verbose)
-        then Yojson.Safe.pretty_to_string ~std:true o
-        else Yojson.Safe.to_string ~std:true o)
+      if !(exec_state.verbose)
+      then Yojson.Safe.pretty_to_string ~std:true o
+      else Yojson.Safe.to_string ~std:true o
     | Leaf glo ->
       let s = string_of_glo glo in
-      Lwt_io.write oc
-        ((if !(exec_state.verbose)
-          then Yojson.Safe.prettify ~std:true s else s)^"\n")
+      (if !(exec_state.verbose)
+       then Yojson.Safe.prettify ~std:true s else s)^"\n"
     | Glom glom ->
       let json = json_of_glom (Glom glom) in
-      Lwt_io.write oc
-        ((if !(exec_state.verbose)
-          then Yojson.Safe.pretty_to_string ~std:true json
-          else Yojson.Safe.to_string ~std:true json)^"\n")
+      (if !(exec_state.verbose)
+       then Yojson.Safe.pretty_to_string ~std:true json
+       else Yojson.Safe.to_string ~std:true json)^"\n"
 
-  let rec source_of_glom fn = function
+  let rec source_of_glom path = function
     | Source s -> begin match glom_of_string s with Source s -> s
-        | glom -> source_of_glom fn glom end
+        | glom -> source_of_glom path glom end
     | Leaf glo -> if (Array.length glo.units)=1
-      then Glol.armor glo.meta (fn,glo.linkmap,0) []
+      then Glol.armor glo.meta (path,glo.linkmap,0) []
         glo.units.(0).source
-      else raise (CompilerError (PPDiverge, [MultiUnitGloPPOnly fn]))
-    | Glom ((n,glom)::[]) -> source_of_glom (fn^"/"^n) glom
-    | Glom _ -> raise (CompilerError (PPDiverge, [GlomPPOnly fn]))
+      else raise (CompilerError (PPDiverge, [MultiUnitGloPPOnly path]))
+    | Glom ((n,glom)::[]) -> source_of_glom (path^"/"^n) glom
+    | Glom _ -> raise (CompilerError (PPDiverge, [GlomPPOnly path]))
     | Other o -> raise (Failure "cannot get source of unknown json") (* TODO *)
 
-  let write_glopp exec_state fn oc prologue glom =
-    let ppexpr = parse !(exec_state.inlang) (source_of_glom fn glom) in
-    Lwt_io.write oc
-      ((string_of_ppexpr start_loc
-          (match !(exec_state.stage) with
-            | ParsePP -> ppexpr
-            | Preprocess ->
-              check_pp_divergence (preprocess !(exec_state.outlang) ppexpr)
-            | s -> (* TODO: stage? error message? tests? *)
-              raise (CompilerError (PPDiverge, [GloppStageError s]))
-          ))^"\n")
+  let write_glopp exec_state path prologue glom =
+    let ppexpr = parse !(exec_state.inlang) (source_of_glom path glom) in
+    (string_of_ppexpr start_loc
+       (match !(exec_state.stage) with
+         | ParsePP -> ppexpr
+         | Preprocess ->
+           check_pp_divergence (preprocess !(exec_state.outlang) ppexpr)
+         | s -> (* TODO: stage? error message? tests? *)
+           raise (CompilerError (PPDiverge, [GloppStageError s]))
+       ))^"\n"
 
   let streamp = function Stream _ -> true | _ -> false
   let stream_inputp il = List.exists streamp il
@@ -204,9 +201,9 @@ module Make(P : Platform) = struct
     let req_sym = List.rev !(exec_state.symbols) in
     lwt inputs = Lwt_list.map_p
       (function
-        | Stream fn ->
-          begin try_lwt lwt src = P.in_of_filename fn in
-            Lwt.return (fn, Stream (Source src))
+        | Stream path ->
+          begin try_lwt lwt src = P.in_of_filename path in
+            Lwt.return (path, Stream (Source src))
           with e -> compiler_error exec_state Command [e] end
         | Define ds -> Lwt.return
           (if ds="" then ("[--define]", Define (Source ""))
@@ -215,49 +212,45 @@ module Make(P : Platform) = struct
                                  (Language.target_of_language !(exec_state.outlang))
                                  (make_define_unit ds)))))
       ) !(exec_state.inputs)
-    in
+  in
     lwt inputs = if stream_inputp (List.map snd inputs)
       then Lwt.return inputs
       else (lwt src = P.in_of_filename "-" in
               Lwt.return (("[stdin]", Stream (Source src))::inputs)) in
-    let fn = !(exec_state.output) in
+    let path = !(exec_state.output) in
     try begin match !(exec_state.stage) with
       | Contents ->
-        P.out_of_filename fn
-          (fun oc -> Lwt_io.write oc (source_of_glom fn
-                                        (make_glom exec_state inputs)))
+        P.out_of_filename path
+          (source_of_glom path
+             (make_glom exec_state inputs))
       | XML ->
-        P.out_of_filename fn
-          (fun oc -> Lwt_io.write oc
-            (Glo_xml.xml_of_glom ~xsl:"glocode.xsl" ~pretty:true
-               (make_glom exec_state inputs)))
+        P.out_of_filename path
+          (Glo_xml.xml_of_glom ~xsl:"glocode.xsl" ~pretty:true
+             (make_glom exec_state inputs))
       | Link ->
         let glom = make_glom exec_state inputs in
         let prologue = prologue exec_state in
         let src = link prologue req_sym glom in
-        P.out_of_filename fn
-          (fun oc -> Lwt_io.write oc
-            ((if !(exec_state.accuracy)=Language.Preprocess
-              then string_of_ppexpr start_loc
-                (check_pp_divergence
-                   (preprocess !(exec_state.inlang)
-                      (parse !(exec_state.inlang) src)))
-              else src)))
+        P.out_of_filename path
+          ((if !(exec_state.accuracy)=Language.Preprocess
+            then string_of_ppexpr start_loc
+              (check_pp_divergence
+                 (preprocess !(exec_state.inlang)
+                    (parse !(exec_state.inlang) src)))
+            else src))
       | Compile -> (* TODO: consolidate glo *)
-        P.out_of_filename fn
-          (fun oc ->
-            let glom = make_glom exec_state inputs in
-            write_glom exec_state fn oc (minimize_glom glom))
+        P.out_of_filename path
+          (let glom = make_glom exec_state inputs in
+           write_glom exec_state path (minimize_glom glom))
       | Preprocess | ParsePP ->
-        P.out_of_filename fn
-          (fun oc ->
-            if (List.length (List.filter (fun (_,i) -> streamp i) inputs))=1
-            then Lwt_list.iter_s
-              (function (_,Define d) -> Lwt.return ()
+        P.out_of_filename path
+          (if (List.length (List.filter (fun (_,i) -> streamp i) inputs))=1
+           then List.fold_left
+              (fun a -> function (_,Define d) -> a
                 | (_,Stream s) ->
                   let prologue = prologue exec_state in
-                  write_glopp exec_state fn oc prologue s) inputs
-            else (* TODO: real exception *)
+                  a^(write_glopp exec_state path prologue s)) "" inputs
+           else (* TODO: real exception *)
               raise (Failure "too many input streams to preprocess"))
     end
     with CompilerError (k,errs) ->

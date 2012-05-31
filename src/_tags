@@ -1,3 +1,5 @@
+<io_util.*>: syntax(camlp4o), package(lwt), package(lwt.syntax)
+
 <pp.*>: package(re.str)
 <esslpp_lex.*>: syntax(camlp4o), package(ulex)
 <gloc.*>: syntax(camlp4o), package(atdgen), package(lwt), package(lwt.syntax)
@@ -6,7 +8,7 @@
 <gloc_js.*>: syntax(camlp4o), package(ulex), package(atdgen), package(menhirLib), package(re.str), package(js_of_ocaml), package(js_of_ocaml.syntax)
 <platform_js.*>: syntax(camlp4o), package(js_of_ocaml), package(js_of_ocaml.syntax)
 
-<gloc_xml.*>: package(atdgen), package(ulex), package(menhirLib), package(re.str)
+<gloc_xml.*>: package(atdgen), package(ulex), package(menhirLib), package(re.str), package(lwt)
 <gloc_lib.*>: package(atdgen), package(re.str)
 <glol.*>: package(atdgen), package(re.str)
 <glol_js.*>: syntax(camlp4o), package(js_of_ocaml), package(js_of_ocaml.syntax), package(re.str), package(atdgen), package(ulex), package(menhirLib)
