@@ -1,22 +1,19 @@
 {
   "name" : "gloc",
   "preferGlobal" : "true",
-  "version" : "1.0.0",
+  "version" : "1.1.0",
   "author"  : "Ashima Arts",
+  "homepage": "http://ashimaarts.com/gloc/",
+  "bugs"    : {
+    "url"  : "https://github.com/ashima/gloc/issues",
+    "email": "gloc-users@lists.forge.ocamlcore.org"
+  },
   "contributor" : [
-    {
-      "name" : "David Sheets",
-      "email" : "sheets@ashimaarts.com"
-    },
-    {
-      "name" : "Tikhon Jelvis",
-      "email" : "tikhon@berkeley.edu"
-    }
+    "David Sheets <sheets@ashimaarts.com>",
+    "Tikhon Jelvis <tikhon@berkeley.edu>"
   ],
   "description" : "glsl object compiler",
-  "bin" : {
-    "gloc" : "./bin/gloc.js"
-  },
+  "bin" : "./bin/gloc.js",
   "scripts" : {
     "start" : "node bin/gloc.js"
   },
