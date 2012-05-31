@@ -5,7 +5,7 @@
 <gloc.*>: syntax(camlp4o), package(atdgen), package(lwt), package(lwt.syntax)
 <gloc_posix.*>: syntax(camlp4o), package(ulex), package(atdgen), package(menhirLib), package(re.str), package(lwt.syntax), package(lwt.unix)
 <platform_posix.*>: syntax(camlp4o), package(lwt), package(lwt.unix), package(lwt.syntax)
-<gloc_js.*>: syntax(camlp4o), package(ulex), package(atdgen), package(menhirLib), package(re.str), package(js_of_ocaml), package(js_of_ocaml.syntax)
+<gloc_js.*>: syntax(camlp4o), package(ulex), package(atdgen), package(menhirLib), package(re.str), package(js_of_ocaml), package(js_of_ocaml.syntax), package(lwt.syntax)
 <platform_js.*>: syntax(camlp4o), package(js_of_ocaml), package(js_of_ocaml.syntax)
 
 <gloc_xml.*>: package(atdgen), package(ulex), package(menhirLib), package(re.str), package(lwt)

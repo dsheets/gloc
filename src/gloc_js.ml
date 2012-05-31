@@ -15,18 +15,16 @@ module Platform_js = struct
   let get_year () = (jsnew date_now ())##getFullYear ()
   let eprint s = Lwt.return (stderr (string s) (fun () -> ()))
   let out_of_filename path s =
-    let c = Lwt_condition.create () in
-    let wc = Lwt_condition.wait c in
+    let res, w = Lwt.wait () in
     (if path="-" then stdout else fs_write (string path))
       (string s)
-      (fun () -> Lwt_condition.signal c ());
-    wc
+      (Lwt.wakeup w);
+    res
   let in_of_filename path =
-    let c = Lwt_condition.create () in
-    let wc = Lwt_condition.wait c in
+    let res, w = Lwt.wait () in
     (if path="-" then stdin else fs_read (string path))
-      (fun s -> Lwt_condition.broadcast c (to_string s));
-    wc
+      (fun s -> Lwt.wakeup w (to_string s));
+    res
 end
 
 module Gloc_js = Gloc.Make(Platform_js)
@@ -38,24 +36,20 @@ let gloc args callback errback =
   let exec_state = Gloc_lib.new_exec_state None in
   let (specs, anon) = arg_of_cli exec_state Gloc.cli in
   let () = Arg.parse_argv ~current:(ref 0) args specs anon Gloc.usage_msg in
-  Lwt.catch
-    (fun () -> Lwt.bind (gloc exec_state)
-      (fun () -> Lwt.return (Js.Unsafe.fun_call callback [||])))
-    (function
-      | Gloc.Exit c ->
-        Lwt.bind (Platform_js.eprint ("Exit "^(string_of_int c)))
-          (fun () -> Lwt.return (Js.Unsafe.fun_call errback [||]))
-      | Gloc_lib.CompilerError(_,el) -> (* TODO: FIXME *)
-        Lwt.bind (Platform_js.eprint "CompilerError:\n")
-          (fun () ->
-            Lwt.bind
-              (Lwt_list.iter_s
-                 (fun exn -> Platform_js.eprint ((Printexc.to_string exn)^"\n"))
-                 el)
-              (fun () -> Lwt.return (Js.Unsafe.fun_call errback [||])))
-      | e -> Lwt.bind
-        (Platform_js.eprint (Printexc.to_string e))
-        (fun () -> Lwt.return (Js.Unsafe.fun_call errback [||]))
-    )
+  try_lwt
+    lwt () = gloc exec_state in
+    Lwt.return (Js.Unsafe.fun_call callback [||])
+  with
+    | Gloc.Exit c ->
+      lwt () = Platform_js.eprint ("Exit "^(string_of_int c)^"\n") in
+      Lwt.return (Js.Unsafe.fun_call errback [||])
+    | Gloc_lib.CompilerError(_,el) -> (* TODO: FIXME *)
+      lwt () = Platform_js.eprint "CompilerError:\n" in
+      lwt () = Lwt_list.iter_s
+          (fun exn -> Platform_js.eprint ((Printexc.to_string exn)^"\n"))
+          el in
+      Lwt.return (Js.Unsafe.fun_call errback [||])
+    | e -> lwt () = Platform_js.eprint ((Printexc.to_string e)^"\n") in
+           Lwt.return (Js.Unsafe.fun_call errback [||])
 ;;
 reg "gloc" gloc

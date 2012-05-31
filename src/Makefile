@@ -1,4 +1,4 @@
-.PHONY: all glocode clean
+.PHONY: all glocode clean node node-install
 
 RM_ANNOT=rm -f *.annot
 OCAMLBUILD=ocamlbuild -use-ocamlfind -cflag -annot
@@ -6,6 +6,8 @@ CP_ANNOT=cp _build/*.annot .
 DOC=../doc
 GLOCODE=${DOC}/glocode
 CODEMIRROR=../CodeMirror2
+
+JS_EXECS:=glol_js.d.js glol_js.js gloc_js.d.js gloc_js.js node/gloc/lib/gloc_js.js
 
 all: gloc.d.byte glol_js.d.js gloc_js.d.js
 
@@ -38,41 +40,52 @@ glocode: gloc_xml.d.byte
 	mkdir -p ${DOC}/Pretty-Diff/
 	cp ../Pretty-Diff/prettydiff.js ${DOC}/Pretty-Diff/
 
+node: gloc_js.js
+	cp -f _build/gloc_js.js node/gloc/lib/
+
+node-install: node
+	cd node/gloc/ && sudo npm install -g
+
 gloc_js.d.js:
 	${RM_ANNOT}
 	${OCAMLBUILD} gloc_js.d.js
 	${CP_ANNOT}
+	ln -fs _build/$@ gloc_js.js
 gloc_js.js:
 	${RM_ANNOT}
 	${OCAMLBUILD} gloc_js.js
 	${CP_ANNOT}
+	ln -fs _build/$@ $@
 
 glol_js.d.js:
 	${RM_ANNOT}
 	${OCAMLBUILD} glol_js.d.js
 	${CP_ANNOT}
+	ln -fs _build/$@ glol_js.js
 glol_js.js:
 	${RM_ANNOT}
 	${OCAMLBUILD} glol_js.js
 	${CP_ANNOT}
+	ln -fs _build/$@ $@
 
 gloc.d.byte:
 	${RM_ANNOT}
 	${OCAMLBUILD} gloc_posix.d.byte
 	${CP_ANNOT}
-	mv gloc_posix.d.byte gloc.d.byte
+	ln -fs _build/gloc_posix.d.byte gloc.byte
 gloc.byte:
 	${RM_ANNOT}
 	${OCAMLBUILD} gloc_posix.byte
 	${CP_ANNOT}
-	mv gloc_posix.byte gloc.byte
+	ln -fs _build/gloc_posix.byte gloc.byte
 
 gloc_xml.d.byte:
 	${RM_ANNOT}
 	${OCAMLBUILD} gloc_xml.d.byte
 	${CP_ANNOT}
+	ln -fs _build/$@ $@
 
 clean:
 	ocamlbuild -clean
 	@echo ""
-	rm -f glol_js.d.js gloc_js.d.js
+	rm -f ${JS_EXECS}

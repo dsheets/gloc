@@ -10,6 +10,7 @@
   },
   "contributor" : [
     "David Sheets <sheets@ashimaarts.com>",
+    "Ian McEwan <ijm@ashimaarts.com>",
     "Tikhon Jelvis <tikhon@berkeley.edu>"
   ],
   "description" : "glsl object compiler",
