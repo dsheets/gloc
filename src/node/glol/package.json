@@ -1,0 +1,19 @@
+{
+  "name" : "glol",
+  "version" : "1.0.0",
+  "author"  : "Ashima Arts",
+  "contributor" : [
+    {
+      "name" : "David Sheets",
+      "email" : "sheets@ashimaarts.com"
+    }
+  ],
+  "description" : "glol object compiler",
+  "main" : "./lib/glol.js",
+  "repository" : {
+    "type" : "git",
+    "url" : "https://github.com/ashima/gloc.git"
+  },
+  "keywords" : ["compiler", "webgl", "glsl", "opengl", "gloc", "glol", "ocaml"],
+  "license" : "BSD 3 Clause"
+}

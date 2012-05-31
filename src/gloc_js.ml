@@ -1,5 +1,4 @@
 open Js
-open Dom_html
 
 external reg : string -> ('a -> 'b) -> unit = "register_ocaml_fn"
 
